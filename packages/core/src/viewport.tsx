@@ -1,5 +1,5 @@
-import { Fragment, useRef } from "react";
-import type { ReactNode } from "react";
+import { Fragment, useEffect, useRef } from "react";
+import type { MouseEvent, ReactNode, TouchEvent } from "react";
 
 import { useViewMode } from "./use-view-mode";
 import { useViewerContext } from "./viewer-context";
@@ -11,14 +11,140 @@ export interface ViewportProps<TPage extends ViewerPage> {
   doublePageThreshold?: number;
 }
 
+const EDGE_CLICK_RATIO = 0.3;
+const MIN_SWIPE_THRESHOLD_PX = 48;
+const SWIPE_THRESHOLD_RATIO = 0.12;
+
 export const Viewport = <TPage extends ViewerPage>({
   renderPage,
   className,
   doublePageThreshold,
 }: ViewportProps<TPage>) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { pages, currentIndex, readingDirection } = useViewerContext<TPage>();
+  const touchStateRef = useRef<{
+    startX: number;
+    currentX: number;
+    active: boolean;
+  }>({
+    active: false,
+    currentX: 0,
+    startX: 0,
+  });
+  const { pages, currentIndex, readingDirection, goToNext, goToPrev } =
+    useViewerContext<TPage>();
   const viewMode = useViewMode(containerRef, doublePageThreshold);
+
+  const goByHorizontalDirection = (direction: "left" | "right"): void => {
+    if (direction === "left") {
+      if (readingDirection === "rtl") {
+        goToNext();
+      } else {
+        goToPrev();
+      }
+      return;
+    }
+
+    if (readingDirection === "rtl") {
+      goToPrev();
+    } else {
+      goToNext();
+    }
+  };
+
+  const goBySwipeDirection = (swipeDirection: "left" | "right"): void => {
+    if (swipeDirection === "left") {
+      if (readingDirection === "rtl") {
+        goToPrev();
+      } else {
+        goToNext();
+      }
+      return;
+    }
+
+    if (readingDirection === "rtl") {
+      goToNext();
+    } else {
+      goToPrev();
+    }
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === "ArrowLeft") {
+        goByHorizontalDirection("left");
+      } else if (event.key === "ArrowRight") {
+        goByHorizontalDirection("right");
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [readingDirection, goToNext, goToPrev]);
+
+  const handleEdgeClick = (event: MouseEvent<HTMLDivElement>): void => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;
+    const edgeWidth = rect.width * EDGE_CLICK_RATIO;
+
+    if (offsetX <= edgeWidth) {
+      goByHorizontalDirection("left");
+      return;
+    }
+
+    if (offsetX >= rect.width - edgeWidth) {
+      goByHorizontalDirection("right");
+    }
+  };
+
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>): void => {
+    const [touch] = Object.values(event.touches);
+    if (touch === undefined) {
+      return;
+    }
+
+    touchStateRef.current = {
+      active: true,
+      currentX: touch.clientX,
+      startX: touch.clientX,
+    };
+  };
+
+  const handleTouchMove = (event: TouchEvent<HTMLDivElement>): void => {
+    if (!touchStateRef.current.active) {
+      return;
+    }
+
+    const [touch] = Object.values(event.touches);
+    if (touch === undefined) {
+      return;
+    }
+
+    touchStateRef.current.currentX = touch.clientX;
+  };
+
+  const handleTouchEnd = (): void => {
+    if (!touchStateRef.current.active) {
+      return;
+    }
+
+    const containerWidth = containerRef.current?.clientWidth ?? 0;
+    const threshold = Math.max(
+      MIN_SWIPE_THRESHOLD_PX,
+      containerWidth * SWIPE_THRESHOLD_RATIO
+    );
+    const deltaX =
+      touchStateRef.current.currentX - touchStateRef.current.startX;
+
+    touchStateRef.current.active = false;
+
+    if (Math.abs(deltaX) < threshold) {
+      return;
+    }
+
+    goBySwipeDirection(deltaX > 0 ? "right" : "left");
+  };
 
   const visibleIndices: number[] = [currentIndex];
   if (viewMode === "double" && currentIndex + 1 < pages.length) {
@@ -35,6 +161,10 @@ export const Viewport = <TPage extends ViewerPage>({
     <div
       ref={containerRef}
       className={`pcv-viewport${className === undefined ? "" : ` ${className}`}`}
+      onClick={handleEdgeClick}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       {orderedIndices.map((index) => (
         <Fragment key={index}>{renderPage(pages[index], index)}</Fragment>

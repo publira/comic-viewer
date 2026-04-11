@@ -1,8 +1,8 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ViewerProvider } from "./viewer-context";
 import type { ReadingDirection } from "./viewer-context";
+import { ViewerProvider, useViewerContext } from "./viewer-context";
 import { Viewport } from "./viewport";
 
 // eslint-disable-next-line eslint-plugin-promise/prefer-await-to-callbacks
@@ -45,6 +45,25 @@ beforeEach(() => {
   MockResizeObserver.callback = null;
 });
 
+const setViewportRect = (viewport: Element, width = 100) => {
+  vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue({
+    bottom: 100,
+    height: 100,
+    left: 0,
+    right: width,
+    toJSON: () => ({}),
+    top: 0,
+    width,
+    x: 0,
+    y: 0,
+  } as DOMRect);
+};
+
+const CurrentIndexIndicator = () => {
+  const { currentIndex } = useViewerContext();
+  return <div data-testid="current-index">{currentIndex}</div>;
+};
+
 const renderViewport = ({
   initialIndex = 0,
   initialReadingDirection = "rtl" as ReadingDirection,
@@ -60,6 +79,7 @@ const renderViewport = ({
         renderPage={(page) => <div data-testid={page.id}>{page.label}</div>}
         doublePageThreshold={threshold}
       />
+      <CurrentIndexIndicator />
     </ViewerProvider>
   );
 
@@ -171,5 +191,115 @@ describe("Viewport", () => {
       MockResizeObserver.trigger(400);
     });
     expect(screen.queryByTestId("p2")).not.toBeInTheDocument();
+  });
+
+  it("handles ArrowLeft and ArrowRight in LTR", () => {
+    renderViewport({ initialIndex: 1, initialReadingDirection: "ltr" });
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
+  it("handles ArrowLeft and ArrowRight in RTL", () => {
+    renderViewport({ initialIndex: 1, initialReadingDirection: "rtl" });
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
+  it("navigates by edge click in LTR", () => {
+    const { container } = renderViewport({
+      initialIndex: 1,
+      initialReadingDirection: "ltr",
+    });
+    const viewport = container.querySelector(".pcv-viewport");
+
+    expect(viewport).not.toBeNull();
+
+    if (viewport === null) {
+      return;
+    }
+
+    setViewportRect(viewport);
+    fireEvent.click(viewport, { clientX: 95 });
+    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+
+    fireEvent.click(viewport, { clientX: 5 });
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
+  it("navigates by edge click in RTL", () => {
+    const { container } = renderViewport({
+      initialIndex: 1,
+      initialReadingDirection: "rtl",
+    });
+    const viewport = container.querySelector(".pcv-viewport");
+
+    expect(viewport).not.toBeNull();
+
+    if (viewport === null) {
+      return;
+    }
+
+    setViewportRect(viewport);
+    fireEvent.click(viewport, { clientX: 5 });
+    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+
+    fireEvent.click(viewport, { clientX: 95 });
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
+  it("turns page on swipe when the threshold is exceeded", () => {
+    const { container } = renderViewport({
+      initialIndex: 1,
+      initialReadingDirection: "ltr",
+    });
+    const viewport = container.querySelector(".pcv-viewport");
+
+    expect(viewport).not.toBeNull();
+
+    if (viewport === null) {
+      return;
+    }
+
+    fireEvent.touchStart(viewport, {
+      touches: [{ clientX: 200 }],
+    });
+    fireEvent.touchMove(viewport, {
+      touches: [{ clientX: 120 }],
+    });
+    fireEvent.touchEnd(viewport);
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+  });
+
+  it("does not turn page on short swipe", () => {
+    const { container } = renderViewport({
+      initialIndex: 1,
+      initialReadingDirection: "ltr",
+    });
+    const viewport = container.querySelector(".pcv-viewport");
+
+    expect(viewport).not.toBeNull();
+
+    if (viewport === null) {
+      return;
+    }
+
+    fireEvent.touchStart(viewport, {
+      touches: [{ clientX: 200 }],
+    });
+    fireEvent.touchMove(viewport, {
+      touches: [{ clientX: 170 }],
+    });
+    fireEvent.touchEnd(viewport);
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
   });
 });
