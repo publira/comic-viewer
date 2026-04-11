@@ -5,8 +5,15 @@ import { useViewMode } from "./use-view-mode";
 import { useViewerContext } from "./viewer-context";
 import type { ViewerPage } from "./viewer-context";
 
+// デフォルトのページ描画: 画像src/titleがあればimg表示、それ以外はid表示
+const defaultRenderPage = (page: ViewerPage, index: number) => (
+  <div key={page.id ?? index} className="pcv-page">
+    <img src={page.src} alt={page.title ?? page.id} />
+  </div>
+);
+
 export interface ViewportProps<TPage extends ViewerPage> {
-  renderPage: (page: TPage, index: number) => ReactNode;
+  renderPage?: (page: TPage, index: number) => ReactNode;
   className?: string;
   doublePageThreshold?: number;
 }
@@ -53,19 +60,11 @@ export const Viewport = <TPage extends ViewerPage>({
 
   const goBySwipeDirection = (swipeDirection: "left" | "right"): void => {
     if (swipeDirection === "left") {
-      if (readingDirection === "rtl") {
-        goToPrev();
-      } else {
-        goToNext();
-      }
+      goToNext();
       return;
     }
 
-    if (readingDirection === "rtl") {
-      goToNext();
-    } else {
-      goToPrev();
-    }
+    goToPrev();
   };
 
   useEffect(() => {
@@ -157,17 +156,21 @@ export const Viewport = <TPage extends ViewerPage>({
       ? [visibleIndices[1], visibleIndices[0]]
       : visibleIndices;
 
+  const pageRenderer = renderPage ?? defaultRenderPage;
   return (
     <div
       ref={containerRef}
       className={`pcv-viewport${className === undefined ? "" : ` ${className}`}`}
+      data-reading-direction={readingDirection}
+      data-view-mode={viewMode}
+      data-page-count={orderedIndices.length}
       onClick={handleEdgeClick}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
       {orderedIndices.map((index) => (
-        <Fragment key={index}>{renderPage(pages[index], index)}</Fragment>
+        <Fragment key={index}>{pageRenderer(pages[index], index)}</Fragment>
       ))}
     </div>
   );

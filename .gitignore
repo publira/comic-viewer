@@ -43,7 +43,8 @@ node_modules/
 jspm_packages/
 .pnpm-store/
 
-# TypeScript v1 declaration files
+# TypeScript build info
+*.tsbuildinfo
 typings/
 
 # Optional npm cache directory
@@ -64,6 +65,7 @@ out/
 .cache/
 .turbo/
 public/
+next-env.d.ts
 
 # REPL and environment variables
 .node_repl_history

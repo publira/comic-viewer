@@ -33,7 +33,7 @@ class MockResizeObserver {
   }
 }
 
-const pages = [{ id: "p1" }];
+const pages = [{ id: "p1", src: "page1.png", title: "Page 1" }];
 
 const makeWrapper = () =>
   function Wrapper({ children }: { children: React.ReactNode }) {

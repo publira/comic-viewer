@@ -32,10 +32,10 @@ class MockResizeObserver {
 }
 
 const pages = [
-  { id: "p1", label: "Page 1" },
-  { id: "p2", label: "Page 2" },
-  { id: "p3", label: "Page 3" },
-  { id: "p4", label: "Page 4" },
+  { id: "p1", src: "page1.png", title: "Page 1" },
+  { id: "p2", src: "page2.png", title: "Page 2" },
+  { id: "p3", src: "page3.png", title: "Page 3" },
+  { id: "p4", src: "page4.png", title: "Page 4" },
 ];
 
 type TestPage = (typeof pages)[number];
@@ -76,7 +76,7 @@ const renderViewport = ({
       initialReadingDirection={initialReadingDirection}
     >
       <Viewport<TestPage>
-        renderPage={(page) => <div data-testid={page.id}>{page.label}</div>}
+        renderPage={(page) => <div data-testid={page.id}>{page.title}</div>}
         doublePageThreshold={threshold}
       />
       <CurrentIndexIndicator />
@@ -153,6 +153,52 @@ describe("Viewport", () => {
     expect(screen.queryByTestId("p5")).not.toBeInTheDocument();
   });
 
+  it("sets viewport data attributes for RTL odd-last-page in double mode", () => {
+    const { container } = renderViewport({
+      initialIndex: 3,
+      initialReadingDirection: "rtl",
+    });
+
+    act(() => {
+      MockResizeObserver.trigger(1024);
+    });
+
+    const viewport = container.querySelector(".pcv-viewport");
+
+    expect(viewport).not.toBeNull();
+
+    if (viewport === null) {
+      return;
+    }
+
+    expect(viewport).toHaveAttribute("data-view-mode", "double");
+    expect(viewport).toHaveAttribute("data-page-count", "1");
+    expect(viewport).toHaveAttribute("data-reading-direction", "rtl");
+  });
+
+  it("sets viewport data attributes for LTR odd-last-page in double mode", () => {
+    const { container } = renderViewport({
+      initialIndex: 3,
+      initialReadingDirection: "ltr",
+    });
+
+    act(() => {
+      MockResizeObserver.trigger(1024);
+    });
+
+    const viewport = container.querySelector(".pcv-viewport");
+
+    expect(viewport).not.toBeNull();
+
+    if (viewport === null) {
+      return;
+    }
+
+    expect(viewport).toHaveAttribute("data-view-mode", "double");
+    expect(viewport).toHaveAttribute("data-page-count", "1");
+    expect(viewport).toHaveAttribute("data-reading-direction", "ltr");
+  });
+
   it("applies the pcv-viewport class", () => {
     const { container } = renderViewport();
 
@@ -163,7 +209,7 @@ describe("Viewport", () => {
     const { container } = render(
       <ViewerProvider pages={pages}>
         <Viewport<TestPage>
-          renderPage={(page) => <div>{page.label}</div>}
+          renderPage={(page) => <div>{page.title}</div>}
           className="custom-class"
         />
       </ViewerProvider>
@@ -259,6 +305,30 @@ describe("Viewport", () => {
     const { container } = renderViewport({
       initialIndex: 1,
       initialReadingDirection: "ltr",
+    });
+    const viewport = container.querySelector(".pcv-viewport");
+
+    expect(viewport).not.toBeNull();
+
+    if (viewport === null) {
+      return;
+    }
+
+    fireEvent.touchStart(viewport, {
+      touches: [{ clientX: 200 }],
+    });
+    fireEvent.touchMove(viewport, {
+      touches: [{ clientX: 120 }],
+    });
+    fireEvent.touchEnd(viewport);
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+  });
+
+  it("turns page on left swipe in RTL", () => {
+    const { container } = renderViewport({
+      initialIndex: 1,
+      initialReadingDirection: "rtl",
     });
     const viewport = container.querySelector(".pcv-viewport");
 

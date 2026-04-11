@@ -1,6 +1,24 @@
 {
-  "name": "@publira/demo-app",
+  "name": "@publira/comic-viewer-demo",
   "version": "0.1.0",
   "private": true,
-  "license": "Apache-2.0"
+  "license": "Apache-2.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@publira/comic-viewer": "workspace:*",
+    "next": "16.2.3",
+    "react": "19.2.5",
+    "react-dom": "19.2.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.12.2",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "typescript": "6.0.2"
+  }
 }

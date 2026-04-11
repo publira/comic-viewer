@@ -12,7 +12,8 @@ export type ReadingDirection = "rtl" | "ltr";
 
 export interface ViewerPage {
   id: string;
-  [key: string]: unknown;
+  title: string;
+  src: string;
 }
 
 export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
