@@ -1,4 +1,4 @@
-# @publira/comic-viewer
+# Publira Comic Viewer
 
 A highly extensible, headless-UI inspired React comic viewer designed for modern web applications. 
 
