@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "build": "turbo run build",
+    "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "check": "ultracite check .",
     "fix": "ultracite fix ."

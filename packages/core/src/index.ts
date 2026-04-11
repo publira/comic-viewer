@@ -7,3 +7,8 @@ export {
   type ViewerProviderProps,
   type ViewMode,
 } from "./viewer-context";
+
+export { ComicViewer, type ComicViewerProps } from "./comic-viewer";
+export { type ViewportProps } from "./viewport";
+export { type ToolbarProps } from "./toolbar";
+export { useViewMode } from "./use-view-mode";
