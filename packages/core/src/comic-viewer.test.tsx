@@ -10,8 +10,8 @@ class MockResizeObserver {
 }
 
 const pages = [
-  { id: "p1", label: "Page 1" },
-  { id: "p2", label: "Page 2" },
+  { id: "p1", src: "page1.png", title: "Page 1" },
+  { id: "p2", src: "page2.png", title: "Page 2" },
 ];
 
 type TestPage = (typeof pages)[number];
@@ -55,7 +55,7 @@ describe("ComicViewer", () => {
     const { container } = render(
       <ComicViewer pages={pages}>
         <ComicViewer.Viewport<TestPage>
-          renderPage={(page) => <div data-testid={page.id}>{page.label}</div>}
+          renderPage={(page) => <div data-testid={page.id}>{page.title}</div>}
         />
       </ComicViewer>
     );
@@ -83,7 +83,7 @@ describe("ComicViewer", () => {
     const { container } = render(
       <ComicViewer pages={pages}>
         <ComicViewer.Viewport<TestPage>
-          renderPage={(page) => <div data-testid={page.id}>{page.label}</div>}
+          renderPage={(page) => <div data-testid={page.id}>{page.title}</div>}
         />
         <ComicViewer.Toolbar>
           <span data-testid="toolbar-label">controls</span>

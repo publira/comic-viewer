@@ -5,11 +5,11 @@ import { ViewerProvider, useViewerContext } from "./viewer-context";
 import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
 
 const pages: ViewerPage[] = [
-  { id: "p1" },
-  { id: "p2" },
-  { id: "p3" },
-  { id: "p4" },
-  { id: "p5" },
+  { id: "p1", src: "page1.png", title: "Page 1" },
+  { id: "p2", src: "page2.png", title: "Page 2" },
+  { id: "p3", src: "page3.png", title: "Page 3" },
+  { id: "p4", src: "page4.png", title: "Page 4" },
+  { id: "p5", src: "page5.png", title: "Page 5" },
 ];
 
 const makeWrapper = (props?: Partial<ViewerProviderProps>) =>
