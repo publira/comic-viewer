@@ -1,0 +1,15 @@
+{
+  "name": "Publira Comic Viewer",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:4.0.7-24-trixie@sha256:3ff0e3ff2f98928cb4cd1faab2b3338161b13007c04e9b0f1d2d89a69c75e676",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1.1.0": {
+      "version": "2.88.1"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["oxc.oxc-vscode"]
+    }
+  },
+  "postCreateCommand": "pnpm install"
+}
