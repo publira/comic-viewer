@@ -1,6 +1,6 @@
 # Publira Comic Viewer
 
-A highly extensible, headless-UI inspired React comic viewer designed for modern web applications. 
+A highly extensible, headless-UI inspired React comic viewer designed for modern web applications.
 
 It provides robust core functionalities like memory-efficient virtualization, responsive double-page spreads, and reading direction controls, while leaving the UI and data fetching pipeline entirely customizable.
 
@@ -20,26 +20,32 @@ npm install @publira/comic-viewer
 yarn add @publira/comic-viewer
 # or
 pnpm add @publira/comic-viewer
-````
+```
 
 ## Basic Usage
 
 Import the core CSS and assemble the viewer using the provided Compound Components.
 
 ```tsx
-import { ComicViewer } from '@publira/comic-viewer';
-import '@publira/comic-viewer/core.css'; // Required layout constraints
+import { ComicViewer } from "@publira/comic-viewer";
+import "@publira/comic-viewer/core.css"; // Required layout constraints
 
 function App() {
   const pages = [
-    { id: '1', url: '[https://example.com/page1.jpg](https://example.com/page1.jpg)' },
-    { id: '2', url: '[https://example.com/page2.jpg](https://example.com/page2.jpg)' },
+    {
+      id: "1",
+      url: "[https://example.com/page1.jpg](https://example.com/page1.jpg)",
+    },
+    {
+      id: "2",
+      url: "[https://example.com/page2.jpg](https://example.com/page2.jpg)",
+    },
     // ...
   ];
 
   return (
-    <ComicViewer 
-      pages={pages} 
+    <ComicViewer
+      pages={pages}
       defaultDirection="rtl" // Right-to-Left (e.g., Japanese Manga)
     >
       <div className="viewer-layout">
@@ -62,22 +68,19 @@ function App() {
 You can intercept and modify the data pipeline (e.g., decrypting binary images on the fly) using the `plugins` prop.
 
 ```tsx
-import { ComicViewer, ViewerPlugin } from '@publira/comic-viewer';
+import { ComicViewer, ViewerPlugin } from "@publira/comic-viewer";
 
 const myDecryptionPlugin: ViewerPlugin = {
-  name: 'my-decryption-plugin',
+  name: "my-decryption-plugin",
   afterFetch: async (buffer: ArrayBuffer) => {
     // Implement your custom decryption logic here (e.g., WASM XOR)
-    return decryptData(buffer); 
-  }
+    return decryptData(buffer);
+  },
 };
 
 function SecureApp() {
   return (
-    <ComicViewer 
-      pages={securePages} 
-      plugins={[myDecryptionPlugin]} 
-    >
+    <ComicViewer pages={securePages} plugins={[myDecryptionPlugin]}>
       <ComicViewer.Viewport />
     </ComicViewer>
   );
