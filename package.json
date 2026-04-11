@@ -3,5 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "license": "Apache-2.0",
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "check": "ultracite check .",
+    "fix": "ultracite fix ."
+  },
+  "devDependencies": {
+    "oxfmt": "0.44.0",
+    "oxlint": "1.59.0",
+    "turbo": "2.9.6",
+    "typescript": "6.0.2",
+    "ultracite": "7.4.4"
+  },
   "packageManager": "pnpm@10.33.0"
 }
