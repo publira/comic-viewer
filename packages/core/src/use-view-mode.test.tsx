@@ -40,7 +40,7 @@ const makeWrapper = () =>
     return <ViewerProvider pages={pages}>{children}</ViewerProvider>;
   };
 
-describe("useViewMode", () => {
+describe(useViewMode, () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
     MockResizeObserver.callback = null;
