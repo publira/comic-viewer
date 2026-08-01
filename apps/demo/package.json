@@ -12,12 +12,12 @@
   "dependencies": {
     "@publira/comic-viewer": "workspace:*",
     "next": "16.2.3",
-    "react": "19.2.5",
-    "react-dom": "19.2.5"
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@types/node": "24.12.2",
-    "@types/react": "19.2.14",
+    "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "typescript": "6.0.3"
   }
