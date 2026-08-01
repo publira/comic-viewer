@@ -83,7 +83,7 @@ const renderViewport = ({
     </ViewerProvider>
   );
 
-describe("Viewport", () => {
+describe(Viewport, () => {
   it("renders only the current page in single mode", () => {
     renderViewport();
 
@@ -122,7 +122,7 @@ describe("Viewport", () => {
       MockResizeObserver.trigger(1024);
     });
 
-    const items = screen.getAllByTestId(/^p/);
+    const items = screen.getAllByTestId(/^p/u);
     // RTL order: [p2, p1]
     expect(items[0]).toHaveAttribute("data-testid", "p2");
     expect(items[1]).toHaveAttribute("data-testid", "p1");
@@ -135,7 +135,7 @@ describe("Viewport", () => {
       MockResizeObserver.trigger(1024);
     });
 
-    const items = screen.getAllByTestId(/^p/);
+    const items = screen.getAllByTestId(/^p/u);
     // LTR order: [p1, p2]
     expect(items[0]).toHaveAttribute("data-testid", "p1");
     expect(items[1]).toHaveAttribute("data-testid", "p2");

@@ -20,7 +20,7 @@ beforeEach(() => {
   vi.stubGlobal("ResizeObserver", MockResizeObserver);
 });
 
-describe("ComicViewer", () => {
+describe(ComicViewer, () => {
   it("renders a div with the pcv-root class", () => {
     const { container } = render(
       <ComicViewer pages={pages}>
