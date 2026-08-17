@@ -15,7 +15,7 @@
     "oxlint": "1.78.0",
     "turbo": "2.10.9",
     "typescript": "6.0.3",
-    "ultracite": "7.10.3"
+    "ultracite": "7.10.4"
   },
   "packageManager": "pnpm@11.21.0"
 }
