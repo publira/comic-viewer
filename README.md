@@ -34,11 +34,11 @@ function App() {
   const pages = [
     {
       id: "1",
-      url: "[https://example.com/page1.jpg](https://example.com/page1.jpg)",
+      url: "https://example.com/page1.jpg",
     },
     {
       id: "2",
-      url: "[https://example.com/page2.jpg](https://example.com/page2.jpg)",
+      url: "https://example.com/page2.jpg",
     },
     // ...
   ];
