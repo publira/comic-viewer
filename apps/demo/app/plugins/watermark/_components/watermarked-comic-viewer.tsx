@@ -3,7 +3,6 @@
 import { ComicViewer, definePlugin } from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 
-import "@publira/comic-viewer/core.css";
 import styles from "../page.module.css";
 
 const watermarkText = "PUBLIRA DEMO";
@@ -77,5 +76,6 @@ export const WatermarkedComicViewer = ({
 }: WatermarkedComicViewerProps) => (
   <ComicViewer pages={pages} plugins={plugins} className={styles.viewerContent}>
     <ComicViewer.Viewport />
+    <ComicViewer.PageNavigation />
   </ComicViewer>
 );

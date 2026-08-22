@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { DemoNavigation } from "./_components/demo-navigation";
 
+import "@publira/comic-viewer/core.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

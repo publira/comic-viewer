@@ -55,6 +55,7 @@ export function Reader() {
     <div style={{ height: "100vh" }}>
       <ComicViewer pages={pages} initialReadingDirection="rtl">
         <ComicViewer.Viewport />
+        <ComicViewer.PageNavigation />
       </ComicViewer>
     </div>
   );
@@ -62,6 +63,22 @@ export function Reader() {
 ```
 
 `initialReadingDirection` defaults to `"rtl"` for right-to-left manga reading. Set it to `"ltr"` for left-to-right comics. The viewport switches between single and double-page display based on its width; use `doublePageThreshold` to change the default 768px breakpoint.
+
+## Page navigation
+
+`ComicViewer.PageNavigation` provides accessible previous-page, page-status, and next-page controls. Buttons are disabled at the first and last spread, and the status reports the currently visible page or range. The control order follows the reader's direction.
+
+For a custom arrangement, compose `PreviousPageButton`, `PageStatus`, and `NextPageButton` as children. These components render only semantic HTML and class names, leaving visual styling to the consumer.
+
+```tsx
+<ComicViewer.Toolbar>
+  <ComicViewer.PageNavigation className="reader-controls">
+    <ComicViewer.PreviousPageButton>Back</ComicViewer.PreviousPageButton>
+    <ComicViewer.NextPageButton>Forward</ComicViewer.NextPageButton>
+    <ComicViewer.PageStatus />
+  </ComicViewer.PageNavigation>
+</ComicViewer.Toolbar>
+```
 
 ## Plugins
 

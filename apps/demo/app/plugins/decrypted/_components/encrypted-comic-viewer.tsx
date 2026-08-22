@@ -3,7 +3,6 @@
 import { ComicViewer, definePlugin } from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 
-import "@publira/comic-viewer/core.css";
 import { getViewerStyle } from "../../../_components/viewer-layout";
 
 import styles from "../page.module.css";
@@ -70,6 +69,7 @@ export const EncryptedComicViewer = ({ pages }: EncryptedComicViewerProps) => (
       className={styles.viewerContent}
     >
       <ComicViewer.Viewport />
+      <ComicViewer.PageNavigation />
     </ComicViewer>
   </div>
 );
