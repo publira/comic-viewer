@@ -9,17 +9,17 @@ export const metadata: Metadata = {
   title: "Comic Viewer Demo",
 };
 
-export default function RootLayout({
+const RootLayout = ({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en">
-      <body>
-        <DemoNavigation />
-        {children}
-      </body>
-    </html>
-  );
-}
+}>) => (
+  <html lang="en">
+    <body>
+      <DemoNavigation />
+      {children}
+    </body>
+  </html>
+);
+
+export default RootLayout;

@@ -4,10 +4,10 @@ import { definePlugin, runDataPipeline, runPageChangeHooks } from "./plugin";
 
 describe("plugin pipeline", () => {
   it("defines plugins without changing their hook implementations", () => {
-    const afterFetch = vi.fn();
+    const afterFetch = vi.fn<() => void>();
     const plugin = definePlugin({ afterFetch, name: "decrypt" });
 
-    expect(plugin).toEqual({ afterFetch, name: "decrypt" });
+    expect(plugin).toStrictEqual({ afterFetch, name: "decrypt" });
   });
 
   it("runs data hooks in order and passes each result to the next hook", async () => {
@@ -15,7 +15,7 @@ describe("plugin pipeline", () => {
     const firstBuffer = new ArrayBuffer(1);
     const secondBuffer = new ArrayBuffer(2);
     const finalBuffer = new ArrayBuffer(3);
-    const fetchMock = vi.fn();
+    const fetchMock = vi.fn<() => Promise<unknown>>();
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await runDataPipeline("page.jpg", [
@@ -49,7 +49,7 @@ describe("plugin pipeline", () => {
 
     expect(result).toBe(finalBuffer);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(events).toEqual([
+    expect(events).toStrictEqual([
       "before-1:page.jpg",
       "before-2:secure/page.jpg",
       "custom-1:secure/page.jpg",
@@ -61,7 +61,7 @@ describe("plugin pipeline", () => {
 
   it("uses the built-in fetch when no custom fetch returns a buffer", async () => {
     const buffer = new ArrayBuffer(4);
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn<() => Promise<unknown>>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(buffer),
       ok: true,
     });
@@ -75,7 +75,7 @@ describe("plugin pipeline", () => {
 
   it("forwards the abort signal to the built-in fetch", async () => {
     const abortController = new AbortController();
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn<() => Promise<unknown>>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
       ok: true,
     });
@@ -109,11 +109,11 @@ describe("plugin pipeline", () => {
       8
     );
 
-    expect(events).toEqual(["first:2/8", "second:2/8"]);
+    expect(events).toStrictEqual(["first:2/8", "second:2/8"]);
   });
 
   it("continues page-change hooks after a plugin fails", async () => {
-    const followingHook = vi.fn();
+    const followingHook = vi.fn<() => void>();
 
     await runPageChangeHooks(
       [

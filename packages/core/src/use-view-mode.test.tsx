@@ -16,9 +16,9 @@ class MockResizeObserver {
     MockResizeObserver.instance = this;
   }
 
-  observe = vi.fn();
-  disconnect = vi.fn();
-  unobserve = vi.fn();
+  observe = vi.fn<() => void>();
+  disconnect = vi.fn<() => void>();
+  unobserve = vi.fn<() => void>();
 
   // Test helper: fires the callback with the given width
   static trigger(width: number) {

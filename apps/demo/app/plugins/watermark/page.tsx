@@ -4,23 +4,23 @@ import { WatermarkedComicViewer } from "./_components/watermarked-comic-viewer";
 
 import styles from "./page.module.css";
 
-export default function WatermarkPluginDemoPage() {
-  return (
-    <main className={styles.main}>
-      <div className={styles.container}>
-        <div className={styles.viewer} style={getViewerStyle(basicSamplePages)}>
-          <WatermarkedComicViewer pages={basicSamplePages} />
-        </div>
-        <section className={styles.heading}>
-          <div>
-            <h2>Text watermark plugin sample</h2>
-            <p>
-              The <code>afterFetch</code> hook draws a text watermark onto each
-              JPEG before the viewer renders it.
-            </p>
-          </div>
-        </section>
+const WatermarkPluginDemoPage = () => (
+  <main className={styles.main}>
+    <div className={styles.container}>
+      <div className={styles.viewer} style={getViewerStyle(basicSamplePages)}>
+        <WatermarkedComicViewer pages={basicSamplePages} />
       </div>
-    </main>
-  );
-}
+      <section className={styles.heading}>
+        <div>
+          <h2>Text watermark plugin sample</h2>
+          <p>
+            The <code>afterFetch</code> hook draws a text watermark onto each
+            JPEG before the viewer renders it.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+);
+
+export default WatermarkPluginDemoPage;

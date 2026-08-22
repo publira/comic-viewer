@@ -32,7 +32,7 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.viewMode).toBe("single");
     expect(result.current.readingDirection).toBe("rtl");
     expect(result.current.pages).toBe(pages);
-    expect(result.current.plugins).toEqual([]);
+    expect(result.current.plugins).toStrictEqual([]);
   });
 
   it("registers plugins in the viewer context", () => {
@@ -41,7 +41,7 @@ describe("ViewerProvider / useViewerContext", () => {
       wrapper: makeWrapper({ plugins: [plugin] }),
     });
 
-    expect(result.current.plugins).toEqual([plugin]);
+    expect(result.current.plugins).toStrictEqual([plugin]);
   });
 
   it("clamps initialIndex to the valid range", () => {

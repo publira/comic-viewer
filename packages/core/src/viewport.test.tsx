@@ -13,6 +13,11 @@ import type { ReadingDirection } from "./viewer-context";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
 import { getImageMimeType, Viewport } from "./viewport";
 
+type MockFetch = (
+  input: RequestInfo | URL,
+  init?: RequestInit
+) => Promise<unknown>;
+
 // eslint-disable-next-line eslint-plugin-promise/prefer-await-to-callbacks
 class MockResizeObserver {
   static callback: ResizeObserverCallback | null = null;
@@ -22,9 +27,9 @@ class MockResizeObserver {
     MockResizeObserver.callback = callback;
   }
 
-  observe = vi.fn();
-  disconnect = vi.fn();
-  unobserve = vi.fn();
+  observe = vi.fn<() => void>();
+  disconnect = vi.fn<() => void>();
+  unobserve = vi.fn<() => void>();
 
   static trigger(width: number) {
     MockResizeObserver.callback?.(
@@ -47,11 +52,6 @@ const pages = [
 ];
 
 type TestPage = (typeof pages)[number];
-
-beforeEach(() => {
-  vi.stubGlobal("ResizeObserver", MockResizeObserver);
-  MockResizeObserver.callback = null;
-});
 
 const setViewportRect = (viewport: Element, width = 100) => {
   vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue({
@@ -94,22 +94,30 @@ const renderViewport = ({
   );
 
 describe(Viewport, () => {
+  beforeEach(() => {
+    vi.stubGlobal("ResizeObserver", MockResizeObserver);
+    MockResizeObserver.callback = null;
+  });
+
   it("renders normal pages to canvas instead of an img element", async () => {
     const image = {
-      close: vi.fn(),
+      close: vi.fn<() => void>(),
       height: 1,
       width: 1,
     } as unknown as ImageBitmap;
-    const drawImage = vi.fn();
+    const drawImage = vi.fn<() => void>();
     const getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue({
         drawImage,
       } as unknown as CanvasRenderingContext2D);
-    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(image));
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn<() => Promise<unknown>>().mockResolvedValue(image)
+    );
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
+      vi.fn<MockFetch>().mockResolvedValue({
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
         ok: true,
       })
@@ -138,11 +146,11 @@ describe(Viewport, () => {
 
   it("draws the supplied placeholder before fetching the full page", async () => {
     const image = {
-      close: vi.fn(),
+      close: vi.fn<() => void>(),
       height: 1,
       width: 1,
     } as unknown as ImageBitmap;
-    const drawImage = vi.fn();
+    const drawImage = vi.fn<() => void>();
     const filters: string[] = [];
     const context = { drawImage } as unknown as CanvasRenderingContext2D;
     Object.defineProperty(context, "filter", {
@@ -154,11 +162,14 @@ describe(Viewport, () => {
     const getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue(context);
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn<MockFetch>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
       ok: true,
     });
-    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(image));
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn<() => Promise<unknown>>().mockResolvedValue(image)
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     try {
@@ -180,10 +191,9 @@ describe(Viewport, () => {
       );
 
       await waitFor(() => {
-        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(
+        expect(fetchMock.mock.calls.map(([url]) => url)).toStrictEqual(
           expect.arrayContaining(["preview.jpg", "full-page.jpg"])
         );
-        expect(drawImage).toHaveBeenCalled();
         expect(drawImage).toHaveBeenCalledWith(image, 0, 0, 800, 1000);
         expect(filters).toContain("blur(16px)");
       });
@@ -195,20 +205,23 @@ describe(Viewport, () => {
 
   it("prefetches the next two pages", async () => {
     const image = {
-      close: vi.fn(),
+      close: vi.fn<() => void>(),
       height: 1,
       width: 1,
     } as unknown as ImageBitmap;
     const getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue({
-        drawImage: vi.fn(),
+        drawImage: vi.fn<() => void>(),
       } as unknown as CanvasRenderingContext2D);
-    const fetchMock = vi.fn().mockResolvedValue({
+    const fetchMock = vi.fn<MockFetch>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
       ok: true,
     });
-    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(image));
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn<() => Promise<unknown>>().mockResolvedValue(image)
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     try {
@@ -219,7 +232,7 @@ describe(Viewport, () => {
       );
 
       await waitFor(() => {
-        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(
+        expect(fetchMock.mock.calls.map(([url]) => url)).toStrictEqual(
           expect.arrayContaining(["page1.png", "page2.png", "page3.png"])
         );
       });
@@ -236,7 +249,7 @@ describe(Viewport, () => {
       height: number;
       width: number;
     }[] = [];
-    const drawImage = vi.fn((image: unknown) => {
+    const drawImage = vi.fn<(image: unknown) => void>((image: unknown) => {
       if ((image as { closed: boolean }).closed) {
         throw new Error("A released bitmap was redrawn");
       }
@@ -244,7 +257,7 @@ describe(Viewport, () => {
     const getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
-    const createImageBitmapMock = vi.fn(() => {
+    const createImageBitmapMock = vi.fn<() => Promise<ImageBitmap>>(() => {
       const bitmap = {
         close: () => {
           bitmap.closed = true;
@@ -259,7 +272,7 @@ describe(Viewport, () => {
     vi.stubGlobal("createImageBitmap", createImageBitmapMock);
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
+      vi.fn<MockFetch>().mockResolvedValue({
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
         ok: true,
       })
@@ -273,14 +286,14 @@ describe(Viewport, () => {
       );
 
       await waitFor(() => {
-        expect(createImageBitmapMock).toHaveBeenCalledTimes(1);
+        expect(createImageBitmapMock).toHaveBeenCalledOnce();
       });
 
       fireEvent.keyDown(window, { key: "ArrowRight" });
 
       await waitFor(() => {
         expect(createImageBitmapMock).toHaveBeenCalledTimes(2);
-        expect(bitmaps[0]?.closed).toBe(true);
+        expect(bitmaps[0]?.closed).toBeTruthy();
       });
 
       fireEvent.keyDown(window, { key: "ArrowLeft" });
@@ -309,7 +322,7 @@ describe(Viewport, () => {
   });
 
   it("runs onPageChange plugins for the initial and navigated pages", async () => {
-    const onPageChange = vi.fn();
+    const onPageChange = vi.fn<(index: number, total: number) => void>();
     renderViewport({ plugins: [definePlugin({ onPageChange })] });
 
     await waitFor(() => {

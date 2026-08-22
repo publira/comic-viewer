@@ -1,5 +1,18 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { MouseEvent, ReactNode, TouchEvent } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import type {
+  KeyboardEvent as ReactKeyboardEvent,
+  MouseEvent,
+  ReactNode,
+  TouchEvent,
+} from "react";
 
 import { runDataPipeline, runPageChangeHooks } from "./plugin";
 import { useViewMode } from "./use-view-mode";
@@ -151,7 +164,6 @@ const CanvasPage = ({ image, page, placeholder }: CanvasPageProps) => {
       aria-label={page.title}
       data-placeholder={placeholder || undefined}
       height={page.height}
-      role="img"
       width={page.width}
     />
   );
@@ -200,28 +212,30 @@ export const Viewport = <TPage extends ViewerPage>({
   const { pages, plugins, currentIndex, readingDirection, goToNext, goToPrev } =
     useViewerContext<TPage>();
   const viewMode = useViewMode(containerRef, doublePageThreshold);
-  const [pageImages, setPageImages] = useState<ReadonlyMap<number, PageImage>>(
+  const [pageImages, setPageImages] = useState<ReadonlyMap<string, PageImage>>(
     () => new Map()
   );
-  const [pageImagesKey, setPageImagesKey] = useState("");
   const prefetchedPagesRef = useRef<Map<number, PrefetchedPage>>(new Map());
 
-  const goByHorizontalDirection = (direction: "left" | "right"): void => {
-    if (direction === "left") {
-      if (readingDirection === "rtl") {
-        goToNext();
-      } else {
-        goToPrev();
+  const goByHorizontalDirection = useCallback(
+    (direction: "left" | "right"): void => {
+      if (direction === "left") {
+        if (readingDirection === "rtl") {
+          goToNext();
+        } else {
+          goToPrev();
+        }
+        return;
       }
-      return;
-    }
 
-    if (readingDirection === "rtl") {
-      goToPrev();
-    } else {
-      goToNext();
-    }
-  };
+      if (readingDirection === "rtl") {
+        goToPrev();
+      } else {
+        goToNext();
+      }
+    },
+    [goToNext, goToPrev, readingDirection]
+  );
 
   const goBySwipeDirection = (swipeDirection: "left" | "right"): void => {
     if (swipeDirection === "left") {
@@ -245,7 +259,7 @@ export const Viewport = <TPage extends ViewerPage>({
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [readingDirection, goToNext, goToPrev]);
+  }, [goByHorizontalDirection]);
 
   const handleEdgeClick = (event: MouseEvent<HTMLDivElement>): void => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -258,6 +272,19 @@ export const Viewport = <TPage extends ViewerPage>({
     }
 
     if (offsetX >= rect.width - edgeWidth) {
+      goByHorizontalDirection("right");
+    }
+  };
+
+  const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (event.key === "ArrowLeft") {
+      event.stopPropagation();
+      goByHorizontalDirection("left");
+      return;
+    }
+
+    if (event.key === "ArrowRight") {
+      event.stopPropagation();
       goByHorizontalDirection("right");
     }
   };
@@ -310,23 +337,38 @@ export const Viewport = <TPage extends ViewerPage>({
     goBySwipeDirection(deltaX > 0 ? "right" : "left");
   };
 
-  const visibleIndices: number[] =
-    pages[currentIndex] === undefined ? [] : [currentIndex];
-  if (viewMode === "double" && currentIndex + 1 < pages.length) {
-    visibleIndices.push(currentIndex + 1);
-  }
+  const visibleIndices = useMemo(() => {
+    const indices: number[] =
+      pages[currentIndex] === undefined ? [] : [currentIndex];
+    if (viewMode === "double" && currentIndex + 1 < pages.length) {
+      indices.push(currentIndex + 1);
+    }
+
+    return indices;
+  }, [currentIndex, pages, viewMode]);
 
   // In RTL mode the next page visually appears on the left side
-  const orderedIndices =
-    readingDirection === "rtl" && visibleIndices.length === 2
-      ? [visibleIndices[1], visibleIndices[0]]
-      : visibleIndices;
+  const orderedIndices = useMemo(
+    () =>
+      readingDirection === "rtl" && visibleIndices.length === 2
+        ? [visibleIndices[1], visibleIndices[0]]
+        : visibleIndices,
+    [readingDirection, visibleIndices]
+  );
 
-  const pageSourceKey = visibleIndices
-    .map((index) => `${index}:${pages[index]?.src ?? ""}`)
-    .join("|");
-  const activePageImages =
-    pageImagesKey === pageSourceKey ? pageImages : new Map<number, PageImage>();
+  const pageSourceKey = useMemo(
+    () =>
+      visibleIndices
+        .map((index) => `${index}:${pages[index]?.src ?? ""}`)
+        .join("|"),
+    [pages, visibleIndices]
+  );
+  const activePageImages = new Map(
+    visibleIndices.flatMap((index) => {
+      const image = pageImages.get(`${pageSourceKey}:${index}`);
+      return image === undefined ? [] : [[index, image]];
+    })
+  );
 
   useEffect(() => {
     const notifyPageChange = async (): Promise<void> => {
@@ -358,9 +400,6 @@ export const Viewport = <TPage extends ViewerPage>({
       }
     }
 
-    setPageImages(new Map());
-    setPageImagesKey(pageSourceKey);
-
     const getPageBuffer = (
       index: number,
       page: TPage
@@ -386,9 +425,13 @@ export const Viewport = <TPage extends ViewerPage>({
 
     const setPageImage = (index: number, image: PageImage): void => {
       if (!disposed) {
-        setPageImages(
-          (currentImages) => new Map([...currentImages, [index, image]])
-        );
+        const imageKey = `${pageSourceKey}:${index}`;
+        setPageImages((currentImages) => {
+          const currentSourceImages = [...currentImages].filter(([key]) =>
+            key.startsWith(`${pageSourceKey}:`)
+          );
+          return new Map([...currentSourceImages, [imageKey, image]]);
+        });
       }
     };
 
@@ -484,7 +527,7 @@ export const Viewport = <TPage extends ViewerPage>({
       abortController.abort();
       closeImageBitmaps(imageBitmaps);
     };
-  }, [pageSourceKey, plugins, renderPage]);
+  }, [currentIndex, pageSourceKey, pages, plugins, renderPage, visibleIndices]);
 
   return (
     <div
@@ -494,9 +537,13 @@ export const Viewport = <TPage extends ViewerPage>({
       data-view-mode={viewMode}
       data-page-count={orderedIndices.length}
       onClick={handleEdgeClick}
+      onKeyDown={handleKeyDown}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- The viewer is a composite widget, not a button.
+      role="button"
+      tabIndex={0}
     >
       {orderedIndices.map((index) => {
         const page = pages[index];
