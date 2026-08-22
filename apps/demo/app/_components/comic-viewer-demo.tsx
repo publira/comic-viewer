@@ -12,6 +12,7 @@ interface ComicViewerDemoProps {
   pages: readonly ViewerPage[];
 }
 
+/** Renders the shared canvas viewer used by the standard image demo. */
 export const ComicViewerDemo = ({ pages }: ComicViewerDemoProps) => (
   <div className={styles.viewer} style={getViewerStyle(pages)}>
     <ComicViewer pages={pages} className={styles.viewerContent}>

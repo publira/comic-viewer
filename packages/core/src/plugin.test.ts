@@ -68,7 +68,24 @@ describe("plugin pipeline", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(runDataPipeline("page.jpg", [])).resolves.toBe(buffer);
-    expect(fetchMock).toHaveBeenCalledWith("page.jpg");
+    expect(fetchMock).toHaveBeenCalledWith("page.jpg", {
+      signal: undefined,
+    });
+  });
+
+  it("forwards the abort signal to the built-in fetch", async () => {
+    const abortController = new AbortController();
+    const fetchMock = vi.fn().mockResolvedValue({
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+      ok: true,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await runDataPipeline("page.jpg", [], abortController.signal);
+
+    expect(fetchMock).toHaveBeenCalledWith("page.jpg", {
+      signal: abortController.signal,
+    });
   });
 
   it("runs page-change hooks sequentially", async () => {
@@ -93,5 +110,24 @@ describe("plugin pipeline", () => {
     );
 
     expect(events).toEqual(["first:2/8", "second:2/8"]);
+  });
+
+  it("continues page-change hooks after a plugin fails", async () => {
+    const followingHook = vi.fn();
+
+    await runPageChangeHooks(
+      [
+        definePlugin({
+          onPageChange: () => {
+            throw new Error("analytics unavailable");
+          },
+        }),
+        definePlugin({ onPageChange: followingHook }),
+      ],
+      2,
+      8
+    );
+
+    expect(followingHook).toHaveBeenCalledWith(2, 8);
   });
 });

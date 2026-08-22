@@ -9,6 +9,7 @@ const navigationItems = [
   { href: "/plugins/watermark", label: "Watermark" },
 ] as const;
 
+/** Renders the persistent navigation between the demo variants. */
 export const DemoNavigation = () => {
   const pathname = usePathname();
 

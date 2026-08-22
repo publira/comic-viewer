@@ -37,8 +37,11 @@ export const definePlugin = <TPlugin extends ViewerPlugin>(
   plugin: TPlugin
 ): TPlugin => plugin;
 
-const fetchPage = async (url: string): Promise<ArrayBuffer> => {
-  const response = await fetch(url);
+const fetchPage = async (
+  url: string,
+  signal?: AbortSignal
+): Promise<ArrayBuffer> => {
+  const response = await fetch(url, { signal });
 
   if (!response.ok) {
     throw new Error(
@@ -49,9 +52,11 @@ const fetchPage = async (url: string): Promise<ArrayBuffer> => {
   return response.arrayBuffer();
 };
 
+/** Runs the registered URL, fetch, and buffer transforms in registration order. */
 export const runDataPipeline = async (
   initialUrl: string,
-  plugins: readonly ViewerPlugin[]
+  plugins: readonly ViewerPlugin[],
+  signal?: AbortSignal
 ): Promise<ArrayBuffer> => {
   let url = initialUrl;
 
@@ -72,7 +77,7 @@ export const runDataPipeline = async (
     }
   }
 
-  let result = buffer ?? (await fetchPage(url));
+  let result = buffer ?? (await fetchPage(url, signal));
 
   for (const plugin of plugins) {
     // eslint-disable-next-line no-await-in-loop -- Each hook receives the previous hook's buffer.
@@ -85,13 +90,18 @@ export const runDataPipeline = async (
   return result;
 };
 
+/** Notifies each page-change hook without allowing one plugin to block another. */
 export const runPageChangeHooks = async (
   plugins: readonly ViewerPlugin[],
   index: number,
   total: number
 ): Promise<void> => {
   for (const plugin of plugins) {
-    // eslint-disable-next-line no-await-in-loop -- Page-change hooks are ordered for deterministic analytics.
-    await plugin.onPageChange?.(index, total);
+    try {
+      // eslint-disable-next-line no-await-in-loop -- Page-change hooks are ordered for deterministic analytics.
+      await plugin.onPageChange?.(index, total);
+    } catch {
+      // One plugin must not block page-change reporting for the others.
+    }
   }
 };

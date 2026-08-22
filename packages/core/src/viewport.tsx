@@ -84,6 +84,7 @@ const decodeImage = async (
   return decodeWithImageElement(buffer, imageMimeType);
 };
 
+/** Releases every decoded bitmap that owns an explicit browser resource. */
 const closeImageBitmaps = (images: readonly DecodedImage[]): void => {
   for (const image of images) {
     if ("close" in image) {
@@ -105,6 +106,7 @@ const waitForAnimationFrame = (): Promise<void> =>
     setTimeout(resolve, 0);
   });
 
+/** Waits for the placeholder canvas state to reach a browser paint boundary. */
 const waitForVisiblePaint = async (): Promise<void> => {
   await waitForAnimationFrame();
   await waitForAnimationFrame();
@@ -116,6 +118,7 @@ interface CanvasPageProps {
   placeholder: boolean;
 }
 
+/** Draws a decoded page or its preview to a canvas without exposing an image element. */
 const CanvasPage = ({ image, page, placeholder }: CanvasPageProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -139,13 +142,13 @@ const CanvasPage = ({ image, page, placeholder }: CanvasPageProps) => {
     context.filter = placeholder ? "blur(16px)" : "none";
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     context.filter = "none";
-  }, [image, placeholder]);
+  }, [image, page.height, page.width, placeholder]);
 
   return (
     <canvas
       ref={canvasRef}
       aria-busy={image === undefined || undefined}
-      aria-label={page.title ?? page.id}
+      aria-label={page.title}
       data-placeholder={placeholder || undefined}
       height={page.height}
       role="img"
@@ -154,12 +157,8 @@ const CanvasPage = ({ image, page, placeholder }: CanvasPageProps) => {
   );
 };
 
-const defaultRenderPage = (
-  page: ViewerPage,
-  index: number,
-  image: PageImage | undefined
-) => (
-  <div key={page.id ?? index} className="pcv-page">
+const defaultRenderPage = (page: ViewerPage, image: PageImage | undefined) => (
+  <div key={page.id} className="pcv-page">
     <CanvasPage
       image={image?.bitmap}
       page={page}
@@ -311,7 +310,8 @@ export const Viewport = <TPage extends ViewerPage>({
     goBySwipeDirection(deltaX > 0 ? "right" : "left");
   };
 
-  const visibleIndices: number[] = [currentIndex];
+  const visibleIndices: number[] =
+    pages[currentIndex] === undefined ? [] : [currentIndex];
   if (viewMode === "double" && currentIndex + 1 < pages.length) {
     visibleIndices.push(currentIndex + 1);
   }
@@ -346,7 +346,18 @@ export const Viewport = <TPage extends ViewerPage>({
     }
 
     let disposed = false;
+    const abortController = new AbortController();
     const imageBitmaps: DecodedImage[] = [];
+    const firstPrefetchIndex = currentIndex + visibleIndices.length;
+    const prefetchIndices = [firstPrefetchIndex, firstPrefetchIndex + 1];
+    const retainedIndices = new Set([...visibleIndices, ...prefetchIndices]);
+
+    for (const index of prefetchedPagesRef.current.keys()) {
+      if (!retainedIndices.has(index)) {
+        prefetchedPagesRef.current.delete(index);
+      }
+    }
+
     setPageImages(new Map());
     setPageImagesKey(pageSourceKey);
 
@@ -360,7 +371,17 @@ export const Viewport = <TPage extends ViewerPage>({
         return Promise.resolve(prefetchedPage.buffer);
       }
 
-      return runDataPipeline(page.src, plugins);
+      return runDataPipeline(page.src, plugins, abortController.signal);
+    };
+
+    const trackImage = (image: DecodedImage): boolean => {
+      if (disposed) {
+        closeImageBitmaps([image]);
+        return false;
+      }
+
+      imageBitmaps.push(image);
+      return true;
     };
 
     const setPageImage = (index: number, image: PageImage): void => {
@@ -376,18 +397,28 @@ export const Viewport = <TPage extends ViewerPage>({
         await Promise.all(
           visibleIndices.map(async (index) => {
             const page = pages[index];
+            if (page === undefined) {
+              return;
+            }
+
             const placeholderUrl = page.placeholder;
+            const bufferPromise = getPageBuffer(index, page);
+            void bufferPromise.catch(() => false);
 
             if (placeholderUrl !== undefined) {
               const placeholderBuffer = await runDataPipeline(
                 placeholderUrl,
-                []
+                [],
+                abortController.signal
               );
               const placeholderBitmap = await decodeImage(
                 placeholderBuffer,
                 placeholderUrl
               );
-              imageBitmaps.push(placeholderBitmap);
+              if (!trackImage(placeholderBitmap)) {
+                return;
+              }
+
               setPageImage(index, {
                 bitmap: placeholderBitmap,
                 placeholder: true,
@@ -399,9 +430,12 @@ export const Viewport = <TPage extends ViewerPage>({
               }
             }
 
-            const buffer = await getPageBuffer(index, page);
+            const buffer = await bufferPromise;
             const image = await decodeImage(buffer, page.src, page.mimeType);
-            imageBitmaps.push(image);
+            if (!trackImage(image)) {
+              return;
+            }
+
             setPageImage(index, { bitmap: image, placeholder: false });
           })
         );
@@ -411,9 +445,6 @@ export const Viewport = <TPage extends ViewerPage>({
     };
 
     const prefetchPages = async (): Promise<void> => {
-      const firstPrefetchIndex = currentIndex + visibleIndices.length;
-      const prefetchIndices = [firstPrefetchIndex, firstPrefetchIndex + 1];
-
       await Promise.all(
         prefetchIndices.map(async (index) => {
           const page = pages[index];
@@ -427,7 +458,11 @@ export const Viewport = <TPage extends ViewerPage>({
           }
 
           try {
-            const buffer = await runDataPipeline(page.src, plugins);
+            const buffer = await runDataPipeline(
+              page.src,
+              plugins,
+              abortController.signal
+            );
             if (!disposed) {
               prefetchedPagesRef.current.set(index, {
                 buffer,
@@ -446,6 +481,7 @@ export const Viewport = <TPage extends ViewerPage>({
 
     return () => {
       disposed = true;
+      abortController.abort();
       closeImageBitmaps(imageBitmaps);
     };
   }, [pageSourceKey, plugins, renderPage]);
@@ -462,17 +498,20 @@ export const Viewport = <TPage extends ViewerPage>({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {orderedIndices.map((index) => (
-        <Fragment key={index}>
-          {renderPage === undefined
-            ? defaultRenderPage(
-                pages[index],
-                index,
-                activePageImages.get(index)
-              )
-            : renderPage(pages[index], index)}
-        </Fragment>
-      ))}
+      {orderedIndices.map((index) => {
+        const page = pages[index];
+        if (page === undefined) {
+          return null;
+        }
+
+        return (
+          <Fragment key={index}>
+            {renderPage === undefined
+              ? defaultRenderPage(page, activePageImages.get(index))
+              : renderPage(page, index)}
+          </Fragment>
+        );
+      })}
     </div>
   );
 };

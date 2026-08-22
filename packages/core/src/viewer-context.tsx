@@ -45,6 +45,7 @@ export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
   }>;
 
 const ViewerContext = createContext<ViewerContextValue | null>(null);
+const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
 
 const clamp = (value: number, min: number, max: number): number => {
   if (Number.isNaN(value)) {
@@ -58,7 +59,7 @@ const getStep = (viewMode: ViewMode): number => (viewMode === "double" ? 2 : 1);
 
 export const ViewerProvider = <TPage extends ViewerPage>({
   pages,
-  plugins = [],
+  plugins = EMPTY_PLUGINS,
   children,
   initialIndex = 0,
   initialViewMode = "single",

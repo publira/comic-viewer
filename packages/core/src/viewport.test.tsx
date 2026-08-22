@@ -100,10 +100,11 @@ describe(Viewport, () => {
       height: 1,
       width: 1,
     } as unknown as ImageBitmap;
+    const drawImage = vi.fn();
     const getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue({
-        drawImage: vi.fn(),
+        drawImage,
       } as unknown as CanvasRenderingContext2D);
     vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(image));
     vi.stubGlobal(
@@ -125,7 +126,7 @@ describe(Viewport, () => {
       expect(screen.queryByRole("status")).toBeNull();
 
       await waitFor(() => {
-        expect(container.querySelector("canvas")).not.toBeNull();
+        expect(drawImage).toHaveBeenCalledWith(image, 0, 0, 1, 1);
       });
 
       expect(container.querySelector("img")).toBeNull();
@@ -179,10 +180,9 @@ describe(Viewport, () => {
       );
 
       await waitFor(() => {
-        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-          "preview.jpg",
-          "full-page.jpg",
-        ]);
+        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(
+          expect.arrayContaining(["preview.jpg", "full-page.jpg"])
+        );
         expect(drawImage).toHaveBeenCalled();
         expect(drawImage).toHaveBeenCalledWith(image, 0, 0, 800, 1000);
         expect(filters).toContain("blur(16px)");

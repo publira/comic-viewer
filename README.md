@@ -35,6 +35,7 @@ function App() {
     {
       id: "1",
       src: "https://example.com/page1.jpg",
+      title: "Page 1",
       placeholder: "data:image/svg+xml,...",
       width: 1200,
       height: 1800,
@@ -42,6 +43,7 @@ function App() {
     {
       id: "2",
       src: "https://example.com/page2.jpg",
+      title: "Page 2",
       placeholder: "data:image/svg+xml,...",
       width: 1200,
       height: 1800,

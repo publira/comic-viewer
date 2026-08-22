@@ -8,6 +8,7 @@ import styles from "../page.module.css";
 
 const watermarkText = "PUBLIRA DEMO";
 
+/** Encodes the composited canvas as a JPEG buffer for the render pipeline. */
 const canvasToBuffer = (canvas: HTMLCanvasElement): Promise<ArrayBuffer> =>
   // eslint-disable-next-line promise/avoid-new -- HTMLCanvasElement exposes encoding through this callback API.
   new Promise((resolve, reject) => {
@@ -31,6 +32,7 @@ const canvasToBuffer = (canvas: HTMLCanvasElement): Promise<ArrayBuffer> =>
     );
   });
 
+/** Draws the watermark before returning the transformed JPEG page buffer. */
 const addWatermark = async (buffer: ArrayBuffer): Promise<ArrayBuffer> => {
   const source = await createImageBitmap(
     new Blob([buffer], { type: "image/jpeg" })
@@ -69,6 +71,7 @@ interface WatermarkedComicViewerProps {
   pages: readonly ViewerPage[];
 }
 
+/** Renders the watermarking plugin demo with the shared canvas viewer. */
 export const WatermarkedComicViewer = ({
   pages,
 }: WatermarkedComicViewerProps) => (

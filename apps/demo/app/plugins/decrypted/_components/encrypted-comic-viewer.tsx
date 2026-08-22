@@ -38,6 +38,7 @@ const decryptPage = async (
   );
 };
 
+/** Fetches a ciphertext page without exposing a renderable image URL. */
 const fetchEncryptedPage = async (url: string): Promise<ArrayBuffer> => {
   const response = await fetch(url);
 
@@ -60,6 +61,7 @@ interface EncryptedComicViewerProps {
   pages: readonly ViewerPage[];
 }
 
+/** Renders the decrypting plugin demo with the shared canvas viewer. */
 export const EncryptedComicViewer = ({ pages }: EncryptedComicViewerProps) => (
   <div className={styles.viewer} style={getViewerStyle(pages)}>
     <ComicViewer
