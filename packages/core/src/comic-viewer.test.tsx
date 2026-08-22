@@ -6,9 +6,9 @@ import { definePlugin } from "./plugin";
 import { useViewerContext } from "./viewer-context";
 
 class MockResizeObserver {
-  observe = vi.fn();
-  disconnect = vi.fn();
-  unobserve = vi.fn();
+  observe = vi.fn<() => void>();
+  disconnect = vi.fn<() => void>();
+  unobserve = vi.fn<() => void>();
 }
 
 const pages = [
@@ -23,11 +23,11 @@ const PluginCount = () => {
   return <output data-testid="plugin-count">{plugins.length}</output>;
 };
 
-beforeEach(() => {
-  vi.stubGlobal("ResizeObserver", MockResizeObserver);
-});
-
 describe(ComicViewer, () => {
+  beforeEach(() => {
+    vi.stubGlobal("ResizeObserver", MockResizeObserver);
+  });
+
   it("renders a div with the pcv-root class", () => {
     const { container } = render(
       <ComicViewer pages={pages}>
