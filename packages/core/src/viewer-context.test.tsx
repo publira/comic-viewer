@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { definePlugin } from "./plugin";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
 import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
 
@@ -31,6 +32,16 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.viewMode).toBe("single");
     expect(result.current.readingDirection).toBe("rtl");
     expect(result.current.pages).toBe(pages);
+    expect(result.current.plugins).toEqual([]);
+  });
+
+  it("registers plugins in the viewer context", () => {
+    const plugin = definePlugin({ name: "analytics" });
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({ plugins: [plugin] }),
+    });
+
+    expect(result.current.plugins).toEqual([plugin]);
   });
 
   it("clamps initialIndex to the valid range", () => {

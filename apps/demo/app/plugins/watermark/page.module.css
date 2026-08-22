@@ -1,0 +1,52 @@
+.main {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  gap: 20px;
+}
+
+.heading {
+  padding: 0.25rem 0;
+}
+
+.heading h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.heading p {
+  color: #d4d4d8;
+  line-height: 1.5;
+}
+
+.viewer {
+  width: 100%;
+  aspect-ratio: var(--demo-double-page-aspect-ratio);
+  overflow: hidden;
+  border: 1px solid #333;
+  border-radius: 8px;
+  background-color: #0a0a0a;
+}
+
+.viewerContent {
+  height: 100%;
+}
+
+@media (max-width: 768px) {
+  .heading h2 {
+    font-size: 1.3rem;
+  }
+
+  .viewer {
+    aspect-ratio: var(--demo-single-page-aspect-ratio);
+    border-radius: 4px;
+  }
+}

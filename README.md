@@ -34,11 +34,17 @@ function App() {
   const pages = [
     {
       id: "1",
-      url: "https://example.com/page1.jpg",
+      src: "https://example.com/page1.jpg",
+      placeholder: "data:image/svg+xml,...",
+      width: 1200,
+      height: 1800,
     },
     {
       id: "2",
-      url: "https://example.com/page2.jpg",
+      src: "https://example.com/page2.jpg",
+      placeholder: "data:image/svg+xml,...",
+      width: 1200,
+      height: 1800,
     },
     // ...
   ];
@@ -65,18 +71,18 @@ function App() {
 
 ## Advanced: Using Plugins
 
-You can intercept and modify the data pipeline (e.g., decrypting binary images on the fly) using the `plugins` prop.
+You can intercept and modify the data pipeline (e.g., decrypting binary images on the fly) using the `plugins` prop. Default pages are always decoded and rendered to a `canvas`. Provide an optional `placeholder` URL on each page to display a blurred preview while its full `src` is loading.
 
 ```tsx
-import { ComicViewer, ViewerPlugin } from "@publira/comic-viewer";
+import { ComicViewer, definePlugin } from "@publira/comic-viewer";
 
-const myDecryptionPlugin: ViewerPlugin = {
+const myDecryptionPlugin = definePlugin({
   name: "my-decryption-plugin",
   afterFetch: async (buffer: ArrayBuffer) => {
     // Implement your custom decryption logic here (e.g., WASM XOR)
     return decryptData(buffer);
   },
-};
+});
 
 function SecureApp() {
   return (

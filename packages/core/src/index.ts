@@ -12,3 +12,4 @@ export { ComicViewer, type ComicViewerProps } from "./comic-viewer";
 export { type ViewportProps } from "./viewport";
 export { type ToolbarProps } from "./toolbar";
 export { useViewMode } from "./use-view-mode";
+export { definePlugin, type ViewerPlugin } from "./plugin";

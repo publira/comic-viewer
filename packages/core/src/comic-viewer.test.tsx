@@ -2,6 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ComicViewer } from "./comic-viewer";
+import { definePlugin } from "./plugin";
+import { useViewerContext } from "./viewer-context";
 
 class MockResizeObserver {
   observe = vi.fn();
@@ -15,6 +17,11 @@ const pages = [
 ];
 
 type TestPage = (typeof pages)[number];
+
+const PluginCount = () => {
+  const { plugins } = useViewerContext();
+  return <output data-testid="plugin-count">{plugins.length}</output>;
+};
 
 beforeEach(() => {
   vi.stubGlobal("ResizeObserver", MockResizeObserver);
@@ -49,6 +56,17 @@ describe(ComicViewer, () => {
     );
 
     expect(screen.getByTestId("inner")).toBeInTheDocument();
+  });
+
+  it("registers plugins passed to ComicViewer", () => {
+    const plugin = definePlugin({ name: "analytics" });
+    render(
+      <ComicViewer pages={pages} plugins={[plugin]}>
+        <PluginCount />
+      </ComicViewer>
+    );
+
+    expect(screen.getByTestId("plugin-count")).toHaveTextContent("1");
   });
 
   it("ComicViewer.Viewport works as a sub-component", () => {
