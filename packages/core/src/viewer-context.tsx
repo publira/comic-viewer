@@ -69,7 +69,10 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   const [currentIndex, setCurrentIndex] = useState(() =>
     clamp(initialIndex, 0, maxIndex)
   );
+  const clampedCurrentIndex = clamp(currentIndex, 0, maxIndex);
+
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
+
   const [readingDirection, setReadingDirection] = useState<ReadingDirection>(
     initialReadingDirection
   );
@@ -95,7 +98,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
 
   const value = useMemo<ViewerContextValue<TPage>>(
     () => ({
-      currentIndex,
+      currentIndex: clampedCurrentIndex,
       goTo,
       goToNext,
       goToPrev,
@@ -109,7 +112,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     [
       pages,
       plugins,
-      currentIndex,
+      clampedCurrentIndex,
       viewMode,
       readingDirection,
       goTo,

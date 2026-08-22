@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { definePlugin } from "./plugin";
@@ -21,6 +21,11 @@ const makeWrapper = (props?: Partial<ViewerProviderProps>) =>
       </ViewerProvider>
     );
   };
+
+const CurrentIndexOutput = () => {
+  const { currentIndex } = useViewerContext();
+  return <output data-testid="current-index">{currentIndex}</output>;
+};
 
 describe("ViewerProvider / useViewerContext", () => {
   it("initializes with correct default state", () => {
@@ -58,6 +63,24 @@ describe("ViewerProvider / useViewerContext", () => {
     });
 
     expect(result.current.currentIndex).toBe(0);
+  });
+
+  it("clamps the current index when the pages list shrinks", () => {
+    const { rerender } = render(
+      <ViewerProvider pages={pages} initialIndex={3}>
+        <CurrentIndexOutput />
+      </ViewerProvider>
+    );
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("3");
+
+    rerender(
+      <ViewerProvider pages={pages.slice(0, 1)} initialIndex={3}>
+        <CurrentIndexOutput />
+      </ViewerProvider>
+    );
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
   });
 
   it("goToNext advances to the next page", () => {
