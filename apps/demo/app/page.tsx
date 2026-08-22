@@ -1,7 +1,17 @@
 import { ComicViewerDemo } from "./_components/comic-viewer-demo";
 import { basicSamplePages } from "./_components/sample-pages";
+import { SourceCodePanel } from "./_components/source-code-panel";
 
 import styles from "./page.module.css";
+
+const sourceCode = `import { ComicViewer } from "@publira/comic-viewer";
+
+export const Reader = ({ pages }) => (
+  <ComicViewer pages={pages}>
+    <ComicViewer.Viewport />
+    <ComicViewer.PageNavigation />
+  </ComicViewer>
+);`;
 
 const Home = () => (
   <main className={styles.main}>
@@ -15,6 +25,7 @@ const Home = () => (
           the full image is loading.
         </p>
       </section>
+      <SourceCodePanel code={sourceCode} />
     </div>
   </main>
 );
