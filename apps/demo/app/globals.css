@@ -1,3 +1,27 @@
+:root {
+  color-scheme: light dark;
+  --demo-background: light-dark(#fafafa, #1a1a1a);
+  --demo-foreground: light-dark(#18181b, #ffffff);
+  --demo-code-background: light-dark(#e4e4e7, #2a2a2a);
+  --demo-border: light-dark(#d4d4d8, #3f3f46);
+  --demo-header-background: light-dark(#fafafa, #18181b);
+  --demo-navigation-foreground: light-dark(#334155, #cbd5e1);
+  --demo-navigation-hover-background: light-dark(#e4e4e7, #27272a);
+  --demo-navigation-active-background: light-dark(#e2e8f0, #1e293b);
+  --demo-navigation-active-border: light-dark(#94a3b8, #475569);
+  --demo-accent: light-dark(#0284c7, #38bdf8);
+  --demo-panel-background: light-dark(#ffffff, #18181b);
+  --demo-code-foreground: light-dark(#27272a, #e4e4e7);
+  --demo-code-panel-background: light-dark(#f4f4f5, #09090b);
+  --demo-description-foreground: light-dark(#52525b, #d4d4d8);
+  --demo-viewer-background: light-dark(#f4f4f5, #0a0a0a);
+  --demo-viewer-border: light-dark(#a1a1aa, #333333);
+  --demo-viewer-foreground: light-dark(#f3f3f3, #f3f3f3);
+
+  --pcv-bg: var(--demo-viewer-background);
+  --pcv-fg: var(--demo-viewer-foreground);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -12,12 +36,12 @@ body {
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #1a1a1a;
-  color: #fff;
+  background-color: var(--demo-background);
+  color: var(--demo-foreground);
 }
 
 code {
-  background-color: #2a2a2a;
+  background-color: var(--demo-code-background);
   border-radius: 3px;
   padding: 3px 6px;
   font-family: "Courier New", monospace;
@@ -27,8 +51,12 @@ code {
   position: sticky;
   z-index: 20;
   top: 0;
-  border-bottom: 1px solid #3f3f46;
-  background: color-mix(in oklab, #18181b 92%, transparent);
+  border-bottom: 1px solid var(--demo-border);
+  background: color-mix(
+    in oklab,
+    var(--demo-header-background) 92%,
+    transparent
+  );
   backdrop-filter: blur(12px);
 }
 
@@ -61,20 +89,20 @@ code {
   border: 1px solid transparent;
   border-bottom: 0;
   border-radius: 0.5rem 0.5rem 0 0;
-  color: #cbd5e1;
+  color: var(--demo-navigation-foreground);
   font-weight: 600;
   text-decoration: none;
 }
 
 .demo-navigation a:hover {
-  background: #27272a;
-  color: #ffffff;
+  background: var(--demo-navigation-hover-background);
+  color: var(--demo-foreground);
 }
 
 .demo-navigation a[aria-current="page"] {
-  border-color: #475569;
-  border-bottom-color: #18181b;
-  background: #1e293b;
-  box-shadow: inset 0 2px #38bdf8;
-  color: #ffffff;
+  border-color: var(--demo-navigation-active-border);
+  border-bottom-color: var(--demo-header-background);
+  background: var(--demo-navigation-active-background);
+  box-shadow: inset 0 2px var(--demo-accent);
+  color: var(--demo-foreground);
 }

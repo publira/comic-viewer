@@ -1,21 +1,21 @@
 .panel {
   padding: 1.25rem;
-  border: 1px solid #3f3f46;
+  border: 1px solid var(--demo-border);
   border-radius: 0.75rem;
-  background: #18181b;
+  background: var(--demo-panel-background);
 }
 .title {
   margin-bottom: 0.9rem;
-  color: #f4f4f5;
+  color: var(--demo-foreground);
   font-size: 1.15rem;
 }
 .code {
   overflow-x: auto;
   padding: 1rem;
-  border: 1px solid #3f3f46;
+  border: 1px solid var(--demo-border);
   border-radius: 0.5rem;
-  background: #09090b;
-  color: #e4e4e7;
+  background: var(--demo-code-panel-background);
+  color: var(--demo-code-foreground);
   font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 0.875rem;
   line-height: 1.6;
