@@ -1,0 +1,10 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "eac5c2b014f97dd351efa2f35e4f912a65998c8f",
+  "packages": {
+    "packages/core": {
+      "component": "comic-viewer",
+      "release-type": "node"
+    }
+  }
+}

@@ -2,6 +2,11 @@
   "name": "@publira/comic-viewer",
   "version": "0.1.0",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/publira/comic-viewer.git",
+    "directory": "packages/core"
+  },
   "files": [
     "dist",
     "src/core.css"
