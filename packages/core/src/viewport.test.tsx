@@ -1,9 +1,17 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { definePlugin } from "./plugin";
+import type { ViewerPlugin } from "./plugin";
 import type { ReadingDirection } from "./viewer-context";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
-import { Viewport } from "./viewport";
+import { getImageMimeType, Viewport } from "./viewport";
 
 // eslint-disable-next-line eslint-plugin-promise/prefer-await-to-callbacks
 class MockResizeObserver {
@@ -67,6 +75,7 @@ const CurrentIndexIndicator = () => {
 const renderViewport = ({
   initialIndex = 0,
   initialReadingDirection = "rtl" as ReadingDirection,
+  plugins = [] as readonly ViewerPlugin[],
   threshold = 768,
 } = {}) =>
   render(
@@ -74,6 +83,7 @@ const renderViewport = ({
       pages={pages}
       initialIndex={initialIndex}
       initialReadingDirection={initialReadingDirection}
+      plugins={plugins}
     >
       <Viewport<TestPage>
         renderPage={(page) => <div data-testid={page.id}>{page.title}</div>}
@@ -84,6 +94,235 @@ const renderViewport = ({
   );
 
 describe(Viewport, () => {
+  it("renders normal pages to canvas instead of an img element", async () => {
+    const image = {
+      close: vi.fn(),
+      height: 1,
+      width: 1,
+    } as unknown as ImageBitmap;
+    const drawImage = vi.fn();
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue({
+        drawImage,
+      } as unknown as CanvasRenderingContext2D);
+    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(image));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+        ok: true,
+      })
+    );
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages}>
+          <Viewport />
+        </ViewerProvider>
+      );
+
+      expect(container.querySelector("canvas")).not.toBeNull();
+      expect(screen.queryByRole("status")).toBeNull();
+
+      await waitFor(() => {
+        expect(drawImage).toHaveBeenCalledWith(image, 0, 0, 1, 1);
+      });
+
+      expect(container.querySelector("img")).toBeNull();
+    } finally {
+      getContext.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("draws the supplied placeholder before fetching the full page", async () => {
+    const image = {
+      close: vi.fn(),
+      height: 1,
+      width: 1,
+    } as unknown as ImageBitmap;
+    const drawImage = vi.fn();
+    const filters: string[] = [];
+    const context = { drawImage } as unknown as CanvasRenderingContext2D;
+    Object.defineProperty(context, "filter", {
+      get: () => filters.at(-1) ?? "none",
+      set: (filter: string) => {
+        filters.push(filter);
+      },
+    });
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue(context);
+    const fetchMock = vi.fn().mockResolvedValue({
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+      ok: true,
+    });
+    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(image));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      render(
+        <ViewerProvider
+          pages={[
+            {
+              height: 1000,
+              id: "preview-page",
+              placeholder: "preview.jpg",
+              src: "full-page.jpg",
+              title: "Preview page",
+              width: 800,
+            },
+          ]}
+        >
+          <Viewport />
+        </ViewerProvider>
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(
+          expect.arrayContaining(["preview.jpg", "full-page.jpg"])
+        );
+        expect(drawImage).toHaveBeenCalled();
+        expect(drawImage).toHaveBeenCalledWith(image, 0, 0, 800, 1000);
+        expect(filters).toContain("blur(16px)");
+      });
+    } finally {
+      getContext.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("prefetches the next two pages", async () => {
+    const image = {
+      close: vi.fn(),
+      height: 1,
+      width: 1,
+    } as unknown as ImageBitmap;
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue({
+        drawImage: vi.fn(),
+      } as unknown as CanvasRenderingContext2D);
+    const fetchMock = vi.fn().mockResolvedValue({
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+      ok: true,
+    });
+    vi.stubGlobal("createImageBitmap", vi.fn().mockResolvedValue(image));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      render(
+        <ViewerProvider pages={pages} initialViewMode="single">
+          <Viewport />
+        </ViewerProvider>
+      );
+
+      await waitFor(() => {
+        expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(
+          expect.arrayContaining(["page1.png", "page2.png", "page3.png"])
+        );
+      });
+    } finally {
+      getContext.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not redraw a released bitmap after navigating back", async () => {
+    const bitmaps: {
+      closed: boolean;
+      close: () => void;
+      height: number;
+      width: number;
+    }[] = [];
+    const drawImage = vi.fn((image: unknown) => {
+      if ((image as { closed: boolean }).closed) {
+        throw new Error("A released bitmap was redrawn");
+      }
+    });
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    const createImageBitmapMock = vi.fn(() => {
+      const bitmap = {
+        close: () => {
+          bitmap.closed = true;
+        },
+        closed: false,
+        height: 1,
+        width: 1,
+      };
+      bitmaps.push(bitmap);
+      return Promise.resolve(bitmap as unknown as ImageBitmap);
+    });
+    vi.stubGlobal("createImageBitmap", createImageBitmapMock);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+        ok: true,
+      })
+    );
+
+    try {
+      render(
+        <ViewerProvider pages={pages} initialReadingDirection="ltr">
+          <Viewport />
+        </ViewerProvider>
+      );
+
+      await waitFor(() => {
+        expect(createImageBitmapMock).toHaveBeenCalledTimes(1);
+      });
+
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+
+      await waitFor(() => {
+        expect(createImageBitmapMock).toHaveBeenCalledTimes(2);
+        expect(bitmaps[0]?.closed).toBe(true);
+      });
+
+      fireEvent.keyDown(window, { key: "ArrowLeft" });
+
+      await waitFor(() => {
+        expect(createImageBitmapMock).toHaveBeenCalledTimes(3);
+        expect(drawImage).toHaveBeenLastCalledWith(bitmaps[2], 0, 0, 1, 1);
+      });
+    } finally {
+      getContext.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("preserves image MIME types when decoding fetched data", () => {
+    expect(getImageMimeType("data:image/svg+xml;charset=UTF-8,<svg />")).toBe(
+      "image/svg+xml"
+    );
+    expect(getImageMimeType("https://example.com/page.webp?token=abc")).toBe(
+      "image/webp"
+    );
+    expect(getImageMimeType("/plugin-pages/page-1.jpg")).toBe("image/jpeg");
+    expect(getImageMimeType("/plugin-pages/page-1.jpg.enc", "image/jpeg")).toBe(
+      "image/jpeg"
+    );
+  });
+
+  it("runs onPageChange plugins for the initial and navigated pages", async () => {
+    const onPageChange = vi.fn();
+    renderViewport({ plugins: [definePlugin({ onPageChange })] });
+
+    await waitFor(() => {
+      expect(onPageChange).toHaveBeenLastCalledWith(0, 4);
+    });
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+
+    await waitFor(() => {
+      expect(onPageChange).toHaveBeenLastCalledWith(1, 4);
+    });
+  });
+
   it("renders only the current page in single mode", () => {
     renderViewport();
 

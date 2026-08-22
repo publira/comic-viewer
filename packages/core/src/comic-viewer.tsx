@@ -13,12 +13,14 @@ const ComicViewerRoot = <TPage extends ViewerPage>({
   children,
   className,
   pages,
+  plugins,
   initialIndex = 0,
   initialViewMode = "double",
   initialReadingDirection = "rtl",
 }: ComicViewerProps<TPage>) => (
   <ViewerProvider
     pages={pages}
+    plugins={plugins}
     initialIndex={initialIndex}
     initialViewMode={initialViewMode}
     initialReadingDirection={initialReadingDirection}

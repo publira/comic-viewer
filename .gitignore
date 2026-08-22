@@ -67,6 +67,15 @@ out/
 public/
 next-env.d.ts
 
+# Keep the demo's deliberately encrypted sample pages under version control.
+!apps/demo/public/
+!apps/demo/public/basic-pages/
+!apps/demo/public/basic-pages/*.jpg
+!apps/demo/public/page-sources/
+!apps/demo/public/page-sources/*.svg
+!apps/demo/public/plugin-pages/
+!apps/demo/public/plugin-pages/*.jpg.enc
+
 # REPL and environment variables
 .node_repl_history
 .env

@@ -7,17 +7,24 @@ import {
 } from "react";
 import type { PropsWithChildren } from "react";
 
+import type { ViewerPlugin } from "./plugin";
+
 export type ViewMode = "single" | "double";
 export type ReadingDirection = "rtl" | "ltr";
 
 export interface ViewerPage {
+  height?: number;
   id: string;
+  mimeType?: string;
+  placeholder?: string;
   title: string;
   src: string;
+  width?: number;
 }
 
 export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   pages: readonly TPage[];
+  plugins: readonly ViewerPlugin[];
   currentIndex: number;
   viewMode: ViewMode;
   readingDirection: ReadingDirection;
@@ -31,12 +38,14 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
 export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
   PropsWithChildren<{
     pages: readonly TPage[];
+    plugins?: readonly ViewerPlugin[];
     initialIndex?: number;
     initialViewMode?: ViewMode;
     initialReadingDirection?: ReadingDirection;
   }>;
 
 const ViewerContext = createContext<ViewerContextValue | null>(null);
+const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
 
 const clamp = (value: number, min: number, max: number): number => {
   if (Number.isNaN(value)) {
@@ -50,6 +59,7 @@ const getStep = (viewMode: ViewMode): number => (viewMode === "double" ? 2 : 1);
 
 export const ViewerProvider = <TPage extends ViewerPage>({
   pages,
+  plugins = EMPTY_PLUGINS,
   children,
   initialIndex = 0,
   initialViewMode = "single",
@@ -90,12 +100,22 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       goToNext,
       goToPrev,
       pages,
+      plugins,
       readingDirection,
       setReadingDirection,
       setViewMode,
       viewMode,
     }),
-    [pages, currentIndex, viewMode, readingDirection, goTo, goToNext, goToPrev]
+    [
+      pages,
+      plugins,
+      currentIndex,
+      viewMode,
+      readingDirection,
+      goTo,
+      goToNext,
+      goToPrev,
+    ]
   );
 
   return (
