@@ -9,6 +9,7 @@
   },
   "files": [
     "dist",
+    "README.md",
     "src/core.css"
   ],
   "type": "module",
