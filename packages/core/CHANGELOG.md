@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.2.1...comic-viewer-v0.3.0) (2026-08-22)
+
+
+### Features
+
+* **core:** add accessible page navigation controls ([#86](https://github.com/publira/comic-viewer/issues/86)) ([c3e8605](https://github.com/publira/comic-viewer/commit/c3e8605a3c5d421c85c928a0c6f4f77f38749a37))
+
 ## [0.2.1](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.2.0...comic-viewer-v0.2.1) (2026-08-22)
 
 
