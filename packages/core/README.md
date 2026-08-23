@@ -16,13 +16,13 @@ yarn add @publira/comic-viewer
 
 ## CSS setup
 
-Import the package stylesheet once in the client entry point or in the component that renders the viewer:
+Import the package stylesheet once in the client entry point or in the component that renders the viewer when you want the default layout and appearance:
 
 ```tsx
 import "@publira/comic-viewer/core.css";
 ```
 
-The stylesheet supplies the layout constraints used by the viewer's compound components. Give the viewer's parent an explicit size so the viewport can fill the available area.
+`core.css` is optional. Omit it when you override the viewer styles through `className`, such as with Tailwind CSS, or when you provide all styles independently. In either case, give the viewer's parent an explicit size so the viewport can fill the available area.
 
 ## Basic usage
 
@@ -63,6 +63,21 @@ export function Reader() {
 ```
 
 `initialReadingDirection` defaults to `"rtl"` for right-to-left manga reading. Set it to `"ltr"` for left-to-right comics. The viewport switches between single and double-page display based on its width; use `doublePageThreshold` to change the default 768px breakpoint.
+
+## Tailwind CSS
+
+To style the viewer with Tailwind CSS, do not import `core.css`; apply the layout utilities through `className` instead. The root and viewport need an explicit size, flex layout, and hidden overflow.
+
+```tsx
+<ComicViewer
+  pages={pages}
+  className="relative flex h-screen w-full min-h-0 min-w-0 overflow-hidden bg-neutral-950 text-neutral-100"
+>
+  <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden [&>*]:flex-1 [&>*]:min-w-0 [&>*]:items-center [&>*]:justify-center" />
+</ComicViewer>
+```
+
+Use `className` on the other compound components to style their controls. To control page markup and styling completely, provide `renderPage` to `ComicViewer.Viewport`.
 
 ## Page navigation
 

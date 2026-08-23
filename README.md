@@ -24,11 +24,11 @@ pnpm add @publira/comic-viewer
 
 ## Basic Usage
 
-Import the core CSS and assemble the viewer using the provided Compound Components.
+Import the optional core CSS and assemble the viewer using the provided Compound Components. The stylesheet provides the default layout and appearance; omit it when you supply the viewer's styles yourself, including through `className` utilities.
 
 ```tsx
 import { ComicViewer } from "@publira/comic-viewer";
-import "@publira/comic-viewer/core.css"; // Required layout constraints
+import "@publira/comic-viewer/core.css";
 
 function App() {
   const pages = [
@@ -70,6 +70,27 @@ function App() {
   );
 }
 ```
+
+## Styling with Tailwind CSS
+
+`core.css` is optional. When using Tailwind CSS, omit the stylesheet and apply the layout styles through `className` instead. The viewer and viewport need a defined size, flex layout, and hidden overflow.
+
+```tsx
+import { ComicViewer } from "@publira/comic-viewer";
+
+export function Reader() {
+  return (
+    <ComicViewer
+      pages={pages}
+      className="relative flex h-screen w-full min-h-0 min-w-0 overflow-hidden bg-neutral-950 text-neutral-100"
+    >
+      <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden [&>*]:flex-1 [&>*]:min-w-0 [&>*]:items-center [&>*]:justify-center" />
+    </ComicViewer>
+  );
+}
+```
+
+You can also provide all styles independently. Use `className` on the compound components, or provide `renderPage` to control page markup and styling.
 
 ## Advanced: Using Plugins
 
