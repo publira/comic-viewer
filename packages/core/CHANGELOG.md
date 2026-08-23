@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.5.0...comic-viewer-v0.5.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **core:** expose viewport layout primitives ([#114](https://github.com/publira/comic-viewer/issues/114)) ([338aeea](https://github.com/publira/comic-viewer/commit/338aeea82afb847535e845bb8b4ed3740aa7b910))
+
 ## [0.5.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.4.0...comic-viewer-v0.5.0) (2026-08-23)
 
 
