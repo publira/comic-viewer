@@ -11,6 +11,8 @@ import type { ViewerPlugin } from "./plugin";
 
 export type ViewMode = "single" | "double";
 export type ReadingDirection = "rtl" | "ltr";
+/** Controls how a page is sized inside the viewport. */
+export type PageFitMode = "width" | "height" | "actual";
 
 export interface ViewerPage {
   height?: number;
@@ -27,9 +29,11 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   plugins: readonly ViewerPlugin[];
   currentIndex: number;
   viewMode: ViewMode;
+  pageFitMode: PageFitMode;
   readingDirection: ReadingDirection;
   spreadStartIndex: number;
   setViewMode: (mode: ViewMode) => void;
+  setPageFitMode: (mode: PageFitMode) => void;
   setReadingDirection: (direction: ReadingDirection) => void;
   goToNext: () => void;
   goToPrev: () => void;
@@ -49,6 +53,8 @@ export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
     /** Called when navigation requests a different zero-based page index. */
     onIndexChange?: (index: number) => void;
     initialViewMode?: ViewMode;
+    /** The initial page sizing mode. Defaults to fit-to-height. */
+    initialPageFitMode?: PageFitMode;
     initialReadingDirection?: ReadingDirection;
     spreadStartIndex?: number;
   }>;
@@ -84,6 +90,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   initialIndex = 0,
   onIndexChange,
   initialViewMode = "single",
+  initialPageFitMode = "height",
   initialReadingDirection = "rtl",
   spreadStartIndex = 0,
 }: ViewerProviderProps<TPage>) => {
@@ -99,6 +106,9 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   );
 
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
+
+  const [pageFitMode, setPageFitMode] =
+    useState<PageFitMode>(initialPageFitMode);
 
   const [readingDirection, setReadingDirection] = useState<ReadingDirection>(
     initialReadingDirection
@@ -154,9 +164,11 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       goTo,
       goToNext,
       goToPrev,
+      pageFitMode,
       pages,
       plugins,
       readingDirection,
+      setPageFitMode,
       setReadingDirection,
       setViewMode,
       spreadStartIndex: clampedSpreadStartIndex,
@@ -168,6 +180,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       clampedCurrentIndex,
       clampedSpreadStartIndex,
       viewMode,
+      pageFitMode,
       readingDirection,
       goTo,
       goToNext,

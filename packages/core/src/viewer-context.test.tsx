@@ -49,6 +49,20 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.plugins).toStrictEqual([plugin]);
   });
 
+  it("initializes and changes the page fit mode", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({ initialPageFitMode: "actual" }),
+    });
+
+    expect(result.current.pageFitMode).toBe("actual");
+
+    act(() => {
+      result.current.setPageFitMode("width");
+    });
+
+    expect(result.current.pageFitMode).toBe("width");
+  });
+
   it("clamps initialIndex to the valid range", () => {
     const { result } = renderHook(() => useViewerContext(), {
       wrapper: makeWrapper({ initialIndex: 100 }),

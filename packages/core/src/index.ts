@@ -2,12 +2,12 @@ export {
   ViewerProvider,
   useViewerContext,
   type ReadingDirection,
+  type PageFitMode,
   type ViewerContextValue,
   type ViewerPage,
   type ViewerProviderProps,
   type ViewMode,
 } from "./viewer-context";
-
 export { ComicViewer, type ComicViewerProps } from "./comic-viewer";
 export {
   PageCanvas,

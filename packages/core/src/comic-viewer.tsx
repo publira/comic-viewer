@@ -27,6 +27,7 @@ const ComicViewerRoot = <TPage extends ViewerPage>({
   plugins,
   initialIndex = 0,
   initialViewMode = "double",
+  initialPageFitMode,
   initialReadingDirection = "rtl",
   spreadStartIndex,
 }: ComicViewerProps<TPage>) => (
@@ -37,6 +38,7 @@ const ComicViewerRoot = <TPage extends ViewerPage>({
     initialIndex={initialIndex}
     onIndexChange={onIndexChange}
     initialViewMode={initialViewMode}
+    initialPageFitMode={initialPageFitMode}
     initialReadingDirection={initialReadingDirection}
     spreadStartIndex={spreadStartIndex}
   >
