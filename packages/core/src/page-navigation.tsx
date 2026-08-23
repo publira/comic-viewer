@@ -14,7 +14,7 @@ import type {
   ReactNode,
 } from "react";
 
-import { useViewerContext } from "./viewer-context";
+import { getVisiblePageCount, useViewerContext } from "./viewer-context";
 
 interface PageNavigationState {
   isProgressVisible: boolean;
@@ -35,9 +35,6 @@ export interface PageNavigationProps extends PropsWithChildren {
   className?: string;
   "aria-label"?: string;
 }
-
-const getStep = (viewMode: "single" | "double"): number =>
-  viewMode === "double" ? 2 : 1;
 
 /** Navigates to the preceding set of visible pages. */
 export const PreviousPageButton = ({
@@ -81,9 +78,18 @@ export const NextPageButton = ({
   onClick,
   ...props
 }: PageNavigationButtonProps) => {
-  const { currentIndex, goToNext, pages, viewMode } = useViewerContext();
+  const { currentIndex, goToNext, pages, spreadStartIndex, viewMode } =
+    useViewerContext();
   const isDisabled =
-    disabled || currentIndex + getStep(viewMode) >= pages.length;
+    disabled ||
+    currentIndex +
+      getVisiblePageCount(
+        viewMode,
+        currentIndex,
+        pages.length,
+        spreadStartIndex
+      ) >=
+      pages.length;
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
@@ -123,9 +129,19 @@ export interface PageStatusProps {
 
 /** Announces the current visible page or spread. */
 export const PageStatus = ({ className, format }: PageStatusProps) => {
-  const { currentIndex, pages, viewMode } = useViewerContext();
+  const { currentIndex, pages, spreadStartIndex, viewMode } =
+    useViewerContext();
   const firstPage = pages.length === 0 ? 0 : currentIndex + 1;
-  const lastPage = Math.min(currentIndex + getStep(viewMode), pages.length);
+  const lastPage = Math.min(
+    currentIndex +
+      getVisiblePageCount(
+        viewMode,
+        currentIndex,
+        pages.length,
+        spreadStartIndex
+      ),
+    pages.length
+  );
   let defaultLabel = "No pages";
   if (pages.length > 0) {
     defaultLabel =
@@ -166,9 +182,15 @@ export const PageProgress = ({
   visible,
 }: PageProgressProps & PropsWithChildren) => {
   const navigation = useContext(PageNavigationContext);
-  const { currentIndex, pages, viewMode } = useViewerContext();
+  const { currentIndex, pages, spreadStartIndex, viewMode } =
+    useViewerContext();
   const isVisible = visible ?? navigation?.isProgressVisible ?? true;
-  const visiblePageCount = viewMode === "double" ? 2 : 1;
+  const visiblePageCount = getVisiblePageCount(
+    viewMode,
+    currentIndex,
+    pages.length,
+    spreadStartIndex
+  );
   const currentPage = Math.min(currentIndex + visiblePageCount, pages.length);
 
   return (

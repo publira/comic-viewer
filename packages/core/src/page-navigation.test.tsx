@@ -23,12 +23,14 @@ interface RenderPageNavigationOptions {
   initialIndex?: number;
   initialReadingDirection?: ReadingDirection;
   initialViewMode?: ViewMode;
+  spreadStartIndex?: number;
 }
 
 const renderPageNavigation = ({
   initialIndex = 0,
   initialReadingDirection = "rtl",
   initialViewMode = "single",
+  spreadStartIndex = 0,
 }: RenderPageNavigationOptions = {}) =>
   render(
     <ViewerProvider
@@ -36,6 +38,7 @@ const renderPageNavigation = ({
       initialIndex={initialIndex}
       initialReadingDirection={initialReadingDirection}
       initialViewMode={initialViewMode}
+      spreadStartIndex={spreadStartIndex}
     >
       <PageNavigation>
         <PreviousPageButton />
@@ -125,6 +128,41 @@ describe(PageNavigation, () => {
 
     expect(screen.getByText("Page 5 of 5")).toBeInTheDocument();
     expect(next).toBeDisabled();
+  });
+
+  it("navigates a single cover page before odd-indexed spreads", () => {
+    renderPageNavigation({ initialViewMode: "double", spreadStartIndex: 1 });
+
+    const previous = screen.getByRole("button", { name: "Previous page" });
+    const next = screen.getByRole("button", { name: "Next page" });
+
+    fireEvent.click(next);
+
+    expect(screen.getByText("Pages 2-3 of 5")).toBeInTheDocument();
+    expect(previous).toBeEnabled();
+
+    fireEvent.click(next);
+
+    expect(screen.getByText("Pages 4-5 of 5")).toBeInTheDocument();
+    expect(next).toBeDisabled();
+
+    fireEvent.click(previous);
+
+    expect(screen.getByText("Pages 2-3 of 5")).toBeInTheDocument();
+  });
+
+  it("keeps pre-spread pages single for an even start index", () => {
+    renderPageNavigation({
+      initialIndex: 1,
+      initialViewMode: "double",
+      spreadStartIndex: 2,
+    });
+
+    expect(screen.getByText("Page 2 of 5")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(screen.getByText("Pages 3-4 of 5")).toBeInTheDocument();
   });
 
   it("permits custom arrangement and styling with the individual controls", () => {

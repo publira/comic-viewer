@@ -28,6 +28,7 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   currentIndex: number;
   viewMode: ViewMode;
   readingDirection: ReadingDirection;
+  spreadStartIndex: number;
   setViewMode: (mode: ViewMode) => void;
   setReadingDirection: (direction: ReadingDirection) => void;
   goToNext: () => void;
@@ -42,6 +43,7 @@ export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
     initialIndex?: number;
     initialViewMode?: ViewMode;
     initialReadingDirection?: ReadingDirection;
+    spreadStartIndex?: number;
   }>;
 
 const ViewerContext = createContext<ViewerContextValue | null>(null);
@@ -55,7 +57,17 @@ const clamp = (value: number, min: number, max: number): number => {
   return Math.min(max, Math.max(min, Math.trunc(value)));
 };
 
-const getStep = (viewMode: ViewMode): number => (viewMode === "double" ? 2 : 1);
+export const getVisiblePageCount = (
+  viewMode: ViewMode,
+  currentIndex: number,
+  pageCount: number,
+  spreadStartIndex: number
+): number =>
+  viewMode === "double" &&
+  currentIndex >= spreadStartIndex &&
+  currentIndex + 1 < pageCount
+    ? 2
+    : 1;
 
 export const ViewerProvider = <TPage extends ViewerPage>({
   pages,
@@ -64,8 +76,10 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   initialIndex = 0,
   initialViewMode = "single",
   initialReadingDirection = "rtl",
+  spreadStartIndex = 0,
 }: ViewerProviderProps<TPage>) => {
   const maxIndex = Math.max(0, pages.length - 1);
+  const clampedSpreadStartIndex = clamp(spreadStartIndex, 0, pages.length);
   const [currentIndex, setCurrentIndex] = useState(() =>
     clamp(initialIndex, 0, maxIndex)
   );
@@ -86,15 +100,32 @@ export const ViewerProvider = <TPage extends ViewerPage>({
 
   const goToNext = useCallback(() => {
     setCurrentIndex((prevIndex) =>
-      clamp(prevIndex + getStep(viewMode), 0, maxIndex)
+      clamp(
+        prevIndex +
+          getVisiblePageCount(
+            viewMode,
+            prevIndex,
+            pages.length,
+            clampedSpreadStartIndex
+          ),
+        0,
+        maxIndex
+      )
     );
-  }, [maxIndex, viewMode]);
+  }, [clampedSpreadStartIndex, maxIndex, pages.length, viewMode]);
 
   const goToPrev = useCallback(() => {
     setCurrentIndex((prevIndex) =>
-      clamp(prevIndex - getStep(viewMode), 0, maxIndex)
+      clamp(
+        prevIndex -
+          (viewMode === "double" && prevIndex > clampedSpreadStartIndex
+            ? 2
+            : 1),
+        0,
+        maxIndex
+      )
     );
-  }, [maxIndex, viewMode]);
+  }, [clampedSpreadStartIndex, maxIndex, viewMode]);
 
   const value = useMemo<ViewerContextValue<TPage>>(
     () => ({
@@ -107,12 +138,14 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       readingDirection,
       setReadingDirection,
       setViewMode,
+      spreadStartIndex: clampedSpreadStartIndex,
       viewMode,
     }),
     [
       pages,
       plugins,
       clampedCurrentIndex,
+      clampedSpreadStartIndex,
       viewMode,
       readingDirection,
       goTo,

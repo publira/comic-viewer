@@ -25,6 +25,7 @@ const ComicViewerRoot = <TPage extends ViewerPage>({
   initialIndex = 0,
   initialViewMode = "double",
   initialReadingDirection = "rtl",
+  spreadStartIndex,
 }: ComicViewerProps<TPage>) => (
   <ViewerProvider
     pages={pages}
@@ -32,6 +33,7 @@ const ComicViewerRoot = <TPage extends ViewerPage>({
     initialIndex={initialIndex}
     initialViewMode={initialViewMode}
     initialReadingDirection={initialReadingDirection}
+    spreadStartIndex={spreadStartIndex}
   >
     <div
       className={`pcv-root${className === undefined ? "" : ` ${className}`}`}
