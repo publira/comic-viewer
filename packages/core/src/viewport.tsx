@@ -458,7 +458,7 @@ export const Viewport = <TPage extends ViewerPage>({
       return;
     }
 
-    goByHorizontalDirection(deltaX > 0 ? "right" : "left");
+    goByHorizontalDirection(deltaX > 0 ? "left" : "right");
   };
 
   const visibleIndices = useMemo(() => {
