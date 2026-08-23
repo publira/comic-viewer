@@ -9,11 +9,12 @@ import {
   useState,
 } from "react";
 import type {
+  CSSProperties,
   ComponentPropsWithoutRef,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent,
   ReactNode,
-  TouchEvent,
+  TransitionEvent as ReactTransitionEvent,
 } from "react";
 
 import { runDataPipeline, runPageChangeHooks } from "./plugin";
@@ -51,11 +52,13 @@ export const getImageMimeType = (
 };
 
 type DecodedImage = HTMLImageElement | ImageBitmap;
-
-interface PrefetchedPage {
-  buffer: ArrayBuffer;
-  src: string;
+interface TouchInput {
+  readonly [index: number]: { clientX: number } | undefined;
+  item?: (index: number) => { clientX: number } | null;
 }
+
+const getFirstTouch = (touches: TouchInput): { clientX: number } | null =>
+  touches.item?.(0) ?? touches[0] ?? null;
 
 const getImageMimeTypeOrFallback = (
   sourceUrl: string,
@@ -131,6 +134,9 @@ interface PageImage {
   bitmap: DecodedImage;
   placeholder: boolean;
 }
+
+const getPageImageKey = (index: number, page: ViewerPage): string =>
+  `${index}:${page.src}`;
 
 interface ViewportPageContextValue {
   image?: PageImage;
@@ -299,6 +305,80 @@ const getHorizontalDirection = (key: string): "left" | "right" | undefined => {
   return key === "ArrowRight" ? "right" : undefined;
 };
 
+export type PageTurnDirection = "left" | "right";
+
+/** Returns the physical direction in which the current spread leaves the viewport. */
+export const getPageTurnDirection = (
+  fromIndex: number,
+  toIndex: number,
+  readingDirection: "rtl" | "ltr"
+): PageTurnDirection => {
+  const isForward = toIndex > fromIndex;
+  return isForward === (readingDirection === "ltr") ? "left" : "right";
+};
+
+interface PageTurnTransition {
+  direction: PageTurnDirection;
+  id: number;
+  phase: "waiting" | "prepared" | "active";
+  toIndex: number;
+}
+
+const PAGE_TURN_FALLBACK_DURATION_MS = 320;
+
+const getVisibleIndices = (
+  currentIndex: number,
+  pageCount: number,
+  spreadStartIndex: number,
+  viewMode: "single" | "double"
+): number[] => {
+  const indices = currentIndex >= pageCount ? [] : [currentIndex];
+  if (
+    getVisiblePageCount(viewMode, currentIndex, pageCount, spreadStartIndex) ===
+    2
+  ) {
+    indices.push(currentIndex + 1);
+  }
+
+  return indices;
+};
+
+const getNextSpreadIndex = (
+  currentIndex: number,
+  pageCount: number,
+  spreadStartIndex: number,
+  viewMode: "single" | "double"
+): number | undefined => {
+  const nextIndex =
+    currentIndex +
+    getVisiblePageCount(viewMode, currentIndex, pageCount, spreadStartIndex);
+  return nextIndex < pageCount ? nextIndex : undefined;
+};
+
+const getPreviousSpreadIndex = (
+  currentIndex: number,
+  spreadStartIndex: number,
+  viewMode: "single" | "double"
+): number | undefined => {
+  if (currentIndex === 0) {
+    return undefined;
+  }
+
+  return Math.max(
+    0,
+    currentIndex -
+      (viewMode === "double" && currentIndex > spreadStartIndex ? 2 : 1)
+  );
+};
+
+const getRailSlotName = (slot: number): "previous" | "current" | "next" => {
+  if (slot === 0) {
+    return "previous";
+  }
+
+  return slot === 1 ? "current" : "next";
+};
+
 const isInteractiveTarget = (
   target: EventTarget | null,
   viewport: HTMLElement | null
@@ -318,6 +398,7 @@ export const Viewport = <TPage extends ViewerPage>({
   doublePageThreshold,
 }: ViewportProps<TPage>) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const transitionIdRef = useRef(0);
   const touchStateRef = useRef<{
     startX: number;
     currentX: number;
@@ -337,12 +418,150 @@ export const Viewport = <TPage extends ViewerPage>({
     goToPrev,
   } = useViewerContext<TPage>();
   const viewMode = useViewMode(containerRef, doublePageThreshold);
+  const [pageTurnTransition, setPageTurnTransition] =
+    useState<PageTurnTransition | null>(null);
+  const [displayedIndex, setDisplayedIndex] = useState(currentIndex);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
   const [pageImages, setPageImages] = useState<ReadonlyMap<string, PageImage>>(
     () => new Map()
   );
-  const prefetchedPagesRef = useRef<Map<number, PrefetchedPage>>(new Map());
+  const pageImagesRef = useRef<ReadonlyMap<string, PageImage>>(new Map());
+  const retiredImageBitmapsRef = useRef<DecodedImage[]>([]);
   const usesManagedImageLoading =
     children !== undefined || renderPage === undefined;
+  const usesPageRail = children === undefined && renderPage === undefined;
+  const isIncomingPageSetReady =
+    pageTurnTransition !== null &&
+    getVisibleIndices(
+      pageTurnTransition.toIndex,
+      pages.length,
+      spreadStartIndex,
+      viewMode
+    ).every((index) => {
+      const page = pages[index];
+      return page !== undefined && pageImages.has(getPageImageKey(index, page));
+    });
+
+  useLayoutEffect(() => {
+    if (pageTurnTransition !== null || displayedIndex === currentIndex) {
+      return;
+    }
+
+    const previousIndex = getPreviousSpreadIndex(
+      displayedIndex,
+      spreadStartIndex,
+      viewMode
+    );
+    const nextIndex = getNextSpreadIndex(
+      displayedIndex,
+      pages.length,
+      spreadStartIndex,
+      viewMode
+    );
+    const isAdjacent =
+      currentIndex === previousIndex || currentIndex === nextIndex;
+
+    if (
+      !usesPageRail ||
+      !isAdjacent ||
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      // oxlint-disable-next-line react/set-state-in-effect -- Canceling a running transition must happen before the next paint.
+      setPageTurnTransition(null);
+      // oxlint-disable-next-line react/set-state-in-effect -- A non-adjacent programmatic change cannot use the three-spread rail.
+      setDisplayedIndex(currentIndex);
+      return;
+    }
+
+    transitionIdRef.current += 1;
+    setPageTurnTransition({
+      direction: getPageTurnDirection(
+        displayedIndex,
+        currentIndex,
+        readingDirection
+      ),
+      id: transitionIdRef.current,
+      phase: usesManagedImageLoading ? "waiting" : "prepared",
+      toIndex: currentIndex,
+    });
+  }, [
+    currentIndex,
+    displayedIndex,
+    pageTurnTransition,
+    pages.length,
+    readingDirection,
+    spreadStartIndex,
+    usesManagedImageLoading,
+    usesPageRail,
+    viewMode,
+  ]);
+
+  useEffect(() => {
+    if (pageTurnTransition?.phase === "waiting") {
+      if (!isIncomingPageSetReady) {
+        // oxlint-disable-next-line react/set-state-in-effect -- Do not leave the current spread between slots while its destination is loading.
+        setDragOffset(0);
+        return;
+      }
+
+      // oxlint-disable-next-line react/set-state-in-effect -- The waiting state becomes renderable only after its image cache is ready.
+      setPageTurnTransition((transition) =>
+        transition?.id === pageTurnTransition.id
+          ? { ...transition, phase: "prepared" }
+          : transition
+      );
+      return;
+    }
+
+    if (
+      pageTurnTransition?.phase !== "prepared" ||
+      (usesManagedImageLoading && !isIncomingPageSetReady)
+    ) {
+      return;
+    }
+
+    const requestFrame =
+      typeof requestAnimationFrame === "function"
+        ? requestAnimationFrame
+        : // oxlint-disable-next-line promise/prefer-await-to-callbacks -- This is the browser's frame callback API fallback.
+          (callback: FrameRequestCallback) =>
+            setTimeout(callback, 0) as unknown as number;
+    const cancelFrame =
+      typeof cancelAnimationFrame === "function"
+        ? cancelAnimationFrame
+        : clearTimeout;
+    const animationFrame = requestFrame(() => {
+      setDragOffset(0);
+      setPageTurnTransition((transition) =>
+        transition?.id === pageTurnTransition.id
+          ? { ...transition, phase: "active" }
+          : transition
+      );
+    });
+
+    return () => {
+      cancelFrame(animationFrame);
+    };
+  }, [isIncomingPageSetReady, pageTurnTransition, usesManagedImageLoading]);
+
+  useEffect(() => {
+    if (pageTurnTransition?.phase !== "active") {
+      return;
+    }
+
+    const transitionId = pageTurnTransition.id;
+    const timeout = setTimeout(() => {
+      setDisplayedIndex(pageTurnTransition.toIndex);
+      setPageTurnTransition((transition) =>
+        transition?.id === transitionId ? null : transition
+      );
+    }, PAGE_TURN_FALLBACK_DURATION_MS);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [pageTurnTransition]);
 
   const goByHorizontalDirection = useCallback(
     (direction: "left" | "right"): void => {
@@ -413,33 +632,54 @@ export const Viewport = <TPage extends ViewerPage>({
     goByHorizontalDirection(direction);
   };
 
-  const handleTouchStart = (event: TouchEvent<HTMLDivElement>): void => {
-    const [touch] = Object.values(event.touches);
-    if (touch === undefined) {
-      return;
-    }
+  const beginTouch = useCallback(
+    (touches: TouchInput): void => {
+      if (pageTurnTransition !== null) {
+        return;
+      }
 
-    touchStateRef.current = {
-      active: true,
-      currentX: touch.clientX,
-      startX: touch.clientX,
-    };
-  };
+      const touch = getFirstTouch(touches);
+      if (touch === null) {
+        return;
+      }
 
-  const handleTouchMove = (event: TouchEvent<HTMLDivElement>): void => {
-    if (!touchStateRef.current.active) {
-      return;
-    }
+      touchStateRef.current = {
+        active: true,
+        currentX: touch.clientX,
+        startX: touch.clientX,
+      };
+      setIsDragging(usesPageRail);
+    },
+    [pageTurnTransition, usesPageRail]
+  );
 
-    const [touch] = Object.values(event.touches);
-    if (touch === undefined) {
-      return;
-    }
+  const moveTouch = useCallback(
+    (touches: TouchInput): void => {
+      if (!touchStateRef.current.active) {
+        return;
+      }
 
-    touchStateRef.current.currentX = touch.clientX;
-  };
+      const touch = getFirstTouch(touches);
+      if (touch === null) {
+        return;
+      }
 
-  const handleTouchEnd = (): void => {
+      touchStateRef.current.currentX = touch.clientX;
+      if (usesPageRail) {
+        const offset =
+          touchStateRef.current.currentX - touchStateRef.current.startX;
+        const containerWidth = containerRef.current?.clientWidth ?? 0;
+        setDragOffset(
+          containerWidth === 0
+            ? offset
+            : Math.max(-containerWidth, Math.min(containerWidth, offset))
+        );
+      }
+    },
+    [usesPageRail]
+  );
+
+  const endTouch = useCallback((): void => {
     if (!touchStateRef.current.active) {
       return;
     }
@@ -453,30 +693,129 @@ export const Viewport = <TPage extends ViewerPage>({
       touchStateRef.current.currentX - touchStateRef.current.startX;
 
     touchStateRef.current.active = false;
+    setIsDragging(false);
 
     if (Math.abs(deltaX) < threshold) {
+      setDragOffset(0);
       return;
     }
 
-    goByHorizontalDirection(deltaX > 0 ? "left" : "right");
-  };
-
-  const visibleIndices = useMemo(() => {
-    const indices: number[] =
-      pages[currentIndex] === undefined ? [] : [currentIndex];
-    if (
-      getVisiblePageCount(
-        viewMode,
-        currentIndex,
-        pages.length,
-        spreadStartIndex
-      ) === 2
-    ) {
-      indices.push(currentIndex + 1);
+    const direction = deltaX > 0 ? "left" : "right";
+    let targetIndex: number | undefined;
+    if (direction === "left") {
+      targetIndex =
+        readingDirection === "rtl"
+          ? getNextSpreadIndex(
+              displayedIndex,
+              pages.length,
+              spreadStartIndex,
+              viewMode
+            )
+          : getPreviousSpreadIndex(displayedIndex, spreadStartIndex, viewMode);
+    } else {
+      targetIndex =
+        readingDirection === "rtl"
+          ? getPreviousSpreadIndex(displayedIndex, spreadStartIndex, viewMode)
+          : getNextSpreadIndex(
+              displayedIndex,
+              pages.length,
+              spreadStartIndex,
+              viewMode
+            );
     }
 
-    return indices;
-  }, [currentIndex, pages, spreadStartIndex, viewMode]);
+    if (targetIndex === undefined) {
+      setDragOffset(0);
+      return;
+    }
+
+    goByHorizontalDirection(direction);
+  }, [
+    displayedIndex,
+    goByHorizontalDirection,
+    pages.length,
+    readingDirection,
+    spreadStartIndex,
+    viewMode,
+  ]);
+
+  const cancelTouch = useCallback((): void => {
+    if (!touchStateRef.current.active) {
+      return;
+    }
+
+    touchStateRef.current.active = false;
+    setDragOffset(0);
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    const root = containerRef.current?.closest(".pcv-root");
+    if (root === null || root === undefined) {
+      return;
+    }
+
+    const originatesOnProgressTrigger = (target: EventTarget | null): boolean =>
+      target instanceof Element &&
+      target.closest(".pcv-page-progress-trigger") !== null;
+    const getTouches = (event: Event): TouchInput =>
+      (event as unknown as { touches: TouchInput }).touches;
+    const onTouchStart = (event: Event): void => {
+      if (originatesOnProgressTrigger(event.target)) {
+        event.stopPropagation();
+        beginTouch(getTouches(event));
+      }
+    };
+    const onTouchMove = (event: Event): void => {
+      if (touchStateRef.current.active) {
+        event.stopPropagation();
+        moveTouch(getTouches(event));
+        if (
+          Math.abs(
+            touchStateRef.current.currentX - touchStateRef.current.startX
+          ) >= MIN_SWIPE_THRESHOLD_PX &&
+          event.cancelable
+        ) {
+          event.preventDefault();
+        }
+      }
+    };
+    const onTouchEnd = (event: Event): void => {
+      if (touchStateRef.current.active) {
+        event.stopPropagation();
+        endTouch();
+      }
+    };
+    const onTouchCancel = (event: Event): void => {
+      if (touchStateRef.current.active) {
+        event.stopPropagation();
+        cancelTouch();
+      }
+    };
+
+    root.addEventListener("touchstart", onTouchStart);
+    root.addEventListener("touchmove", onTouchMove, { passive: false });
+    root.addEventListener("touchend", onTouchEnd);
+    root.addEventListener("touchcancel", onTouchCancel);
+
+    return () => {
+      root.removeEventListener("touchstart", onTouchStart);
+      root.removeEventListener("touchmove", onTouchMove);
+      root.removeEventListener("touchend", onTouchEnd);
+      root.removeEventListener("touchcancel", onTouchCancel);
+    };
+  }, [beginTouch, cancelTouch, endTouch, moveTouch]);
+
+  const visibleIndices = useMemo(
+    () =>
+      getVisibleIndices(
+        displayedIndex,
+        pages.length,
+        spreadStartIndex,
+        viewMode
+      ),
+    [displayedIndex, pages.length, spreadStartIndex, viewMode]
+  );
 
   // In RTL mode the next page visually appears on the left side
   const orderedIndices = useMemo(
@@ -487,18 +826,140 @@ export const Viewport = <TPage extends ViewerPage>({
     [readingDirection, visibleIndices]
   );
 
-  const pageSourceKey = useMemo(
-    () =>
-      visibleIndices
-        .map((index) => `${index}:${pages[index]?.src ?? ""}`)
-        .join("|"),
-    [pages, visibleIndices]
+  const orderedIndicesFor = useCallback(
+    (index: number): number[] => {
+      const indices = getVisibleIndices(
+        index,
+        pages.length,
+        spreadStartIndex,
+        viewMode
+      );
+      return readingDirection === "rtl" && indices.length === 2
+        ? [indices[1], indices[0]]
+        : indices;
+    },
+    [pages.length, readingDirection, spreadStartIndex, viewMode]
   );
-  const activePageImages = new Map(
-    visibleIndices.flatMap((index) => {
-      const image = pageImages.get(`${pageSourceKey}:${index}`);
-      return image === undefined ? [] : [[index, image]];
-    })
+
+  const transitionToIndex = pageTurnTransition?.toIndex;
+  const previousSpreadIndex = getPreviousSpreadIndex(
+    displayedIndex,
+    spreadStartIndex,
+    viewMode
+  );
+  const nextSpreadIndex = getNextSpreadIndex(
+    displayedIndex,
+    pages.length,
+    spreadStartIndex,
+    viewMode
+  );
+  const railSpreadIndices = useMemo(() => {
+    if (usesPageRail) {
+      return readingDirection === "rtl"
+        ? [nextSpreadIndex, displayedIndex, previousSpreadIndex]
+        : [previousSpreadIndex, displayedIndex, nextSpreadIndex];
+    }
+
+    return [undefined, displayedIndex, undefined];
+  }, [
+    displayedIndex,
+    nextSpreadIndex,
+    previousSpreadIndex,
+    readingDirection,
+    usesPageRail,
+  ]);
+  const cachedIndices = useMemo(() => {
+    const indices = new Set<number>();
+
+    for (const spreadIndex of railSpreadIndices) {
+      if (spreadIndex === undefined) {
+        continue;
+      }
+
+      for (const pageIndex of getVisibleIndices(
+        spreadIndex,
+        pages.length,
+        spreadStartIndex,
+        viewMode
+      )) {
+        indices.add(pageIndex);
+      }
+    }
+
+    if (transitionToIndex !== undefined) {
+      for (const pageIndex of getVisibleIndices(
+        transitionToIndex,
+        pages.length,
+        spreadStartIndex,
+        viewMode
+      )) {
+        indices.add(pageIndex);
+      }
+    }
+
+    if (!usesPageRail) {
+      let nextIndex = getNextSpreadIndex(
+        displayedIndex,
+        pages.length,
+        spreadStartIndex,
+        viewMode
+      );
+      if (nextIndex !== undefined) {
+        for (const pageIndex of getVisibleIndices(
+          nextIndex,
+          pages.length,
+          spreadStartIndex,
+          viewMode
+        )) {
+          indices.add(pageIndex);
+        }
+        nextIndex = getNextSpreadIndex(
+          nextIndex,
+          pages.length,
+          spreadStartIndex,
+          viewMode
+        );
+        if (nextIndex !== undefined) {
+          for (const pageIndex of getVisibleIndices(
+            nextIndex,
+            pages.length,
+            spreadStartIndex,
+            viewMode
+          )) {
+            indices.add(pageIndex);
+          }
+        }
+      }
+    }
+
+    return [...indices];
+  }, [
+    displayedIndex,
+    pages.length,
+    railSpreadIndices,
+    spreadStartIndex,
+    transitionToIndex,
+    usesPageRail,
+    viewMode,
+  ]);
+
+  const handleTransitionEnd = useCallback(
+    (id: number, event: ReactTransitionEvent<HTMLDivElement>): void => {
+      if (
+        event.target !== event.currentTarget ||
+        event.propertyName !== "transform"
+      ) {
+        return;
+      }
+
+      setPageTurnTransition((transition) =>
+        transition?.id === id ? null : transition
+      );
+      if (pageTurnTransition?.id === id) {
+        setDisplayedIndex(pageTurnTransition.toIndex);
+      }
+    },
+    [pageTurnTransition]
   );
 
   useEffect(() => {
@@ -520,187 +981,222 @@ export const Viewport = <TPage extends ViewerPage>({
 
     let disposed = false;
     const abortController = new AbortController();
-    const imageBitmaps: DecodedImage[] = [];
-    const firstPrefetchIndex = currentIndex + visibleIndices.length;
-    const prefetchIndices = [firstPrefetchIndex, firstPrefetchIndex + 1];
-    const retainedIndices = new Set([...visibleIndices, ...prefetchIndices]);
-
-    for (const index of prefetchedPagesRef.current.keys()) {
-      if (!retainedIndices.has(index)) {
-        prefetchedPagesRef.current.delete(index);
-      }
-    }
-
-    const getPageBuffer = (
-      index: number,
-      page: TPage
-    ): Promise<ArrayBuffer> => {
-      const prefetchedPage = prefetchedPagesRef.current.get(index);
-      if (prefetchedPage?.src === page.src) {
-        prefetchedPagesRef.current.delete(index);
-        return Promise.resolve(prefetchedPage.buffer);
-      }
-
-      return runDataPipeline(page.src, plugins, abortController.signal);
-    };
-
-    const trackImage = (image: DecodedImage): boolean => {
+    const setPageImage = (index: number, image: PageImage): boolean => {
       if (disposed) {
-        closeImageBitmaps([image]);
+        closeImageBitmaps([image.bitmap]);
         return false;
       }
 
-      imageBitmaps.push(image);
+      const page = pages[index];
+      if (page === undefined) {
+        closeImageBitmaps([image.bitmap]);
+        return false;
+      }
+
+      const imageKey = getPageImageKey(index, page);
+      setPageImages((currentImages) => {
+        const nextImages = new Map(currentImages);
+        const previousImage = nextImages.get(imageKey);
+        if (previousImage !== undefined && previousImage !== image) {
+          retiredImageBitmapsRef.current.push(previousImage.bitmap);
+        }
+        nextImages.set(imageKey, image);
+
+        pageImagesRef.current = nextImages;
+        return nextImages;
+      });
       return true;
     };
 
-    const setPageImage = (index: number, image: PageImage): void => {
-      if (!disposed) {
-        const imageKey = `${pageSourceKey}:${index}`;
-        setPageImages((currentImages) => {
-          const currentSourceImages = [...currentImages].filter(([key]) =>
-            key.startsWith(`${pageSourceKey}:`)
-          );
-          return new Map([...currentSourceImages, [imageKey, image]]);
-        });
+    const loadPage = async (index: number): Promise<void> => {
+      const page = pages[index];
+      if (page === undefined) {
+        return;
       }
-    };
 
-    const loadPages = async (): Promise<void> => {
+      const imageKey = getPageImageKey(index, page);
+      if (pageImagesRef.current.has(imageKey)) {
+        return;
+      }
+
       try {
-        await Promise.all(
-          visibleIndices.map(async (index) => {
-            const page = pages[index];
-            if (page === undefined) {
-              return;
-            }
+        const bufferPromise = (async (): Promise<ArrayBuffer | undefined> => {
+          try {
+            return await runDataPipeline(
+              page.src,
+              plugins,
+              abortController.signal
+            );
+          } catch {
+            return undefined;
+          }
+        })();
 
-            const placeholderUrl = page.placeholder;
-            const bufferPromise = getPageBuffer(index, page);
-            void bufferPromise.catch(() => false);
+        if (page.placeholder !== undefined) {
+          const placeholderBuffer = await runDataPipeline(
+            page.placeholder,
+            [],
+            abortController.signal
+          );
+          const placeholderBitmap = await decodeImage(
+            placeholderBuffer,
+            page.placeholder
+          );
+          if (
+            !setPageImage(index, {
+              bitmap: placeholderBitmap,
+              placeholder: true,
+            })
+          ) {
+            return;
+          }
+          await waitForVisiblePaint();
 
-            if (placeholderUrl !== undefined) {
-              const placeholderBuffer = await runDataPipeline(
-                placeholderUrl,
-                [],
-                abortController.signal
-              );
-              const placeholderBitmap = await decodeImage(
-                placeholderBuffer,
-                placeholderUrl
-              );
-              if (!trackImage(placeholderBitmap)) {
-                return;
-              }
+          if (disposed) {
+            return;
+          }
+        }
 
-              setPageImage(index, {
-                bitmap: placeholderBitmap,
-                placeholder: true,
-              });
-              await waitForVisiblePaint();
-
-              if (disposed) {
-                return;
-              }
-            }
-
-            const buffer = await bufferPromise;
-            const image = await decodeImage(buffer, page.src, page.mimeType);
-            if (!trackImage(image)) {
-              return;
-            }
-
-            setPageImage(index, { bitmap: image, placeholder: false });
-          })
-        );
+        const buffer = await bufferPromise;
+        if (buffer === undefined) {
+          return;
+        }
+        const bitmap = await decodeImage(buffer, page.src, page.mimeType);
+        setPageImage(index, { bitmap, placeholder: false });
       } catch {
         // Keep a decoded placeholder visible when the full page cannot load.
       }
     };
 
-    const prefetchPages = async (): Promise<void> => {
-      await Promise.all(
-        prefetchIndices.map(async (index) => {
-          const page = pages[index];
-          if (page === undefined) {
-            return;
-          }
-
-          const existingPage = prefetchedPagesRef.current.get(index);
-          if (existingPage?.src === page.src) {
-            return;
-          }
-
-          try {
-            const buffer = await runDataPipeline(
-              page.src,
-              plugins,
-              abortController.signal
-            );
-            if (!disposed) {
-              prefetchedPagesRef.current.set(index, {
-                buffer,
-                src: page.src,
-              });
-            }
-          } catch {
-            // A failed prefetch must not affect the current page.
-          }
-        })
-      );
-    };
-
-    void loadPages();
-    void prefetchPages();
+    void Promise.all(cachedIndices.map(loadPage));
 
     return () => {
       disposed = true;
       abortController.abort();
-      closeImageBitmaps(imageBitmaps);
     };
-  }, [
-    currentIndex,
-    pageSourceKey,
-    pages,
-    plugins,
-    usesManagedImageLoading,
-    visibleIndices,
-  ]);
+  }, [cachedIndices, pages, plugins, usesManagedImageLoading]);
+
+  useEffect(() => {
+    if (!usesManagedImageLoading || pageTurnTransition !== null) {
+      return;
+    }
+
+    const retainedImageKeys = new Set(
+      cachedIndices.flatMap((index) => {
+        const page = pages[index];
+        return page === undefined ? [] : [getPageImageKey(index, page)];
+      })
+    );
+    const nextImages = new Map(pageImagesRef.current);
+    const expiredImages: DecodedImage[] = [];
+
+    for (const [key, image] of nextImages) {
+      if (!retainedImageKeys.has(key)) {
+        expiredImages.push(image.bitmap);
+        nextImages.delete(key);
+      }
+    }
+
+    if (expiredImages.length > 0) {
+      closeImageBitmaps(expiredImages);
+      pageImagesRef.current = nextImages;
+      // oxlint-disable-next-line react/set-state-in-effect -- Pages are evicted only after their transition DOM has unmounted.
+      setPageImages(nextImages);
+    }
+
+    if (retiredImageBitmapsRef.current.length > 0) {
+      closeImageBitmaps(retiredImageBitmapsRef.current);
+      retiredImageBitmapsRef.current = [];
+    }
+  }, [cachedIndices, pageTurnTransition, pages, usesManagedImageLoading]);
+
+  useEffect(
+    () => () => {
+      closeImageBitmaps([
+        ...[...pageImagesRef.current.values()].map((image) => image.bitmap),
+        ...retiredImageBitmapsRef.current,
+      ]);
+    },
+    []
+  );
 
   return (
     <div
       ref={containerRef}
       className={`pcv-viewport${className === undefined ? "" : ` ${className}`}`}
       data-reading-direction={readingDirection}
+      data-slide-direction={pageTurnTransition?.direction}
+      data-transition-state={pageTurnTransition?.phase ?? "idle"}
       data-view-mode={viewMode}
       data-page-count={orderedIndices.length}
+      data-dragging={isDragging || undefined}
       onClick={handleEdgeClick}
       onKeyDown={handleKeyDown}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      onTouchStart={(event) => {
+        event.stopPropagation();
+        beginTouch(event.touches);
+      }}
+      onTouchMove={(event) => {
+        event.stopPropagation();
+        moveTouch(event.touches);
+      }}
+      onTouchEnd={(event) => {
+        event.stopPropagation();
+        endTouch();
+      }}
+      onTouchCancel={(event) => {
+        event.stopPropagation();
+        cancelTouch();
+      }}
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- The viewer is a composite widget, not a button.
       role="button"
       tabIndex={0}
     >
-      {orderedIndices.map((index) => {
-        const page = pages[index];
-        if (page === undefined) {
-          return null;
+      <div
+        className="pcv-viewport-track"
+        style={{ "--pcv-drag-offset": `${dragOffset}px` } as CSSProperties}
+        onTransitionEnd={
+          pageTurnTransition?.phase === "active"
+            ? (event) => handleTransitionEnd(pageTurnTransition.id, event)
+            : undefined
         }
-
-        return (
-          <ViewportPageInstance
-            key={index}
-            image={activePageImages.get(index)}
-            index={index}
-            page={page}
-            renderPage={renderPage}
+      >
+        {railSpreadIndices.map((spreadIndex, slot) => (
+          <div
+            key={slot}
+            aria-hidden={slot !== 1 || undefined}
+            className="pcv-viewport-page-set"
+            data-page-count={
+              spreadIndex === undefined
+                ? 0
+                : orderedIndicesFor(spreadIndex).length
+            }
+            data-reading-direction={readingDirection}
+            data-rail-slot={getRailSlotName(slot)}
           >
-            {children}
-          </ViewportPageInstance>
-        );
-      })}
+            {spreadIndex === undefined
+              ? null
+              : orderedIndicesFor(spreadIndex).map((index) => {
+                  const page = pages[index];
+                  if (page === undefined) {
+                    return null;
+                  }
+
+                  return (
+                    <ViewportPageInstance
+                      key={index}
+                      image={pageImages.get(getPageImageKey(index, page))}
+                      index={index}
+                      page={page}
+                      renderPage={renderPage}
+                    >
+                      {children}
+                    </ViewportPageInstance>
+                  );
+                })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

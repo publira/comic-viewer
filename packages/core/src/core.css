@@ -11,6 +11,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  touch-action: pan-y;
   background: var(--pcv-bg);
   color: var(--pcv-fg);
 }
@@ -25,14 +26,50 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  touch-action: pan-y;
 }
 
-.pcv-viewport > * {
+.pcv-viewport-track {
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 300%;
+  width: 300%;
+  height: 100%;
+  transform: translateX(-33.3333%) translateX(var(--pcv-drag-offset, 0px));
+}
+
+.pcv-viewport-page-set {
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 33.3333%;
+  min-width: 0;
+  height: 100%;
+}
+
+.pcv-viewport-page-set > * {
   flex: 1 1 0;
   min-width: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.pcv-viewport[data-transition-state="active"] .pcv-viewport-track {
+  transition: transform 260ms ease-out;
+}
+
+.pcv-viewport[data-dragging] .pcv-viewport-track {
+  transition: none;
+}
+
+.pcv-viewport[data-transition-state="active"][data-slide-direction="left"]
+  .pcv-viewport-track {
+  transform: translateX(-66.6667%) translateX(var(--pcv-drag-offset, 0px));
+}
+
+.pcv-viewport[data-transition-state="active"][data-slide-direction="right"]
+  .pcv-viewport-track {
+  transform: translateX(0) translateX(var(--pcv-drag-offset, 0px));
 }
 
 .pcv-page {
@@ -65,17 +102,25 @@
   display: block;
 }
 
-.pcv-viewport[data-view-mode="double"] > * {
+.pcv-viewport[data-view-mode="double"] .pcv-viewport-page-set > * {
   flex: 0 0 50%;
   max-width: 50%;
 }
 
-.pcv-viewport[data-view-mode="double"][data-page-count="1"][data-reading-direction="rtl"] {
+.pcv-viewport[data-view-mode="double"]
+  .pcv-viewport-page-set[data-page-count="1"][data-reading-direction="rtl"] {
   justify-content: flex-end;
 }
 
-.pcv-viewport[data-view-mode="double"][data-page-count="1"][data-reading-direction="ltr"] {
+.pcv-viewport[data-view-mode="double"]
+  .pcv-viewport-page-set[data-page-count="1"][data-reading-direction="ltr"] {
   justify-content: flex-start;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pcv-viewport .pcv-viewport-track {
+    transition: none;
+  }
 }
 
 .pcv-toolbar {
