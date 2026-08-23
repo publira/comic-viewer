@@ -561,6 +561,8 @@ export const Viewport = <TPage extends ViewerPage>({
     ) {
       // oxlint-disable-next-line react/set-state-in-effect -- Canceling a running transition must happen before the next paint.
       setPageTurnTransition(null);
+      // oxlint-disable-next-line react/set-state-in-effect -- A transition that cannot run must restore the rail to its resting position before paint.
+      setDragOffset(0);
       // oxlint-disable-next-line react/set-state-in-effect -- A non-adjacent programmatic change cannot use the three-spread rail.
       setDisplayedIndex(currentIndex);
       return;
@@ -592,8 +594,6 @@ export const Viewport = <TPage extends ViewerPage>({
   useEffect(() => {
     if (pageTurnTransition?.phase === "waiting") {
       if (!isIncomingPageSetReady) {
-        // oxlint-disable-next-line react/set-state-in-effect -- Do not leave the current spread between slots while its destination is loading.
-        setDragOffset(0);
         const waitTimeout = setTimeout(() => {
           setPageTurnTransition((transition) =>
             transition?.id === pageTurnTransition.id
@@ -1059,7 +1059,6 @@ export const Viewport = <TPage extends ViewerPage>({
         return;
       }
 
-      setDragOffset(0);
       goByHorizontalDirection(direction);
     },
     [
