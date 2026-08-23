@@ -11,7 +11,12 @@ import { definePlugin } from "./plugin";
 import type { ViewerPlugin } from "./plugin";
 import type { ReadingDirection } from "./viewer-context";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
-import { getImageMimeType, Viewport } from "./viewport";
+import {
+  getImageMimeType,
+  PageCanvas,
+  Viewport,
+  ViewportPage,
+} from "./viewport";
 
 type MockFetch = (
   input: RequestInfo | URL,
@@ -108,6 +113,25 @@ describe(Viewport, () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
     MockResizeObserver.callback = null;
+  });
+
+  it("renders public page templates without private selectors", () => {
+    render(
+      <ViewerProvider pages={pages}>
+        <Viewport>
+          <ViewportPage className="reader-page">
+            <PageCanvas className="reader-canvas" data-testid="page-canvas" />
+          </ViewportPage>
+        </Viewport>
+      </ViewerProvider>
+    );
+
+    expect(screen.getByTestId("page-canvas")).toHaveAttribute(
+      "aria-label",
+      "Page 1"
+    );
+    expect(screen.getByTestId("page-canvas")).toHaveClass("reader-canvas");
+    expect(document.querySelector(".reader-page")).not.toBeNull();
   });
 
   it("renders normal pages to canvas instead of an img element", async () => {

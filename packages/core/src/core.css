@@ -43,7 +43,7 @@
   justify-content: center;
 }
 
-.pcv-page canvas {
+.pcv-page-canvas {
   width: auto;
   height: 100%;
   max-width: 100%;
@@ -54,7 +54,7 @@
   transition: filter 160ms ease-out;
 }
 
-.pcv-page canvas[data-placeholder] {
+.pcv-page-canvas[data-placeholder] {
   filter: brightness(0.72) saturate(0.62);
 }
 

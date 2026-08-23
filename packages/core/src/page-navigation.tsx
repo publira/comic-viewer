@@ -9,6 +9,7 @@ import {
 } from "react";
 import type {
   ButtonHTMLAttributes,
+  ComponentPropsWithoutRef,
   MouseEvent,
   PropsWithChildren,
   ReactNode,
@@ -22,6 +23,12 @@ interface PageNavigationState {
 }
 
 const PageNavigationContext = createContext<PageNavigationState | null>(null);
+
+interface PageProgressState {
+  ariaLabel: string;
+}
+
+const PageProgressContext = createContext<PageProgressState | null>(null);
 
 type PageNavigationButtonProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -174,7 +181,7 @@ export interface PageProgressProps {
   visible?: boolean;
 }
 
-/** Displays the reading progress. Compose it with PageStatus as needed. */
+/** Provides a container for the reading-progress primitives. */
 export const PageProgress = ({
   "aria-label": ariaLabel = "Reading progress",
   className,
@@ -182,9 +189,34 @@ export const PageProgress = ({
   visible,
 }: PageProgressProps & PropsWithChildren) => {
   const navigation = useContext(PageNavigationContext);
+  const isVisible = visible ?? navigation?.isProgressVisible ?? true;
+  const progressValue = useMemo(() => ({ ariaLabel }), [ariaLabel]);
+
+  return (
+    <PageProgressContext.Provider value={progressValue}>
+      <div
+        aria-hidden={!isVisible}
+        className={`pcv-page-progress${className === undefined ? "" : ` ${className}`}`}
+      >
+        {children}
+      </div>
+    </PageProgressContext.Provider>
+  );
+};
+
+export type PageProgressTrackProps = ComponentPropsWithoutRef<"progress">;
+
+/** Displays the current reading progress. Compose it inside PageProgress. */
+export const PageProgressTrack = ({
+  "aria-label": ariaLabel,
+  className,
+  max,
+  value,
+  ...props
+}: PageProgressTrackProps) => {
+  const pageProgress = useContext(PageProgressContext);
   const { currentIndex, pages, spreadStartIndex, viewMode } =
     useViewerContext();
-  const isVisible = visible ?? navigation?.isProgressVisible ?? true;
   const visiblePageCount = getVisiblePageCount(
     viewMode,
     currentIndex,
@@ -194,18 +226,13 @@ export const PageProgress = ({
   const currentPage = Math.min(currentIndex + visiblePageCount, pages.length);
 
   return (
-    <div
-      aria-hidden={!isVisible}
-      className={`pcv-page-progress${className === undefined ? "" : ` ${className}`}`}
-    >
-      <progress
-        aria-label={ariaLabel}
-        className="pcv-page-progress-track"
-        max={Math.max(1, pages.length)}
-        value={currentPage}
-      />
-      {children}
-    </div>
+    <progress
+      {...props}
+      aria-label={ariaLabel ?? pageProgress?.ariaLabel}
+      className={`pcv-page-progress-track${className === undefined ? "" : ` ${className}`}`}
+      max={max ?? Math.max(1, pages.length)}
+      value={value ?? currentPage}
+    />
   );
 };
 
@@ -298,6 +325,7 @@ export const PageNavigation = ({
             </PreviousPageButton>
             <PageProgressTrigger />
             <PageProgress>
+              <PageProgressTrack />
               <PageStatus />
             </PageProgress>
             <NextPageButton>

@@ -2,6 +2,7 @@ import {
   NextPageButton,
   PageNavigation,
   PageProgress,
+  PageProgressTrack,
   PageProgressTrigger,
   PageStatus,
   PreviousPageButton,
@@ -9,7 +10,7 @@ import {
 import { Toolbar } from "./toolbar";
 import { ViewerProvider } from "./viewer-context";
 import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
-import { Viewport } from "./viewport";
+import { PageCanvas, Viewport, ViewportPage } from "./viewport";
 
 export interface ComicViewerProps<
   TPage extends ViewerPage,
@@ -45,20 +46,26 @@ const ComicViewerRoot = <TPage extends ViewerPage>({
 
 export const ComicViewer = Object.assign(ComicViewerRoot, {
   NextPageButton,
+  PageCanvas,
   PageNavigation,
   PageProgress,
+  PageProgressTrack,
   PageProgressTrigger,
   PageStatus,
   PreviousPageButton,
   Toolbar,
   Viewport,
+  ViewportPage,
 }) as typeof ComicViewerRoot & {
   NextPageButton: typeof NextPageButton;
   PageNavigation: typeof PageNavigation;
   PageProgress: typeof PageProgress;
+  PageProgressTrack: typeof PageProgressTrack;
   PageProgressTrigger: typeof PageProgressTrigger;
   PageStatus: typeof PageStatus;
   PreviousPageButton: typeof PreviousPageButton;
+  PageCanvas: typeof PageCanvas;
   Viewport: typeof Viewport;
+  ViewportPage: typeof ViewportPage;
   Toolbar: typeof Toolbar;
 };

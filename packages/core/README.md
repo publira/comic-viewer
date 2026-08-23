@@ -87,7 +87,17 @@ To style the viewer with Tailwind CSS, do not import `core.css`; apply the layou
 </ComicViewer>
 ```
 
-Use `className` on the other compound components to style their controls. To control page markup and styling completely, provide `renderPage` to `ComicViewer.Viewport`.
+Use `className` on the other compound components to style their controls. For page markup that keeps the viewer loading, decoding, and virtualization pipeline, provide a page template with the public `ViewportPage` and `PageCanvas` primitives:
+
+```tsx
+<ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
+  <ComicViewer.ViewportPage className="flex min-w-0 items-center justify-center">
+    <ComicViewer.PageCanvas className="h-full max-w-full object-contain" />
+  </ComicViewer.ViewportPage>
+</ComicViewer.Viewport>
+```
+
+`PageCanvas` receives the current page and decoded image from `Viewport`, so it must be used in a viewport page template. Use `renderPage` when you need to render page content entirely independently of the built-in image pipeline.
 
 ## Page navigation
 
@@ -100,7 +110,10 @@ For a custom arrangement, compose `PreviousPageButton`, `PageStatus`, and `NextP
   <ComicViewer.PageNavigation className="reader-controls">
     <ComicViewer.PreviousPageButton>Back</ComicViewer.PreviousPageButton>
     <ComicViewer.NextPageButton>Forward</ComicViewer.NextPageButton>
-    <ComicViewer.PageStatus />
+    <ComicViewer.PageProgress>
+      <ComicViewer.PageProgressTrack className="progress-bar" />
+      <ComicViewer.PageStatus />
+    </ComicViewer.PageProgress>
   </ComicViewer.PageNavigation>
 </ComicViewer.Toolbar>
 ```
