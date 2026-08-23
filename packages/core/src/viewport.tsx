@@ -1,5 +1,7 @@
 import {
   createContext,
+  cloneElement,
+  isValidElement,
   useCallback,
   useContext,
   useEffect,
@@ -13,45 +15,31 @@ import type {
   ComponentPropsWithoutRef,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent,
+  ReactElement,
   ReactNode,
   TransitionEvent as ReactTransitionEvent,
 } from "react";
 
-import { runDataPipeline, runPageChangeHooks } from "./plugin";
+import { runPageChangeHooks } from "./plugin";
 import { useViewMode } from "./use-view-mode";
-import { getVisiblePageCount, useViewerContext } from "./viewer-context";
+import { getPageImageKey, useViewportImages } from "./use-viewport-images";
+import type { PageImage } from "./use-viewport-images";
+import {
+  getNextSpreadIndex,
+  getPageTurnDirection,
+  getPreviousSpreadIndex,
+  getSwipeTargetIndex,
+  getVisibleIndices,
+  useViewportLayout,
+} from "./use-viewport-layout";
+import type { PageTurnDirection } from "./use-viewport-layout";
+import { useViewerContext } from "./viewer-context";
 import type { ViewerPage } from "./viewer-context";
 
-export const getImageMimeType = (
-  url: string,
-  mimeType?: string
-): string | undefined => {
-  if (mimeType?.startsWith("image/")) {
-    return mimeType;
-  }
+export { getImageMimeType } from "./use-viewport-images";
+export { getPageTurnDirection } from "./use-viewport-layout";
+export type { PageTurnDirection } from "./use-viewport-layout";
 
-  const dataUriMatch = /^data:(?<mimeType>[^;,]+)/u.exec(url);
-  if (dataUriMatch?.groups?.mimeType?.startsWith("image/")) {
-    return dataUriMatch.groups.mimeType;
-  }
-
-  const extension = /\.(?<extension>[a-z0-9]+)(?:[?#]|$)/iu
-    .exec(url)
-    ?.groups?.extension?.toLowerCase();
-  const mimeTypes: Record<string, string> = {
-    avif: "image/avif",
-    gif: "image/gif",
-    jpeg: "image/jpeg",
-    jpg: "image/jpeg",
-    png: "image/png",
-    svg: "image/svg+xml",
-    webp: "image/webp",
-  };
-
-  return extension === undefined ? undefined : mimeTypes[extension];
-};
-
-type DecodedImage = HTMLImageElement | ImageBitmap;
 interface TouchInput {
   readonly [index: number]: { clientX: number; clientY: number } | undefined;
   item?: (index: number) => { clientX: number; clientY: number } | null;
@@ -85,84 +73,6 @@ const getTouchCenter = (
   x: (first.clientX + second.clientX) / 2,
   y: (first.clientY + second.clientY) / 2,
 });
-
-const getImageMimeTypeOrFallback = (
-  sourceUrl: string,
-  mimeType?: string
-): string =>
-  getImageMimeType(sourceUrl, mimeType) ?? "application/octet-stream";
-
-const decodeWithImageElement = async (
-  buffer: ArrayBuffer,
-  mimeType: string
-): Promise<HTMLImageElement> => {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-
-  for (let offset = 0; offset < bytes.length; offset += 0x80_00) {
-    binary += String.fromCodePoint(...bytes.subarray(offset, offset + 0x80_00));
-  }
-
-  const image = new Image();
-  image.src = `data:${mimeType};base64,${btoa(binary)}`;
-  await image.decode();
-  return image;
-};
-
-const decodeImage = async (
-  buffer: ArrayBuffer,
-  sourceUrl: string,
-  mimeType?: string
-): Promise<DecodedImage> => {
-  const imageMimeType = getImageMimeTypeOrFallback(sourceUrl, mimeType);
-  const blob = new Blob([buffer], { type: imageMimeType });
-
-  if (typeof createImageBitmap === "function") {
-    try {
-      return await createImageBitmap(blob);
-    } catch {
-      // Some browsers cannot decode every image format with createImageBitmap.
-    }
-  }
-
-  return decodeWithImageElement(buffer, imageMimeType);
-};
-
-/** Releases every decoded bitmap that owns an explicit browser resource. */
-const closeImageBitmaps = (images: readonly DecodedImage[]): void => {
-  for (const image of images) {
-    if ("close" in image) {
-      image.close();
-    }
-  }
-};
-
-const waitForAnimationFrame = (): Promise<void> =>
-  // eslint-disable-next-line promise/avoid-new -- The browser exposes a paint boundary through this callback API.
-  new Promise((resolve) => {
-    if (typeof requestAnimationFrame === "function") {
-      requestAnimationFrame(() => {
-        resolve();
-      });
-      return;
-    }
-
-    setTimeout(resolve, 0);
-  });
-
-/** Waits for the placeholder canvas state to reach a browser paint boundary. */
-const waitForVisiblePaint = async (): Promise<void> => {
-  await waitForAnimationFrame();
-  await waitForAnimationFrame();
-};
-
-interface PageImage {
-  bitmap: DecodedImage;
-  placeholder: boolean;
-}
-
-const getPageImageKey = (index: number, page: ViewerPage): string =>
-  `${index}:${page.src}`;
 
 interface ViewportPageContextValue {
   image?: PageImage;
@@ -248,9 +158,115 @@ export const ViewportPage = ({
   </div>
 );
 
+export interface ViewportTrackProps extends ComponentPropsWithoutRef<"div"> {
+  "data-dragging"?: boolean;
+  "data-slide-direction"?: PageTurnDirection;
+  "data-transition-state"?: "idle" | "waiting" | "prepared" | "active";
+}
+
+/** Provides the page-turn rail for a custom Viewport layout. */
+export const ViewportTrack = ({
+  children,
+  className,
+  ...props
+}: ViewportTrackProps) => (
+  <div
+    {...props}
+    className={`pcv-viewport-track${className === undefined ? "" : ` ${className}`}`}
+  >
+    {children}
+  </div>
+);
+
+export interface ViewportPageSetProps extends ComponentPropsWithoutRef<"div"> {
+  "data-page-count"?: number;
+  "data-rail-slot"?: "previous" | "current" | "next";
+  "data-reading-direction"?: "rtl" | "ltr";
+  "data-view-mode"?: "single" | "double";
+}
+
+/** Provides one rail slot for a custom Viewport layout. */
+export const ViewportPageSet = ({
+  children,
+  className,
+  ...props
+}: ViewportPageSetProps) => (
+  <div
+    {...props}
+    className={`pcv-viewport-page-set${className === undefined ? "" : ` ${className}`}`}
+  >
+    {children}
+  </div>
+);
+
+export interface ViewportPageSlotProps extends ComponentPropsWithoutRef<"div"> {
+  "data-view-mode"?: "single" | "double";
+}
+
+/** Provides one visible page slot for a custom Viewport layout. */
+export const ViewportPageSlot = ({
+  children,
+  className,
+  ...props
+}: ViewportPageSlotProps) => (
+  <div
+    {...props}
+    className={`pcv-viewport-page-slot${className === undefined ? "" : ` ${className}`}`}
+  >
+    {children}
+  </div>
+);
+
 type ViewportChildren<TPage extends ViewerPage> =
   | ReactNode
   | ((page: TPage, index: number) => ReactNode);
+
+interface ViewportLayoutTemplate<TPage extends ViewerPage> {
+  pageSet: ReactElement<ViewportPageSetProps>;
+  pageSlot: ReactElement<ViewportPageSlotProps>;
+  pageTemplate: ViewportChildren<TPage> | undefined;
+  track: ReactElement<ViewportTrackProps>;
+}
+
+const getViewportLayoutTemplate = <TPage extends ViewerPage>(
+  children: ViewportChildren<TPage> | undefined
+): ViewportLayoutTemplate<TPage> | undefined => {
+  if (
+    !isValidElement<ViewportTrackProps>(children) ||
+    children.type !== ViewportTrack
+  ) {
+    return undefined;
+  }
+
+  const pageSet = children.props.children;
+  if (
+    !isValidElement<ViewportPageSetProps>(pageSet) ||
+    pageSet.type !== ViewportPageSet
+  ) {
+    throw new Error(
+      "ViewportTrack must contain exactly one ViewportPageSet template."
+    );
+  }
+
+  const pageSlot = pageSet.props.children;
+  if (
+    !isValidElement<ViewportPageSlotProps>(pageSlot) ||
+    pageSlot.type !== ViewportPageSlot
+  ) {
+    throw new Error(
+      "ViewportPageSet must contain exactly one ViewportPageSlot template."
+    );
+  }
+
+  return {
+    pageSet,
+    pageSlot,
+    pageTemplate: pageSlot.props.children as
+      | ViewportChildren<TPage>
+      | undefined,
+    track: children,
+  };
+};
 
 export interface ViewportProps<TPage extends ViewerPage> {
   /**
@@ -335,18 +351,6 @@ const getHorizontalDirection = (key: string): "left" | "right" | undefined => {
   return key === "ArrowRight" ? "right" : undefined;
 };
 
-export type PageTurnDirection = "left" | "right";
-
-/** Returns the physical direction in which the current spread leaves the viewport. */
-export const getPageTurnDirection = (
-  fromIndex: number,
-  toIndex: number,
-  readingDirection: "rtl" | "ltr"
-): PageTurnDirection => {
-  const isForward = toIndex > fromIndex;
-  return isForward === (readingDirection === "ltr") ? "left" : "right";
-};
-
 interface PageTurnTransition {
   direction: PageTurnDirection;
   id: number;
@@ -357,73 +361,142 @@ interface PageTurnTransition {
 const PAGE_TURN_FALLBACK_DURATION_MS = 320;
 const PAGE_TURN_IMAGE_WAIT_TIMEOUT_MS = 1200;
 
-const getVisibleIndices = (
-  currentIndex: number,
-  pageCount: number,
-  spreadStartIndex: number,
-  viewMode: "single" | "double"
-): number[] => {
-  const indices = currentIndex >= pageCount ? [] : [currentIndex];
-  if (
-    getVisiblePageCount(viewMode, currentIndex, pageCount, spreadStartIndex) ===
-    2
-  ) {
-    indices.push(currentIndex + 1);
-  }
-
-  return indices;
-};
-
-const getNextSpreadIndex = (
-  currentIndex: number,
-  pageCount: number,
-  spreadStartIndex: number,
-  viewMode: "single" | "double"
-): number | undefined => {
-  const nextIndex =
-    currentIndex +
-    getVisiblePageCount(viewMode, currentIndex, pageCount, spreadStartIndex);
-  return nextIndex < pageCount ? nextIndex : undefined;
-};
-
-const getPreviousSpreadIndex = (
-  currentIndex: number,
-  spreadStartIndex: number,
-  viewMode: "single" | "double"
-): number | undefined => {
-  if (currentIndex === 0) {
-    return undefined;
-  }
-
-  return Math.max(
-    0,
-    currentIndex -
-      (viewMode === "double" && currentIndex > spreadStartIndex ? 2 : 1)
-  );
-};
-
-const getSwipeTargetIndex = (
-  direction: "left" | "right",
-  currentIndex: number,
-  pageCount: number,
-  readingDirection: "rtl" | "ltr",
-  spreadStartIndex: number,
-  viewMode: "single" | "double"
-): number | undefined => {
-  const movesForward =
-    (direction === "left" && readingDirection === "rtl") ||
-    (direction === "right" && readingDirection === "ltr");
-  return movesForward
-    ? getNextSpreadIndex(currentIndex, pageCount, spreadStartIndex, viewMode)
-    : getPreviousSpreadIndex(currentIndex, spreadStartIndex, viewMode);
-};
-
 const getRailSlotName = (slot: number): "previous" | "current" | "next" => {
   if (slot === 0) {
     return "previous";
   }
 
   return slot === 1 ? "current" : "next";
+};
+
+interface ViewportRailProps<TPage extends ViewerPage> {
+  activePan: { x: number; y: number };
+  activeZoom: { scale: number };
+  dragOffset: number;
+  getPageIndices: (spreadIndex: number) => number[];
+  isDragging: boolean;
+  layoutTemplate: ViewportLayoutTemplate<TPage> | undefined;
+  onTransitionEnd:
+    | ((event: ReactTransitionEvent<HTMLDivElement>) => void)
+    | undefined;
+  pageImages: ReadonlyMap<string, PageImage>;
+  pageTemplate: ViewportChildren<TPage> | undefined;
+  pages: readonly TPage[];
+  pageTurnTransition: PageTurnTransition | null;
+  railSpreadIndices: readonly (number | undefined)[];
+  readingDirection: "rtl" | "ltr";
+  renderPage: ((page: TPage, index: number) => ReactNode) | undefined;
+  viewMode: "single" | "double";
+}
+
+const ViewportRail = <TPage extends ViewerPage>({
+  activePan,
+  activeZoom,
+  dragOffset,
+  getPageIndices,
+  isDragging,
+  layoutTemplate,
+  onTransitionEnd,
+  pageImages,
+  pageTemplate,
+  pages,
+  pageTurnTransition,
+  railSpreadIndices,
+  readingDirection,
+  renderPage,
+  viewMode,
+}: ViewportRailProps<TPage>) => {
+  const trackTemplate = layoutTemplate?.track;
+  const pageSetTemplate = layoutTemplate?.pageSet;
+  const pageSlotTemplate = layoutTemplate?.pageSlot;
+  const pageSets = railSpreadIndices.map((spreadIndex, slot) => {
+    const pageSetStyle =
+      slot === 1
+        ? ({
+            ...pageSetTemplate?.props.style,
+            "--pcv-pan-x": `${activePan.x}px`,
+            "--pcv-pan-y": `${activePan.y}px`,
+            "--pcv-zoom-scale": activeZoom.scale,
+          } as CSSProperties)
+        : pageSetTemplate?.props.style;
+    const pageSetProps = {
+      "aria-hidden": slot !== 1 || undefined,
+      "data-page-count":
+        spreadIndex === undefined ? 0 : getPageIndices(spreadIndex).length,
+      "data-rail-slot": getRailSlotName(slot),
+      "data-reading-direction": readingDirection,
+      "data-view-mode": viewMode,
+      style: pageSetStyle,
+    };
+    const pageInstances =
+      spreadIndex === undefined
+        ? null
+        : getPageIndices(spreadIndex).map((index) => {
+            const page = pages[index];
+            if (page === undefined) {
+              return null;
+            }
+
+            const pageInstance = (
+              <ViewportPageInstance
+                key={index}
+                image={pageImages.get(getPageImageKey(index, page))}
+                index={index}
+                page={page}
+                renderPage={renderPage}
+              >
+                {pageTemplate}
+              </ViewportPageInstance>
+            );
+
+            if (pageSlotTemplate === undefined) {
+              return pageInstance;
+            }
+
+            // oxlint-disable-next-line react/no-clone-element -- The page slot is a public layout template instantiated for each visible page.
+            return cloneElement(
+              pageSlotTemplate,
+              { "data-view-mode": viewMode, key: index },
+              pageInstance
+            );
+          });
+
+    if (pageSetTemplate === undefined) {
+      return (
+        <ViewportPageSet key={slot} {...pageSetProps}>
+          {pageInstances}
+        </ViewportPageSet>
+      );
+    }
+
+    // oxlint-disable-next-line react/no-clone-element -- The page set is a public layout template instantiated for each rail slot.
+    return cloneElement(
+      pageSetTemplate,
+      { ...pageSetProps, key: slot },
+      pageInstances
+    );
+  });
+  const trackStyle = {
+    ...trackTemplate?.props.style,
+    "--pcv-drag-offset": `${dragOffset}px`,
+  } as CSSProperties;
+  const trackProps: Partial<ViewportTrackProps> = {
+    "data-dragging": isDragging || undefined,
+    "data-slide-direction": pageTurnTransition?.direction,
+    "data-transition-state": pageTurnTransition?.phase ?? "idle",
+    onTransitionEnd: (event: ReactTransitionEvent<HTMLDivElement>) => {
+      trackTemplate?.props.onTransitionEnd?.(event);
+      onTransitionEnd?.(event);
+    },
+    style: trackStyle,
+  };
+
+  if (trackTemplate === undefined) {
+    return <ViewportTrack {...trackProps}>{pageSets}</ViewportTrack>;
+  }
+
+  // oxlint-disable-next-line react/no-clone-element -- The track is a public layout template filled by the managed rail.
+  return cloneElement(trackTemplate, trackProps, pageSets);
 };
 
 const isInteractiveTarget = (
@@ -444,6 +517,8 @@ export const Viewport = <TPage extends ViewerPage>({
   className,
   doublePageThreshold,
 }: ViewportProps<TPage>) => {
+  const layoutTemplate = getViewportLayoutTemplate(children);
+  const pageTemplate = layoutTemplate?.pageTemplate ?? children;
   const containerRef = useRef<HTMLDivElement>(null);
   const transitionIdRef = useRef(0);
   const touchStateRef = useRef<{
@@ -507,22 +582,38 @@ export const Viewport = <TPage extends ViewerPage>({
   const [panningKey, setPanningKey] = useState<string | null>(null);
   const [pan, setPan] = useState({ key: "", x: 0, y: 0 });
   const [zoom, setZoom] = useState({ key: "", scale: 1 });
-  const [pageImages, setPageImages] = useState<ReadonlyMap<string, PageImage>>(
-    () => new Map()
-  );
-  const pageImagesRef = useRef<ReadonlyMap<string, PageImage>>(new Map());
-  const cachedImageKeysRef = useRef<ReadonlySet<string>>(new Set());
-  const pageLoadControllersRef = useRef(new Map<string, AbortController>());
-  const retiredImageBitmapsRef = useRef<DecodedImage[]>([]);
   const usesManagedImageLoading =
     children !== undefined || renderPage === undefined;
-  const usesPageRail = children === undefined && renderPage === undefined;
+  const usesPageRail =
+    (children === undefined || layoutTemplate !== undefined) &&
+    renderPage === undefined;
   const panKey = `${currentIndex}:${pageFitMode}`;
   const activePan = pan.key === panKey ? pan : { x: 0, y: 0 };
   const activeZoom = zoom.key === panKey ? zoom : { scale: 1 };
   // Actual-size can exceed the viewport. A pinch may also zoom any fit mode
   // beyond its initial size. Fit-to-width remains swipeable after a double tap.
   const isPannable = pageFitMode === "actual" || activeZoom.scale > 1;
+  const {
+    cachedIndices,
+    orderedIndices,
+    orderedIndicesFor,
+    railSpreadIndices,
+  } = useViewportLayout({
+    displayedIndex,
+    pageCount: pages.length,
+    readingDirection,
+    spreadStartIndex,
+    transitionToIndex: pageTurnTransition?.toIndex,
+    usesPageRail,
+    viewMode,
+  });
+  const pageImages = useViewportImages({
+    cachedIndices,
+    keepImages: pageTurnTransition !== null,
+    pages,
+    plugins,
+    shouldLoadImages: usesManagedImageLoading,
+  });
   const isIncomingPageSetReady =
     pageTurnTransition !== null &&
     getVisibleIndices(
@@ -1167,143 +1258,6 @@ export const Viewport = <TPage extends ViewerPage>({
     };
   }, [beginTouch, cancelTouch, endTouch, moveTouch]);
 
-  const visibleIndices = useMemo(
-    () =>
-      getVisibleIndices(
-        displayedIndex,
-        pages.length,
-        spreadStartIndex,
-        viewMode
-      ),
-    [displayedIndex, pages.length, spreadStartIndex, viewMode]
-  );
-
-  // In RTL mode the next page visually appears on the left side
-  const orderedIndices = useMemo(
-    () =>
-      readingDirection === "rtl" && visibleIndices.length === 2
-        ? [visibleIndices[1], visibleIndices[0]]
-        : visibleIndices,
-    [readingDirection, visibleIndices]
-  );
-
-  const orderedIndicesFor = useCallback(
-    (index: number): number[] => {
-      const indices = getVisibleIndices(
-        index,
-        pages.length,
-        spreadStartIndex,
-        viewMode
-      );
-      return readingDirection === "rtl" && indices.length === 2
-        ? [indices[1], indices[0]]
-        : indices;
-    },
-    [pages.length, readingDirection, spreadStartIndex, viewMode]
-  );
-
-  const transitionToIndex = pageTurnTransition?.toIndex;
-  const previousSpreadIndex = getPreviousSpreadIndex(
-    displayedIndex,
-    spreadStartIndex,
-    viewMode
-  );
-  const nextSpreadIndex = getNextSpreadIndex(
-    displayedIndex,
-    pages.length,
-    spreadStartIndex,
-    viewMode
-  );
-  const railSpreadIndices = useMemo(() => {
-    if (usesPageRail) {
-      return readingDirection === "rtl"
-        ? [nextSpreadIndex, displayedIndex, previousSpreadIndex]
-        : [previousSpreadIndex, displayedIndex, nextSpreadIndex];
-    }
-
-    return [undefined, displayedIndex, undefined];
-  }, [
-    displayedIndex,
-    nextSpreadIndex,
-    previousSpreadIndex,
-    readingDirection,
-    usesPageRail,
-  ]);
-  const cachedIndices = useMemo(() => {
-    const indices = new Set<number>();
-
-    for (const spreadIndex of railSpreadIndices) {
-      if (spreadIndex === undefined) {
-        continue;
-      }
-
-      for (const pageIndex of getVisibleIndices(
-        spreadIndex,
-        pages.length,
-        spreadStartIndex,
-        viewMode
-      )) {
-        indices.add(pageIndex);
-      }
-    }
-
-    if (transitionToIndex !== undefined) {
-      for (const pageIndex of getVisibleIndices(
-        transitionToIndex,
-        pages.length,
-        spreadStartIndex,
-        viewMode
-      )) {
-        indices.add(pageIndex);
-      }
-    }
-
-    if (!usesPageRail) {
-      let nextIndex = getNextSpreadIndex(
-        displayedIndex,
-        pages.length,
-        spreadStartIndex,
-        viewMode
-      );
-      if (nextIndex !== undefined) {
-        for (const pageIndex of getVisibleIndices(
-          nextIndex,
-          pages.length,
-          spreadStartIndex,
-          viewMode
-        )) {
-          indices.add(pageIndex);
-        }
-        nextIndex = getNextSpreadIndex(
-          nextIndex,
-          pages.length,
-          spreadStartIndex,
-          viewMode
-        );
-        if (nextIndex !== undefined) {
-          for (const pageIndex of getVisibleIndices(
-            nextIndex,
-            pages.length,
-            spreadStartIndex,
-            viewMode
-          )) {
-            indices.add(pageIndex);
-          }
-        }
-      }
-    }
-
-    return [...indices];
-  }, [
-    displayedIndex,
-    pages.length,
-    railSpreadIndices,
-    spreadStartIndex,
-    transitionToIndex,
-    usesPageRail,
-    viewMode,
-  ]);
-
   const handleTransitionEnd = useCallback(
     (id: number, event: ReactTransitionEvent<HTMLDivElement>): void => {
       if (
@@ -1334,174 +1288,6 @@ export const Viewport = <TPage extends ViewerPage>({
 
     void notifyPageChange();
   }, [currentIndex, pages.length, plugins]);
-
-  useEffect(() => {
-    if (!usesManagedImageLoading) {
-      return;
-    }
-
-    const requestedImageKeys = new Set(
-      cachedIndices.flatMap((index) => {
-        const page = pages[index];
-        return page === undefined ? [] : [getPageImageKey(index, page)];
-      })
-    );
-    cachedImageKeysRef.current = requestedImageKeys;
-    const setPageImage = (index: number, image: PageImage): boolean => {
-      const page = pages[index];
-      if (page === undefined) {
-        closeImageBitmaps([image.bitmap]);
-        return false;
-      }
-
-      const imageKey = getPageImageKey(index, page);
-      if (!cachedImageKeysRef.current.has(imageKey)) {
-        closeImageBitmaps([image.bitmap]);
-        return false;
-      }
-
-      const previousImage = pageImagesRef.current.get(imageKey);
-      if (previousImage !== undefined && previousImage !== image) {
-        retiredImageBitmapsRef.current.push(previousImage.bitmap);
-      }
-
-      const nextImages = new Map([
-        ...pageImagesRef.current.entries(),
-        [imageKey, image],
-      ]);
-      pageImagesRef.current = nextImages;
-      setPageImages(nextImages);
-      return true;
-    };
-
-    const loadPage = async (index: number): Promise<void> => {
-      const page = pages[index];
-      if (page === undefined) {
-        return;
-      }
-
-      const imageKey = getPageImageKey(index, page);
-      if (pageImagesRef.current.has(imageKey)) {
-        return;
-      }
-
-      if (pageLoadControllersRef.current.has(imageKey)) {
-        return;
-      }
-
-      const abortController = new AbortController();
-      pageLoadControllersRef.current.set(imageKey, abortController);
-      const releasePageLoad = (): void => {
-        if (pageLoadControllersRef.current.get(imageKey) === abortController) {
-          pageLoadControllersRef.current.delete(imageKey);
-        }
-      };
-
-      try {
-        const bufferPromise = (async (): Promise<ArrayBuffer | undefined> => {
-          try {
-            return await runDataPipeline(
-              page.src,
-              plugins,
-              abortController.signal
-            );
-          } catch {
-            return undefined;
-          }
-        })();
-
-        if (page.placeholder !== undefined) {
-          const placeholderBuffer = await runDataPipeline(
-            page.placeholder,
-            [],
-            abortController.signal
-          );
-          const placeholderBitmap = await decodeImage(
-            placeholderBuffer,
-            page.placeholder
-          );
-          if (
-            !setPageImage(index, {
-              bitmap: placeholderBitmap,
-              placeholder: true,
-            })
-          ) {
-            releasePageLoad();
-            return;
-          }
-          await waitForVisiblePaint();
-        }
-
-        const buffer = await bufferPromise;
-        if (buffer === undefined) {
-          releasePageLoad();
-          return;
-        }
-        const bitmap = await decodeImage(buffer, page.src, page.mimeType);
-        setPageImage(index, { bitmap, placeholder: false });
-      } catch {
-        // Keep a decoded placeholder visible when the full page cannot load.
-      }
-      releasePageLoad();
-    };
-
-    void Promise.all(cachedIndices.map(loadPage));
-  }, [cachedIndices, pages, plugins, usesManagedImageLoading]);
-
-  useEffect(() => {
-    if (!usesManagedImageLoading || pageTurnTransition !== null) {
-      return;
-    }
-
-    const retainedImageKeys = new Set(
-      cachedIndices.flatMap((index) => {
-        const page = pages[index];
-        return page === undefined ? [] : [getPageImageKey(index, page)];
-      })
-    );
-    const nextImages = new Map(pageImagesRef.current);
-    const expiredImages: DecodedImage[] = [];
-
-    for (const [key, image] of nextImages) {
-      if (!retainedImageKeys.has(key)) {
-        expiredImages.push(image.bitmap);
-        nextImages.delete(key);
-      }
-    }
-
-    for (const [key, controller] of pageLoadControllersRef.current) {
-      if (!retainedImageKeys.has(key)) {
-        controller.abort();
-        pageLoadControllersRef.current.delete(key);
-      }
-    }
-
-    if (expiredImages.length > 0) {
-      closeImageBitmaps(expiredImages);
-      pageImagesRef.current = nextImages;
-      // oxlint-disable-next-line react/set-state-in-effect -- Pages are evicted only after their transition DOM has unmounted.
-      setPageImages(nextImages);
-    }
-
-    if (retiredImageBitmapsRef.current.length > 0) {
-      closeImageBitmaps(retiredImageBitmapsRef.current);
-      retiredImageBitmapsRef.current = [];
-    }
-  }, [cachedIndices, pageTurnTransition, pages, usesManagedImageLoading]);
-
-  useEffect(
-    () => () => {
-      for (const controller of pageLoadControllersRef.current.values()) {
-        controller.abort();
-      }
-      pageLoadControllersRef.current.clear();
-      closeImageBitmaps([
-        ...[...pageImagesRef.current.values()].map((image) => image.bitmap),
-        ...retiredImageBitmapsRef.current,
-      ]);
-    },
-    []
-  );
 
   return (
     <div
@@ -1570,60 +1356,27 @@ export const Viewport = <TPage extends ViewerPage>({
       role="button"
       tabIndex={0}
     >
-      <div
-        className="pcv-viewport-track"
-        style={{ "--pcv-drag-offset": `${dragOffset}px` } as CSSProperties}
+      <ViewportRail
+        activePan={activePan}
+        activeZoom={activeZoom}
+        dragOffset={dragOffset}
+        getPageIndices={orderedIndicesFor}
+        isDragging={isDragging}
+        layoutTemplate={layoutTemplate}
         onTransitionEnd={
           pageTurnTransition?.phase === "active"
             ? (event) => handleTransitionEnd(pageTurnTransition.id, event)
             : undefined
         }
-      >
-        {railSpreadIndices.map((spreadIndex, slot) => (
-          <div
-            key={slot}
-            aria-hidden={slot !== 1 || undefined}
-            className="pcv-viewport-page-set"
-            data-page-count={
-              spreadIndex === undefined
-                ? 0
-                : orderedIndicesFor(spreadIndex).length
-            }
-            data-reading-direction={readingDirection}
-            data-rail-slot={getRailSlotName(slot)}
-            style={
-              slot === 1
-                ? ({
-                    "--pcv-pan-x": `${activePan.x}px`,
-                    "--pcv-pan-y": `${activePan.y}px`,
-                    "--pcv-zoom-scale": activeZoom.scale,
-                  } as CSSProperties)
-                : undefined
-            }
-          >
-            {spreadIndex === undefined
-              ? null
-              : orderedIndicesFor(spreadIndex).map((index) => {
-                  const page = pages[index];
-                  if (page === undefined) {
-                    return null;
-                  }
-
-                  return (
-                    <ViewportPageInstance
-                      key={index}
-                      image={pageImages.get(getPageImageKey(index, page))}
-                      index={index}
-                      page={page}
-                      renderPage={renderPage}
-                    >
-                      {children}
-                    </ViewportPageInstance>
-                  );
-                })}
-          </div>
-        ))}
-      </div>
+        pageImages={pageImages}
+        pageTemplate={pageTemplate}
+        pages={pages}
+        pageTurnTransition={pageTurnTransition}
+        railSpreadIndices={railSpreadIndices}
+        readingDirection={readingDirection}
+        renderPage={renderPage}
+        viewMode={viewMode}
+      />
     </div>
   );
 };

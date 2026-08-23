@@ -62,7 +62,7 @@ function App() {
 
 ## Styling with Tailwind CSS
 
-`core.css` is optional. When using Tailwind CSS, omit the stylesheet and apply the layout styles through `className` instead. The viewer and viewport need a defined size, flex layout, and hidden overflow.
+`core.css` is optional. When using Tailwind CSS, omit the stylesheet and apply the layout styles through `className` instead. The viewer and viewport need a defined size, flex layout, and hidden overflow. Compose the public `ViewportTrack`, `ViewportPageSet`, and `ViewportPageSlot` components to style the page-turn structure without selecting implementation classes.
 
 ```tsx
 import { ComicViewer } from "@publira/comic-viewer";
@@ -73,7 +73,17 @@ export function Reader() {
       pages={pages}
       className="relative flex h-screen w-full min-h-0 min-w-0 overflow-hidden bg-neutral-950 text-neutral-100"
     >
-      <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden [&>*]:flex-1 [&>*]:min-w-0 [&>*]:items-center [&>*]:justify-center" />
+      <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <ComicViewer.ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%+var(--pcv-drag-offset)))] transition-transform duration-[260ms] ease-out data-[dragging]:transition-none data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%+var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]">
+          <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 [transform:translate(var(--pcv-pan-x,0),var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))] data-[view-mode=double]:data-[page-count=1]:data-[reading-direction=rtl]:justify-end data-[view-mode=double]:data-[page-count=1]:data-[reading-direction=ltr]:justify-start">
+            <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[view-mode=double]:basis-1/2 data-[view-mode=double]:max-w-1/2">
+              <ComicViewer.ViewportPage className="flex h-full w-full min-w-0 items-center justify-center">
+                <ComicViewer.PageCanvas className="h-full max-w-full object-contain" />
+              </ComicViewer.ViewportPage>
+            </ComicViewer.ViewportPageSlot>
+          </ComicViewer.ViewportPageSet>
+        </ComicViewer.ViewportTrack>
+      </ComicViewer.Viewport>
     </ComicViewer>
   );
 }
@@ -83,7 +93,7 @@ Use `className` on the other compound components to style their controls. For pa
 
 ```tsx
 <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
-  <ComicViewer.ViewportPage className="flex min-w-0 items-center justify-center">
+  <ComicViewer.ViewportPage className="flex h-full w-full min-w-0 items-center justify-center">
     <ComicViewer.PageCanvas className="h-full max-w-full object-contain" />
   </ComicViewer.ViewportPage>
 </ComicViewer.Viewport>

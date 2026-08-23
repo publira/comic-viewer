@@ -12,9 +12,15 @@ export { ComicViewer, type ComicViewerProps } from "./comic-viewer";
 export {
   PageCanvas,
   ViewportPage,
+  ViewportPageSet,
+  ViewportPageSlot,
+  ViewportTrack,
   type PageCanvasProps,
   type ViewportPageProps,
+  type ViewportPageSetProps,
+  type ViewportPageSlotProps,
   type ViewportProps,
+  type ViewportTrackProps,
 } from "./viewport";
 export { type ToolbarProps } from "./toolbar";
 export {

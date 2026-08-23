@@ -19,6 +19,9 @@ import {
   PageCanvas,
   Viewport,
   ViewportPage,
+  ViewportPageSet,
+  ViewportPageSlot,
+  ViewportTrack,
 } from "./viewport";
 
 type MockFetch = (
@@ -155,6 +158,65 @@ describe(Viewport, () => {
     );
     expect(screen.getByTestId("page-canvas")).toHaveClass("reader-canvas");
     expect(document.querySelector(".reader-page")).not.toBeNull();
+  });
+
+  it("renders a custom page rail with public layout components", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport>
+          <ViewportTrack className="reader-rail">
+            <ViewportPageSet className="reader-page-set">
+              <ViewportPageSlot className="reader-page-slot">
+                <ViewportPage />
+              </ViewportPageSlot>
+            </ViewportPageSet>
+          </ViewportTrack>
+        </Viewport>
+      </ViewerProvider>
+    );
+    const track = container.querySelector(".pcv-viewport-track");
+    const currentPageSet = container.querySelector<HTMLDivElement>(
+      '.pcv-viewport-page-set[data-rail-slot="current"]'
+    );
+
+    if (track === null || currentPageSet === null) {
+      throw new Error("The viewport rail was not rendered.");
+    }
+
+    expect(track).toHaveClass("reader-rail");
+    expect(currentPageSet).toHaveClass("reader-page-set");
+    expect(currentPageSet.firstElementChild).toHaveClass("reader-page-slot");
+  });
+
+  it("passes double-page alignment state to public layout components", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages.slice(0, 1)} initialViewMode="double">
+        <Viewport>
+          <ViewportTrack>
+            <ViewportPageSet>
+              <ViewportPageSlot>
+                <ViewportPage />
+              </ViewportPageSlot>
+            </ViewportPageSet>
+          </ViewportTrack>
+        </Viewport>
+      </ViewerProvider>
+    );
+    const currentPageSet = container.querySelector<HTMLDivElement>(
+      '.pcv-viewport-page-set[data-rail-slot="current"]'
+    );
+
+    if (currentPageSet === null) {
+      throw new Error("The current page set was not rendered.");
+    }
+
+    expect(currentPageSet).toHaveAttribute("data-page-count", "1");
+    expect(currentPageSet).toHaveAttribute("data-reading-direction", "rtl");
+    expect(currentPageSet).toHaveAttribute("data-view-mode", "double");
+    expect(currentPageSet.firstElementChild).toHaveAttribute(
+      "data-view-mode",
+      "double"
+    );
   });
 
   it("does not reload images when an equivalent page template rerenders", async () => {
