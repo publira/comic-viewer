@@ -19,7 +19,7 @@ import { getVisiblePageCount, useViewerContext } from "./viewer-context";
 
 interface PageNavigationState {
   isProgressVisible: boolean;
-  showProgress: () => void;
+  toggleProgress: () => void;
 }
 
 const PageNavigationContext = createContext<PageNavigationState | null>(null);
@@ -238,7 +238,7 @@ export const PageProgressTrack = ({
 
 export type PageProgressTriggerProps = ButtonHTMLAttributes<HTMLButtonElement>;
 
-/** A non-navigating control that consumers can use to reveal reading progress. */
+/** A non-navigating control that consumers can use to toggle reading progress. */
 export const PageProgressTrigger = ({
   "aria-label": ariaLabel = "Show reading progress",
   className,
@@ -249,7 +249,7 @@ export const PageProgressTrigger = ({
   const handleClick = (event: MouseEvent<HTMLButtonElement>): void => {
     onClick?.(event);
     if (!event.defaultPrevented) {
-      navigation?.showProgress();
+      navigation?.toggleProgress();
     }
   };
 
@@ -279,15 +279,21 @@ export const PageNavigation = ({
   const hideProgressTimeout = useRef<ReturnType<typeof setTimeout> | null>(
     null
   );
-  const showProgress = useCallback(() => {
-    setIsProgressVisible(true);
-    if (hideProgressTimeout.current !== null) {
-      clearTimeout(hideProgressTimeout.current);
-    }
-    hideProgressTimeout.current = setTimeout(
-      () => setIsProgressVisible(false),
-      2000
-    );
+  const toggleProgress = useCallback(() => {
+    setIsProgressVisible((isVisible) => {
+      if (isVisible) {
+        if (hideProgressTimeout.current !== null) {
+          clearTimeout(hideProgressTimeout.current);
+          hideProgressTimeout.current = null;
+        }
+      } else {
+        hideProgressTimeout.current = setTimeout(() => {
+          setIsProgressVisible(false);
+          hideProgressTimeout.current = null;
+        }, 2000);
+      }
+      return !isVisible;
+    });
   }, []);
   useEffect(
     () => () => {
@@ -298,8 +304,8 @@ export const PageNavigation = ({
     []
   );
   const navigationValue = useMemo(
-    () => ({ isProgressVisible, showProgress }),
-    [isProgressVisible, showProgress]
+    () => ({ isProgressVisible, toggleProgress }),
+    [isProgressVisible, toggleProgress]
   );
 
   return (
