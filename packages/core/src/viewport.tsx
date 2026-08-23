@@ -53,12 +53,38 @@ export const getImageMimeType = (
 
 type DecodedImage = HTMLImageElement | ImageBitmap;
 interface TouchInput {
-  readonly [index: number]: { clientX: number } | undefined;
-  item?: (index: number) => { clientX: number } | null;
+  readonly [index: number]: { clientX: number; clientY: number } | undefined;
+  item?: (index: number) => { clientX: number; clientY: number } | null;
 }
 
-const getFirstTouch = (touches: TouchInput): { clientX: number } | null =>
+const getFirstTouch = (
+  touches: TouchInput
+): { clientX: number; clientY: number } | null =>
   touches.item?.(0) ?? touches[0] ?? null;
+
+const getTouchPair = (
+  touches: TouchInput
+):
+  | [{ clientX: number; clientY: number }, { clientX: number; clientY: number }]
+  | null => {
+  const first = getFirstTouch(touches);
+  const second = touches.item?.(1) ?? touches[1] ?? null;
+  return first === null || second === null ? null : [first, second];
+};
+
+const getTouchDistance = (
+  first: { clientX: number; clientY: number },
+  second: { clientX: number; clientY: number }
+): number =>
+  Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+
+const getTouchCenter = (
+  first: { clientX: number; clientY: number },
+  second: { clientX: number; clientY: number }
+): { x: number; y: number } => ({
+  x: (first.clientX + second.clientX) / 2,
+  y: (first.clientY + second.clientY) / 2,
+});
 
 const getImageMimeTypeOrFallback = (
   sourceUrl: string,
@@ -272,6 +298,10 @@ const ViewportPageInstance = <TPage extends ViewerPage>({
 const EDGE_CLICK_RATIO = 0.3;
 const MIN_SWIPE_THRESHOLD_PX = 48;
 const SWIPE_THRESHOLD_RATIO = 0.12;
+const MAX_ZOOM_SCALE = 4;
+const MIN_ZOOM_SCALE = 0.5;
+const DOUBLE_TAP_DELAY_MS = 300;
+const DOUBLE_TAP_DISTANCE_PX = 24;
 const INTERACTIVE_ELEMENT_SELECTOR = [
   "a[href]",
   "audio[controls]",
@@ -372,6 +402,22 @@ const getPreviousSpreadIndex = (
   );
 };
 
+const getSwipeTargetIndex = (
+  direction: "left" | "right",
+  currentIndex: number,
+  pageCount: number,
+  readingDirection: "rtl" | "ltr",
+  spreadStartIndex: number,
+  viewMode: "single" | "double"
+): number | undefined => {
+  const movesForward =
+    (direction === "left" && readingDirection === "rtl") ||
+    (direction === "right" && readingDirection === "ltr");
+  return movesForward
+    ? getNextSpreadIndex(currentIndex, pageCount, spreadStartIndex, viewMode)
+    : getPreviousSpreadIndex(currentIndex, spreadStartIndex, viewMode);
+};
+
 const getRailSlotName = (slot: number): "previous" | "current" | "next" => {
   if (slot === 0) {
     return "previous";
@@ -402,21 +448,55 @@ export const Viewport = <TPage extends ViewerPage>({
   const transitionIdRef = useRef(0);
   const touchStateRef = useRef<{
     startX: number;
+    startY: number;
     currentX: number;
+    currentY: number;
     active: boolean;
   }>({
     active: false,
     currentX: 0,
+    currentY: 0,
     startX: 0,
+    startY: 0,
   });
+  const panStateRef = useRef<{
+    pointerId: number | "touch" | null;
+    startPanX: number;
+    startPanY: number;
+    startX: number;
+    startY: number;
+  }>({
+    pointerId: null,
+    startPanX: 0,
+    startPanY: 0,
+    startX: 0,
+    startY: 0,
+  });
+  const didPanRef = useRef(false);
+  const pinchStateRef = useRef<{
+    startCenterX: number;
+    startCenterY: number;
+    startDistance: number;
+    startPanX: number;
+    startPanY: number;
+    startScale: number;
+  } | null>(null);
+  const lastTapRef = useRef<{
+    key: string;
+    time: number;
+    x: number;
+    y: number;
+  } | null>(null);
   const {
     pages,
     plugins,
     currentIndex,
+    pageFitMode,
     readingDirection,
     spreadStartIndex,
     goToNext,
     goToPrev,
+    setPageFitMode,
   } = useViewerContext<TPage>();
   const viewMode = useViewMode(containerRef, doublePageThreshold);
   const [pageTurnTransition, setPageTurnTransition] =
@@ -424,6 +504,9 @@ export const Viewport = <TPage extends ViewerPage>({
   const [displayedIndex, setDisplayedIndex] = useState(currentIndex);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [panningKey, setPanningKey] = useState<string | null>(null);
+  const [pan, setPan] = useState({ key: "", x: 0, y: 0 });
+  const [zoom, setZoom] = useState({ key: "", scale: 1 });
   const [pageImages, setPageImages] = useState<ReadonlyMap<string, PageImage>>(
     () => new Map()
   );
@@ -434,6 +517,12 @@ export const Viewport = <TPage extends ViewerPage>({
   const usesManagedImageLoading =
     children !== undefined || renderPage === undefined;
   const usesPageRail = children === undefined && renderPage === undefined;
+  const panKey = `${currentIndex}:${pageFitMode}`;
+  const activePan = pan.key === panKey ? pan : { x: 0, y: 0 };
+  const activeZoom = zoom.key === panKey ? zoom : { scale: 1 };
+  // Actual-size can exceed the viewport. A pinch may also zoom any fit mode
+  // beyond its initial size. Fit-to-width remains swipeable after a double tap.
+  const isPannable = pageFitMode === "actual" || activeZoom.scale > 1;
   const isIncomingPageSetReady =
     pageTurnTransition !== null &&
     getVisibleIndices(
@@ -613,7 +702,212 @@ export const Viewport = <TPage extends ViewerPage>({
     };
   }, [goByHorizontalDirection]);
 
+  const getPanLimits = useCallback((scale: number) => {
+    const viewport = containerRef.current;
+    const currentPageSet = viewport?.querySelector<HTMLDivElement>(
+      '.pcv-viewport-page-set[data-rail-slot="current"]'
+    );
+    if (viewport === null || viewport === undefined) {
+      return { x: 0, y: 0 };
+    }
+    if (currentPageSet === null || currentPageSet === undefined) {
+      return { x: 0, y: 0 };
+    }
+
+    return {
+      x: Math.max(
+        0,
+        (currentPageSet.scrollWidth * scale - viewport.clientWidth) / 2
+      ),
+      y: Math.max(
+        0,
+        (currentPageSet.scrollHeight * scale - viewport.clientHeight) / 2
+      ),
+    };
+  }, []);
+
+  const updatePan = useCallback(
+    (x: number, y: number, scale: number): void => {
+      const limits = getPanLimits(scale);
+      setPan({
+        key: panKey,
+        x: Math.max(-limits.x, Math.min(limits.x, x)),
+        y: Math.max(-limits.y, Math.min(limits.y, y)),
+      });
+    },
+    [getPanLimits, panKey]
+  );
+
+  const beginPan = useCallback(
+    (pointerId: number | "touch", clientX: number, clientY: number): void => {
+      if (!isPannable || panStateRef.current.pointerId !== null) {
+        return;
+      }
+
+      didPanRef.current = false;
+      panStateRef.current = {
+        pointerId,
+        startPanX: activePan.x,
+        startPanY: activePan.y,
+        startX: clientX,
+        startY: clientY,
+      };
+      setPanningKey(panKey);
+    },
+    [activePan.x, activePan.y, isPannable, panKey]
+  );
+
+  const movePan = useCallback(
+    (
+      pointerId: number | "touch",
+      clientX: number,
+      clientY: number
+    ): boolean => {
+      const panState = panStateRef.current;
+      if (panState.pointerId !== pointerId) {
+        return false;
+      }
+
+      const deltaX = clientX - panState.startX;
+      const deltaY = clientY - panState.startY;
+      if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+        didPanRef.current = true;
+      }
+      updatePan(
+        panState.startPanX + deltaX,
+        panState.startPanY + deltaY,
+        activeZoom.scale
+      );
+      return true;
+    },
+    [activeZoom.scale, updatePan]
+  );
+
+  const endPan = useCallback((pointerId: number | "touch"): void => {
+    if (panStateRef.current.pointerId !== pointerId) {
+      return;
+    }
+
+    panStateRef.current.pointerId = null;
+    setPanningKey(null);
+  }, []);
+
+  const resetToFitWidth = useCallback((): void => {
+    const widthPanKey = `${currentIndex}:width`;
+    didPanRef.current = true;
+    pinchStateRef.current = null;
+    setPageFitMode("width");
+    setPan({ key: widthPanKey, x: 0, y: 0 });
+    setPanningKey(null);
+    setZoom({ key: widthPanKey, scale: 1 });
+  }, [currentIndex, setPageFitMode]);
+
+  const registerTap = useCallback(
+    (clientX: number, clientY: number): void => {
+      const now = Date.now();
+      const previousTap = lastTapRef.current;
+      if (
+        previousTap !== null &&
+        previousTap.key === panKey &&
+        now - previousTap.time <= DOUBLE_TAP_DELAY_MS &&
+        Math.hypot(clientX - previousTap.x, clientY - previousTap.y) <=
+          DOUBLE_TAP_DISTANCE_PX
+      ) {
+        lastTapRef.current = null;
+        resetToFitWidth();
+        return;
+      }
+
+      lastTapRef.current = { key: panKey, time: now, x: clientX, y: clientY };
+    },
+    [panKey, resetToFitWidth]
+  );
+
+  const beginPinch = useCallback(
+    (touches: TouchInput): boolean => {
+      const pair = getTouchPair(touches);
+      if (pair === null) {
+        return false;
+      }
+
+      const [first, second] = pair;
+      const startDistance = getTouchDistance(first, second);
+      if (startDistance === 0) {
+        return false;
+      }
+
+      const center = getTouchCenter(first, second);
+      didPanRef.current = false;
+      pinchStateRef.current = {
+        startCenterX: center.x,
+        startCenterY: center.y,
+        startDistance,
+        startPanX: activePan.x,
+        startPanY: activePan.y,
+        startScale: activeZoom.scale,
+      };
+      panStateRef.current.pointerId = null;
+      touchStateRef.current.active = false;
+      setIsDragging(false);
+      setPanningKey(panKey);
+      return true;
+    },
+    [activePan.x, activePan.y, activeZoom.scale, panKey]
+  );
+
+  const movePinch = useCallback(
+    (touches: TouchInput): boolean => {
+      const pinchState = pinchStateRef.current;
+      const pair = getTouchPair(touches);
+      if (pinchState === null || pair === null) {
+        return false;
+      }
+
+      const [first, second] = pair;
+      const distance = getTouchDistance(first, second);
+      const center = getTouchCenter(first, second);
+      const scale = Math.max(
+        MIN_ZOOM_SCALE,
+        Math.min(
+          MAX_ZOOM_SCALE,
+          pinchState.startScale * (distance / pinchState.startDistance)
+        )
+      );
+      if (
+        Math.abs(center.x - pinchState.startCenterX) > 2 ||
+        Math.abs(center.y - pinchState.startCenterY) > 2 ||
+        Math.abs(scale - pinchState.startScale) > 0.01
+      ) {
+        didPanRef.current = true;
+      }
+      setZoom({ key: panKey, scale });
+      updatePan(
+        pinchState.startPanX + center.x - pinchState.startCenterX,
+        pinchState.startPanY + center.y - pinchState.startCenterY,
+        scale
+      );
+      return true;
+    },
+    [panKey, updatePan]
+  );
+
+  const endPinch = useCallback((): void => {
+    if (pinchStateRef.current === null) {
+      return;
+    }
+
+    pinchStateRef.current = null;
+    setPanningKey(null);
+  }, []);
+
   const handleEdgeClick = (event: MouseEvent<HTMLDivElement>): void => {
+    if (didPanRef.current) {
+      didPanRef.current = false;
+      return;
+    }
+    if (isPannable) {
+      return;
+    }
     const rect = event.currentTarget.getBoundingClientRect();
     const offsetX = event.clientX - rect.left;
     const edgeWidth = rect.width * EDGE_CLICK_RATIO;
@@ -648,33 +942,51 @@ export const Viewport = <TPage extends ViewerPage>({
         return;
       }
 
+      if (beginPinch(touches)) {
+        return;
+      }
+
       const touch = getFirstTouch(touches);
       if (touch === null) {
+        return;
+      }
+
+      if (isPannable) {
+        beginPan("touch", touch.clientX, touch.clientY);
         return;
       }
 
       touchStateRef.current = {
         active: true,
         currentX: touch.clientX,
+        currentY: touch.clientY,
         startX: touch.clientX,
+        startY: touch.clientY,
       };
       setIsDragging(usesPageRail);
     },
-    [pageTurnTransition, usesPageRail]
+    [beginPan, beginPinch, isPannable, pageTurnTransition, usesPageRail]
   );
 
   const moveTouch = useCallback(
     (touches: TouchInput): void => {
-      if (!touchStateRef.current.active) {
+      if (movePinch(touches)) {
         return;
       }
-
       const touch = getFirstTouch(touches);
       if (touch === null) {
         return;
       }
 
+      if (movePan("touch", touch.clientX, touch.clientY)) {
+        return;
+      }
+      if (!touchStateRef.current.active) {
+        return;
+      }
+
       touchStateRef.current.currentX = touch.clientX;
+      touchStateRef.current.currentY = touch.clientY;
       if (usesPageRail) {
         const offset =
           touchStateRef.current.currentX - touchStateRef.current.startX;
@@ -686,71 +998,92 @@ export const Viewport = <TPage extends ViewerPage>({
         );
       }
     },
-    [usesPageRail]
+    [movePan, movePinch, usesPageRail]
   );
 
-  const endTouch = useCallback((): void => {
-    if (!touchStateRef.current.active) {
-      return;
-    }
+  const endTouch = useCallback(
+    (changedTouches?: TouchInput): void => {
+      if (pinchStateRef.current !== null) {
+        endPinch();
+        return;
+      }
+      const changedTouch =
+        changedTouches === undefined ? null : getFirstTouch(changedTouches);
+      if (panStateRef.current.pointerId === "touch") {
+        const wasPanned = didPanRef.current;
+        endPan("touch");
+        if (!wasPanned && changedTouch !== null) {
+          registerTap(changedTouch.clientX, changedTouch.clientY);
+        }
+        return;
+      }
+      if (!touchStateRef.current.active) {
+        if (!didPanRef.current && changedTouch !== null) {
+          registerTap(changedTouch.clientX, changedTouch.clientY);
+        }
+        return;
+      }
 
-    const containerWidth = containerRef.current?.clientWidth ?? 0;
-    const threshold = Math.max(
-      MIN_SWIPE_THRESHOLD_PX,
-      containerWidth * SWIPE_THRESHOLD_RATIO
-    );
-    const deltaX =
-      touchStateRef.current.currentX - touchStateRef.current.startX;
+      const containerWidth = containerRef.current?.clientWidth ?? 0;
+      const threshold = Math.max(
+        MIN_SWIPE_THRESHOLD_PX,
+        containerWidth * SWIPE_THRESHOLD_RATIO
+      );
+      const deltaX =
+        touchStateRef.current.currentX - touchStateRef.current.startX;
 
-    touchStateRef.current.active = false;
-    setIsDragging(false);
+      touchStateRef.current.active = false;
+      setIsDragging(false);
 
-    if (Math.abs(deltaX) < threshold) {
+      if (Math.abs(deltaX) < threshold) {
+        setDragOffset(0);
+        registerTap(
+          changedTouch?.clientX ?? touchStateRef.current.currentX,
+          changedTouch?.clientY ?? touchStateRef.current.currentY
+        );
+        return;
+      }
+
+      const direction = deltaX > 0 ? "left" : "right";
+      const targetIndex = getSwipeTargetIndex(
+        direction,
+        displayedIndex,
+        pages.length,
+        readingDirection,
+        spreadStartIndex,
+        viewMode
+      );
+
+      if (targetIndex === undefined) {
+        setDragOffset(0);
+        return;
+      }
+
       setDragOffset(0);
-      return;
-    }
-
-    const direction = deltaX > 0 ? "left" : "right";
-    let targetIndex: number | undefined;
-    if (direction === "left") {
-      targetIndex =
-        readingDirection === "rtl"
-          ? getNextSpreadIndex(
-              displayedIndex,
-              pages.length,
-              spreadStartIndex,
-              viewMode
-            )
-          : getPreviousSpreadIndex(displayedIndex, spreadStartIndex, viewMode);
-    } else {
-      targetIndex =
-        readingDirection === "rtl"
-          ? getPreviousSpreadIndex(displayedIndex, spreadStartIndex, viewMode)
-          : getNextSpreadIndex(
-              displayedIndex,
-              pages.length,
-              spreadStartIndex,
-              viewMode
-            );
-    }
-
-    if (targetIndex === undefined) {
-      setDragOffset(0);
-      return;
-    }
-
-    setDragOffset(0);
-    goByHorizontalDirection(direction);
-  }, [
-    displayedIndex,
-    goByHorizontalDirection,
-    pages.length,
-    readingDirection,
-    spreadStartIndex,
-    viewMode,
-  ]);
+      goByHorizontalDirection(direction);
+    },
+    [
+      displayedIndex,
+      endPan,
+      endPinch,
+      goByHorizontalDirection,
+      pages.length,
+      readingDirection,
+      registerTap,
+      spreadStartIndex,
+      viewMode,
+    ]
+  );
 
   const cancelTouch = useCallback((): void => {
+    if (pinchStateRef.current !== null) {
+      endPinch();
+      return;
+    }
+    if (panStateRef.current.pointerId === "touch") {
+      endPan("touch");
+      return;
+    }
     if (!touchStateRef.current.active) {
       return;
     }
@@ -758,7 +1091,7 @@ export const Viewport = <TPage extends ViewerPage>({
     touchStateRef.current.active = false;
     setDragOffset(0);
     setIsDragging(false);
-  }, []);
+  }, [endPan, endPinch]);
 
   useEffect(() => {
     const root = containerRef.current?.closest(".pcv-root");
@@ -778,13 +1111,19 @@ export const Viewport = <TPage extends ViewerPage>({
       }
     };
     const onTouchMove = (event: Event): void => {
-      if (touchStateRef.current.active) {
+      if (
+        touchStateRef.current.active ||
+        panStateRef.current.pointerId === "touch" ||
+        pinchStateRef.current !== null
+      ) {
         event.stopPropagation();
         moveTouch(getTouches(event));
         if (
-          Math.abs(
-            touchStateRef.current.currentX - touchStateRef.current.startX
-          ) >= MIN_SWIPE_THRESHOLD_PX &&
+          (pinchStateRef.current !== null ||
+            panStateRef.current.pointerId === "touch" ||
+            Math.abs(
+              touchStateRef.current.currentX - touchStateRef.current.startX
+            ) >= MIN_SWIPE_THRESHOLD_PX) &&
           event.cancelable
         ) {
           event.preventDefault();
@@ -792,13 +1131,23 @@ export const Viewport = <TPage extends ViewerPage>({
       }
     };
     const onTouchEnd = (event: Event): void => {
-      if (touchStateRef.current.active) {
+      if (
+        touchStateRef.current.active ||
+        panStateRef.current.pointerId === "touch" ||
+        pinchStateRef.current !== null
+      ) {
         event.stopPropagation();
-        endTouch();
+        endTouch(
+          (event as unknown as { changedTouches: TouchInput }).changedTouches
+        );
       }
     };
     const onTouchCancel = (event: Event): void => {
-      if (touchStateRef.current.active) {
+      if (
+        touchStateRef.current.active ||
+        panStateRef.current.pointerId === "touch" ||
+        pinchStateRef.current !== null
+      ) {
         event.stopPropagation();
         cancelTouch();
       }
@@ -1163,6 +1512,9 @@ export const Viewport = <TPage extends ViewerPage>({
       data-view-mode={viewMode}
       data-page-count={orderedIndices.length}
       data-dragging={isDragging || undefined}
+      data-pannable={isPannable || undefined}
+      data-panning={panningKey === panKey || undefined}
+      data-page-fit-mode={pageFitMode}
       onClick={handleEdgeClick}
       onKeyDown={handleKeyDown}
       onTouchStart={(event) => {
@@ -1172,14 +1524,44 @@ export const Viewport = <TPage extends ViewerPage>({
       onTouchMove={(event) => {
         event.stopPropagation();
         moveTouch(event.touches);
+        if (pinchStateRef.current !== null && event.cancelable) {
+          event.preventDefault();
+        }
       }}
       onTouchEnd={(event) => {
         event.stopPropagation();
-        endTouch();
+        endTouch(event.changedTouches);
+        if (didPanRef.current && event.cancelable) {
+          event.preventDefault();
+        }
       }}
       onTouchCancel={(event) => {
         event.stopPropagation();
         cancelTouch();
+      }}
+      onPointerDown={(event) => {
+        if (
+          !isPannable ||
+          !event.isPrimary ||
+          (event.pointerType === "mouse" && event.button !== 0)
+        ) {
+          return;
+        }
+
+        beginPan(event.pointerId, event.clientX, event.clientY);
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+        event.preventDefault();
+      }}
+      onPointerMove={(event) => {
+        if (movePan(event.pointerId, event.clientX, event.clientY)) {
+          event.preventDefault();
+        }
+      }}
+      onPointerUp={(event) => {
+        endPan(event.pointerId);
+      }}
+      onPointerCancel={(event) => {
+        endPan(event.pointerId);
       }}
       // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- The viewer is a composite widget, not a button.
       role="button"
@@ -1206,6 +1588,15 @@ export const Viewport = <TPage extends ViewerPage>({
             }
             data-reading-direction={readingDirection}
             data-rail-slot={getRailSlotName(slot)}
+            style={
+              slot === 1
+                ? ({
+                    "--pcv-pan-x": `${activePan.x}px`,
+                    "--pcv-pan-y": `${activePan.y}px`,
+                    "--pcv-zoom-scale": activeZoom.scale,
+                  } as CSSProperties)
+                : undefined
+            }
           >
             {spreadIndex === undefined
               ? null

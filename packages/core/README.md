@@ -64,6 +64,21 @@ export function Reader() {
 
 `initialReadingDirection` defaults to `"rtl"` for right-to-left manga reading. Set it to `"ltr"` for left-to-right comics. The viewport switches between single and double-page display based on its width; use `doublePageThreshold` to change the default 768px breakpoint.
 
+### Page size and panning
+
+Pages initially fit their height. Pinch with two fingers to zoom and move the page; once zoomed, drag with one pointer to pan. A single-finger double tap resets the page to fit-to-width. These gestures take priority over page navigation, so they cannot accidentally turn the page. If the reader needs visible keyboard-accessible sizing controls, add the optional `PageFitModeControls` inside a `Toolbar`; its buttons expose their selected state through `aria-pressed`.
+
+```tsx
+<ComicViewer pages={pages} initialPageFitMode="height">
+  <ComicViewer.Viewport />
+  <ComicViewer.Toolbar>
+    <ComicViewer.PageFitModeControls />
+  </ComicViewer.Toolbar>
+</ComicViewer>
+```
+
+For a custom arrangement, use `ComicViewer.FitWidthButton`, `ComicViewer.FitHeightButton`, and `ComicViewer.ActualSizeButton`.
+
 ### Controlled navigation
 
 By default, the viewer manages its page index internally. Set `initialIndex` to choose its starting page. To synchronize the index with a router, persisted state, or another control, pass `currentIndex` and update it from `onIndexChange`. Both values are zero-based. The callback is called only when navigation changes the index, including navigation through buttons, keyboard input, viewport edge clicks, swipes, and `useViewerContext().goTo()`.
