@@ -518,7 +518,8 @@ export const Viewport = <TPage extends ViewerPage>({
   doublePageThreshold,
 }: ViewportProps<TPage>) => {
   const layoutTemplate = getViewportLayoutTemplate(children);
-  const pageTemplate = layoutTemplate?.pageTemplate ?? children;
+  const pageTemplate =
+    layoutTemplate === undefined ? children : layoutTemplate.pageTemplate;
   const containerRef = useRef<HTMLDivElement>(null);
   const transitionIdRef = useRef(0);
   const touchStateRef = useRef<{

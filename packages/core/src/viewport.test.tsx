@@ -219,6 +219,52 @@ describe(Viewport, () => {
     );
   });
 
+  it("passes LTR reading direction to public page-set components", () => {
+    const { container } = render(
+      <ViewerProvider
+        pages={pages.slice(0, 1)}
+        initialReadingDirection="ltr"
+        initialViewMode="double"
+      >
+        <Viewport>
+          <ViewportTrack>
+            <ViewportPageSet>
+              <ViewportPageSlot>
+                <ViewportPage />
+              </ViewportPageSlot>
+            </ViewportPageSet>
+          </ViewportTrack>
+        </Viewport>
+      </ViewerProvider>
+    );
+    const currentPageSet = container.querySelector<HTMLDivElement>(
+      '.pcv-viewport-page-set[data-rail-slot="current"]'
+    );
+
+    if (currentPageSet === null) {
+      throw new Error("The current page set was not rendered.");
+    }
+
+    expect(currentPageSet).toHaveAttribute("data-reading-direction", "ltr");
+  });
+
+  it("uses the default page when a custom page slot is empty", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages.slice(0, 1)}>
+        <Viewport>
+          <ViewportTrack>
+            <ViewportPageSet>
+              <ViewportPageSlot />
+            </ViewportPageSet>
+          </ViewportTrack>
+        </Viewport>
+      </ViewerProvider>
+    );
+
+    expect(container.querySelectorAll(".pcv-viewport-track")).toHaveLength(1);
+    expect(container.querySelectorAll(".pcv-page")).toHaveLength(1);
+  });
+
   it("does not reload images when an equivalent page template rerenders", async () => {
     const image = {
       close: vi.fn<() => void>(),
