@@ -1244,6 +1244,79 @@ describe(Viewport, () => {
     expect(track).toHaveStyle("--pcv-drag-offset: 0px");
   });
 
+  it.each([
+    ["LTR", "ltr", -80, 1],
+    ["RTL", "rtl", 80, 1],
+  ] as const)(
+    "continues a qualifying %s swipe from its drag offset into the page turn",
+    (label, initialReadingDirection, movement, expectedIndex) => {
+      vi.useFakeTimers();
+      const animationFrames: FrameRequestCallback[] = [];
+      vi.stubGlobal(
+        "fetch",
+        vi.fn<MockFetch>().mockRejectedValue(new Error("Image unavailable."))
+      );
+      vi.stubGlobal(
+        "requestAnimationFrame",
+        // oxlint-disable-next-line promise/prefer-await-to-callbacks -- The test deliberately captures animation-frame callbacks for manual execution.
+        vi.fn((callback: FrameRequestCallback) => {
+          animationFrames.push(callback);
+          return animationFrames.length;
+        })
+      );
+      vi.stubGlobal("cancelAnimationFrame", vi.fn());
+
+      try {
+        const { container } = render(
+          <ViewerProvider
+            pages={pages}
+            initialReadingDirection={initialReadingDirection}
+            initialViewMode="single"
+          >
+            <Viewport />
+            <CurrentIndexIndicator />
+          </ViewerProvider>
+        );
+        const viewport = container.querySelector(".pcv-viewport");
+        const track = container.querySelector(".pcv-viewport-track");
+
+        if (viewport === null || track === null) {
+          throw new Error(`${label} viewport rail was not rendered.`);
+        }
+
+        fireEvent.touchStart(viewport, {
+          touches: [{ clientX: 200 }],
+        });
+        fireEvent.touchMove(viewport, {
+          touches: [{ clientX: 200 + movement }],
+        });
+        fireEvent.touchEnd(viewport, {
+          changedTouches: [{ clientX: 200 + movement }],
+          touches: [],
+        });
+
+        expect(screen.getByTestId("current-index")).toHaveTextContent(
+          String(expectedIndex)
+        );
+        expect(viewport).toHaveAttribute("data-transition-state", "waiting");
+        expect(track).toHaveStyle(`--pcv-drag-offset: ${movement}px`);
+
+        act(() => {
+          vi.advanceTimersByTime(1200);
+        });
+        act(() => {
+          animationFrames.shift()?.(0);
+        });
+
+        expect(viewport).toHaveAttribute("data-transition-state", "active");
+        expect(track).toHaveStyle("--pcv-drag-offset: 0px");
+      } finally {
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+      }
+    }
+  );
+
   it("moves the page rail for a swipe started on the progress trigger", () => {
     const { container } = render(
       <ViewerProvider pages={pages} initialViewMode="single">
