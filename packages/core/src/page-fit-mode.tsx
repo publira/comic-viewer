@@ -3,7 +3,7 @@ import type { ButtonHTMLAttributes, PropsWithChildren } from "react";
 import { useViewerContext } from "./viewer-context";
 import type { PageFitMode } from "./viewer-context";
 
-type PageFitModeButtonProps = Omit<
+export type PageFitModeButtonProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
   "aria-pressed" | "type"
 > & {
@@ -84,9 +84,9 @@ export const PageFitModeControls = ({
   className,
 }: PageFitModeControlsProps) => (
   <fieldset
-    aria-label={ariaLabel}
     className={`pcv-page-fit-mode-controls${className === undefined ? "" : ` ${className}`}`}
   >
+    <legend>{ariaLabel}</legend>
     {children ?? (
       <>
         <FitWidthButton />

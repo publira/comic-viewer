@@ -1140,6 +1140,7 @@ export const Viewport = <TPage extends ViewerPage>({
         endTouch(
           (event as unknown as { changedTouches: TouchInput }).changedTouches
         );
+        didPanRef.current = false;
       }
     };
     const onTouchCancel = (event: Event): void => {
@@ -1150,6 +1151,7 @@ export const Viewport = <TPage extends ViewerPage>({
       ) {
         event.stopPropagation();
         cancelTouch();
+        didPanRef.current = false;
       }
     };
 
@@ -1534,10 +1536,12 @@ export const Viewport = <TPage extends ViewerPage>({
         if (didPanRef.current && event.cancelable) {
           event.preventDefault();
         }
+        didPanRef.current = false;
       }}
       onTouchCancel={(event) => {
         event.stopPropagation();
         cancelTouch();
+        didPanRef.current = false;
       }}
       onPointerDown={(event) => {
         if (

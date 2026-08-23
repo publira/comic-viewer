@@ -1176,8 +1176,13 @@ describe(Viewport, () => {
 
   it("returns to fit-to-width on a single-finger double tap", () => {
     const { container } = render(
-      <ViewerProvider pages={pages} initialPageFitMode="actual">
+      <ViewerProvider
+        pages={pages}
+        initialIndex={1}
+        initialPageFitMode="actual"
+      >
         <Viewport />
+        <CurrentIndexIndicator />
       </ViewerProvider>
     );
     const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
@@ -1205,16 +1210,9 @@ describe(Viewport, () => {
     expect(viewport).toHaveAttribute("data-page-fit-mode", "width");
     expect(pageSet).toHaveStyle("--pcv-zoom-scale: 1");
 
-    fireEvent.touchStart(viewport, {
-      touches: [{ clientX: 200, clientY: 100 }],
-    });
-    fireEvent.touchMove(viewport, {
-      touches: [{ clientX: 120, clientY: 100 }],
-    });
-
-    expect(viewport).not.toHaveAttribute("data-pannable");
-    expect(viewport).toHaveAttribute("data-dragging", "true");
-    fireEvent.touchEnd(viewport);
+    setViewportRect(viewport);
+    fireEvent.click(viewport, { clientX: 95 });
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
   });
 
   it("moves the page rail while a touch swipe is in progress", () => {

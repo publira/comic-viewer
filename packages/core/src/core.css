@@ -63,7 +63,7 @@
   justify-content: center;
 }
 
-.pcv-viewport-page-set[data-rail-slot="current"] > * {
+.pcv-viewport-page-set[data-rail-slot="current"] {
   transform: translate(var(--pcv-pan-x, 0), var(--pcv-pan-y, 0))
     scale(var(--pcv-zoom-scale, 1));
   transform-origin: center;
@@ -173,6 +173,16 @@
   margin: 0;
   padding: 0;
   border: 0;
+}
+
+.pcv-page-fit-mode-controls > legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .pcv-page-fit-mode-button[aria-pressed="true"] {

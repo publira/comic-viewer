@@ -14,6 +14,7 @@ export {
   FitWidthButton,
   PageFitModeButton,
   PageFitModeControls,
+  type PageFitModeButtonProps,
   type PageFitModeControlsProps,
 } from "./page-fit-mode";
 export { ComicViewer, type ComicViewerProps } from "./comic-viewer";
