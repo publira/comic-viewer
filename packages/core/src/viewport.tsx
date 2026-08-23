@@ -325,6 +325,7 @@ interface PageTurnTransition {
 }
 
 const PAGE_TURN_FALLBACK_DURATION_MS = 320;
+const PAGE_TURN_IMAGE_WAIT_TIMEOUT_MS = 1200;
 
 const getVisibleIndices = (
   currentIndex: number,
@@ -427,6 +428,8 @@ export const Viewport = <TPage extends ViewerPage>({
     () => new Map()
   );
   const pageImagesRef = useRef<ReadonlyMap<string, PageImage>>(new Map());
+  const cachedImageKeysRef = useRef<ReadonlySet<string>>(new Set());
+  const pageLoadControllersRef = useRef(new Map<string, AbortController>());
   const retiredImageBitmapsRef = useRef<DecodedImage[]>([]);
   const usesManagedImageLoading =
     children !== undefined || renderPage === undefined;
@@ -502,7 +505,17 @@ export const Viewport = <TPage extends ViewerPage>({
       if (!isIncomingPageSetReady) {
         // oxlint-disable-next-line react/set-state-in-effect -- Do not leave the current spread between slots while its destination is loading.
         setDragOffset(0);
-        return;
+        const waitTimeout = setTimeout(() => {
+          setPageTurnTransition((transition) =>
+            transition?.id === pageTurnTransition.id
+              ? { ...transition, phase: "prepared" }
+              : transition
+          );
+        }, PAGE_TURN_IMAGE_WAIT_TIMEOUT_MS);
+
+        return () => {
+          clearTimeout(waitTimeout);
+        };
       }
 
       // oxlint-disable-next-line react/set-state-in-effect -- The waiting state becomes renderable only after its image cache is ready.
@@ -514,10 +527,7 @@ export const Viewport = <TPage extends ViewerPage>({
       return;
     }
 
-    if (
-      pageTurnTransition?.phase !== "prepared" ||
-      (usesManagedImageLoading && !isIncomingPageSetReady)
-    ) {
+    if (pageTurnTransition?.phase !== "prepared") {
       return;
     }
 
@@ -543,7 +553,7 @@ export const Viewport = <TPage extends ViewerPage>({
     return () => {
       cancelFrame(animationFrame);
     };
-  }, [isIncomingPageSetReady, pageTurnTransition, usesManagedImageLoading]);
+  }, [isIncomingPageSetReady, pageTurnTransition]);
 
   useEffect(() => {
     if (pageTurnTransition?.phase !== "active") {
@@ -729,6 +739,7 @@ export const Viewport = <TPage extends ViewerPage>({
       return;
     }
 
+    setDragOffset(0);
     goByHorizontalDirection(direction);
   }, [
     displayedIndex,
@@ -979,14 +990,14 @@ export const Viewport = <TPage extends ViewerPage>({
       return;
     }
 
-    let disposed = false;
-    const abortController = new AbortController();
+    const requestedImageKeys = new Set(
+      cachedIndices.flatMap((index) => {
+        const page = pages[index];
+        return page === undefined ? [] : [getPageImageKey(index, page)];
+      })
+    );
+    cachedImageKeysRef.current = requestedImageKeys;
     const setPageImage = (index: number, image: PageImage): boolean => {
-      if (disposed) {
-        closeImageBitmaps([image.bitmap]);
-        return false;
-      }
-
       const page = pages[index];
       if (page === undefined) {
         closeImageBitmaps([image.bitmap]);
@@ -994,17 +1005,22 @@ export const Viewport = <TPage extends ViewerPage>({
       }
 
       const imageKey = getPageImageKey(index, page);
-      setPageImages((currentImages) => {
-        const nextImages = new Map(currentImages);
-        const previousImage = nextImages.get(imageKey);
-        if (previousImage !== undefined && previousImage !== image) {
-          retiredImageBitmapsRef.current.push(previousImage.bitmap);
-        }
-        nextImages.set(imageKey, image);
+      if (!cachedImageKeysRef.current.has(imageKey)) {
+        closeImageBitmaps([image.bitmap]);
+        return false;
+      }
 
-        pageImagesRef.current = nextImages;
-        return nextImages;
-      });
+      const previousImage = pageImagesRef.current.get(imageKey);
+      if (previousImage !== undefined && previousImage !== image) {
+        retiredImageBitmapsRef.current.push(previousImage.bitmap);
+      }
+
+      const nextImages = new Map([
+        ...pageImagesRef.current.entries(),
+        [imageKey, image],
+      ]);
+      pageImagesRef.current = nextImages;
+      setPageImages(nextImages);
       return true;
     };
 
@@ -1018,6 +1034,18 @@ export const Viewport = <TPage extends ViewerPage>({
       if (pageImagesRef.current.has(imageKey)) {
         return;
       }
+
+      if (pageLoadControllersRef.current.has(imageKey)) {
+        return;
+      }
+
+      const abortController = new AbortController();
+      pageLoadControllersRef.current.set(imageKey, abortController);
+      const releasePageLoad = (): void => {
+        if (pageLoadControllersRef.current.get(imageKey) === abortController) {
+          pageLoadControllersRef.current.delete(imageKey);
+        }
+      };
 
       try {
         const bufferPromise = (async (): Promise<ArrayBuffer | undefined> => {
@@ -1048,17 +1076,15 @@ export const Viewport = <TPage extends ViewerPage>({
               placeholder: true,
             })
           ) {
+            releasePageLoad();
             return;
           }
           await waitForVisiblePaint();
-
-          if (disposed) {
-            return;
-          }
         }
 
         const buffer = await bufferPromise;
         if (buffer === undefined) {
+          releasePageLoad();
           return;
         }
         const bitmap = await decodeImage(buffer, page.src, page.mimeType);
@@ -1066,14 +1092,10 @@ export const Viewport = <TPage extends ViewerPage>({
       } catch {
         // Keep a decoded placeholder visible when the full page cannot load.
       }
+      releasePageLoad();
     };
 
     void Promise.all(cachedIndices.map(loadPage));
-
-    return () => {
-      disposed = true;
-      abortController.abort();
-    };
   }, [cachedIndices, pages, plugins, usesManagedImageLoading]);
 
   useEffect(() => {
@@ -1097,6 +1119,13 @@ export const Viewport = <TPage extends ViewerPage>({
       }
     }
 
+    for (const [key, controller] of pageLoadControllersRef.current) {
+      if (!retainedImageKeys.has(key)) {
+        controller.abort();
+        pageLoadControllersRef.current.delete(key);
+      }
+    }
+
     if (expiredImages.length > 0) {
       closeImageBitmaps(expiredImages);
       pageImagesRef.current = nextImages;
@@ -1112,6 +1141,10 @@ export const Viewport = <TPage extends ViewerPage>({
 
   useEffect(
     () => () => {
+      for (const controller of pageLoadControllersRef.current.values()) {
+        controller.abort();
+      }
+      pageLoadControllersRef.current.clear();
       closeImageBitmaps([
         ...[...pageImagesRef.current.values()].map((image) => image.bitmap),
         ...retiredImageBitmapsRef.current,

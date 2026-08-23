@@ -500,6 +500,40 @@ describe(Viewport, () => {
     }
   });
 
+  it("does not remain waiting when the incoming page image fails", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<MockFetch>().mockRejectedValue(new Error("Image unavailable"))
+    );
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages} initialReadingDirection="ltr">
+          <Viewport />
+        </ViewerProvider>
+      );
+      const viewport = container.querySelector(".pcv-viewport");
+
+      if (viewport === null) {
+        throw new Error("The viewport was not rendered.");
+      }
+
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+
+      expect(viewport).toHaveAttribute("data-transition-state", "waiting");
+
+      act(() => {
+        vi.advanceTimersByTime(1200);
+      });
+
+      expect(viewport).not.toHaveAttribute("data-transition-state", "waiting");
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("renders four pcv-page elements while double-page spreads slide", async () => {
     const image = {
       close: vi.fn<() => void>(),
@@ -540,7 +574,14 @@ describe(Viewport, () => {
       fireEvent.keyDown(window, { key: "ArrowRight" });
 
       await waitFor(() => {
-        expect(container.querySelectorAll(".pcv-page")).toHaveLength(4);
+        expect(
+          container.querySelectorAll(
+            '[data-rail-slot="current"] .pcv-page, [data-rail-slot="next"] .pcv-page'
+          )
+        ).toHaveLength(4);
+        expect(
+          container.querySelector('[data-rail-slot="current"]')
+        ).toHaveAttribute("data-page-count", "2");
       });
     } finally {
       getContext.mockRestore();
@@ -559,7 +600,11 @@ describe(Viewport, () => {
     vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
 
     try {
-      const { container } = renderViewport({ initialReadingDirection: "ltr" });
+      const { container } = render(
+        <ViewerProvider pages={pages} initialReadingDirection="ltr">
+          <Viewport />
+        </ViewerProvider>
+      );
       const viewport = container.querySelector(".pcv-viewport");
 
       expect(viewport).not.toBeNull();
@@ -570,10 +615,10 @@ describe(Viewport, () => {
       fireEvent.keyDown(window, { key: "ArrowRight" });
 
       expect(viewport).toHaveAttribute("data-transition-state", "idle");
+      expect(viewport).not.toHaveAttribute("data-slide-direction");
       expect(
-        viewport.querySelector('[data-transition-role="outgoing"]')
-      ).toBeNull();
-      expect(viewport).toHaveTextContent("Page 2");
+        viewport.querySelector('[data-rail-slot="current"]')
+      ).toContainElement(screen.getByLabelText("Page 2"));
     } finally {
       vi.unstubAllGlobals();
     }
