@@ -218,9 +218,7 @@ const INTERACTIVE_ELEMENT_SELECTOR = [
   '[role="textbox"]',
 ].join(", ");
 
-const getHorizontalDirection = (
-  key: string
-): "left" | "right" | undefined => {
+const getHorizontalDirection = (key: string): "left" | "right" | undefined => {
   if (key === "ArrowLeft") {
     return "left";
   }
