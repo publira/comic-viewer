@@ -237,15 +237,6 @@ export const Viewport = <TPage extends ViewerPage>({
     [goToNext, goToPrev, readingDirection]
   );
 
-  const goBySwipeDirection = (swipeDirection: "left" | "right"): void => {
-    if (swipeDirection === "left") {
-      goToNext();
-      return;
-    }
-
-    goToPrev();
-  };
-
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key === "ArrowLeft") {
@@ -334,7 +325,7 @@ export const Viewport = <TPage extends ViewerPage>({
       return;
     }
 
-    goBySwipeDirection(deltaX > 0 ? "right" : "left");
+    goByHorizontalDirection(deltaX > 0 ? "right" : "left");
   };
 
   const visibleIndices = useMemo(() => {

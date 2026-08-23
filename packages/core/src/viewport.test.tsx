@@ -577,7 +577,7 @@ describe(Viewport, () => {
     expect(screen.getByTestId("current-index")).toHaveTextContent("1");
   });
 
-  it("turns page on swipe when the threshold is exceeded", () => {
+  it("navigates by swipe in LTR", () => {
     const { container } = renderViewport({
       initialIndex: 1,
       initialReadingDirection: "ltr",
@@ -598,10 +598,20 @@ describe(Viewport, () => {
     });
     fireEvent.touchEnd(viewport);
 
-    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+
+    fireEvent.touchStart(viewport, {
+      touches: [{ clientX: 120 }],
+    });
+    fireEvent.touchMove(viewport, {
+      touches: [{ clientX: 200 }],
+    });
+    fireEvent.touchEnd(viewport);
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
   });
 
-  it("turns page on left swipe in RTL", () => {
+  it("navigates by swipe in RTL", () => {
     const { container } = renderViewport({
       initialIndex: 1,
       initialReadingDirection: "rtl",
@@ -623,6 +633,16 @@ describe(Viewport, () => {
     fireEvent.touchEnd(viewport);
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+
+    fireEvent.touchStart(viewport, {
+      touches: [{ clientX: 120 }],
+    });
+    fireEvent.touchMove(viewport, {
+      touches: [{ clientX: 200 }],
+    });
+    fireEvent.touchEnd(viewport);
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
   });
 
   it("does not turn page on short swipe", () => {
