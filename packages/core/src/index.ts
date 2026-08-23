@@ -9,17 +9,25 @@ export {
 } from "./viewer-context";
 
 export { ComicViewer, type ComicViewerProps } from "./comic-viewer";
-export { type ViewportProps } from "./viewport";
+export {
+  PageCanvas,
+  ViewportPage,
+  type PageCanvasProps,
+  type ViewportPageProps,
+  type ViewportProps,
+} from "./viewport";
 export { type ToolbarProps } from "./toolbar";
 export {
   NextPageButton,
   PageNavigation,
   PageProgress,
+  PageProgressTrack,
   PageProgressTrigger,
   PageStatus,
   PreviousPageButton,
   type PageNavigationProps,
   type PageProgressProps,
+  type PageProgressTrackProps,
   type PageProgressTriggerProps,
   type PageStatusProps,
 } from "./page-navigation";

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   NextPageButton,
   PageProgress,
+  PageProgressTrack,
   PageNavigation,
   PageStatus,
   PreviousPageButton,
@@ -65,6 +66,19 @@ describe(PageNavigation, () => {
       "aria-live",
       "polite"
     );
+  });
+
+  it("derives public progress-track values from the viewer state", () => {
+    render(
+      <ViewerProvider pages={pages} initialIndex={1} initialViewMode="double">
+        <PageProgress>
+          <PageProgressTrack data-testid="progress-track" />
+        </PageProgress>
+      </ViewerProvider>
+    );
+
+    expect(screen.getByTestId("progress-track")).toHaveAttribute("max", "5");
+    expect(screen.getByTestId("progress-track")).toHaveAttribute("value", "3");
   });
 
   it("renders and reveals the default navigation progress", () => {

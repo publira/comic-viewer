@@ -1,6 +1,7 @@
 import {
-  Fragment,
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -8,6 +9,7 @@ import {
   useState,
 } from "react";
 import type {
+  ComponentPropsWithoutRef,
   KeyboardEvent as ReactKeyboardEvent,
   MouseEvent,
   ReactNode,
@@ -125,14 +127,41 @@ const waitForVisiblePaint = async (): Promise<void> => {
   await waitForAnimationFrame();
 };
 
-interface CanvasPageProps {
-  image?: DecodedImage;
-  page: ViewerPage;
+interface PageImage {
+  bitmap: DecodedImage;
   placeholder: boolean;
 }
 
-/** Draws a decoded page or its preview to a canvas without exposing an image element. */
-const CanvasPage = ({ image, page, placeholder }: CanvasPageProps) => {
+interface ViewportPageContextValue {
+  image?: PageImage;
+  page: ViewerPage;
+}
+
+const ViewportPageContext = createContext<ViewportPageContextValue | null>(
+  null
+);
+
+const useViewportPageContext = (): ViewportPageContextValue => {
+  const context = useContext(ViewportPageContext);
+  if (context === null) {
+    throw new Error(
+      "PageCanvas must be rendered within a page managed by Viewport."
+    );
+  }
+
+  return context;
+};
+
+export type PageCanvasProps = Omit<
+  ComponentPropsWithoutRef<"canvas">,
+  "aria-busy" | "aria-label" | "data-placeholder" | "height" | "width"
+>;
+
+/** Draws the decoded viewport page or its preview without exposing an image element. */
+export const PageCanvas = ({ className, ...props }: PageCanvasProps) => {
+  const { image: pageImage, page } = useViewportPageContext();
+  const image = pageImage?.bitmap;
+  const placeholder = pageImage?.placeholder ?? false;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useLayoutEffect(() => {
@@ -159,9 +188,11 @@ const CanvasPage = ({ image, page, placeholder }: CanvasPageProps) => {
 
   return (
     <canvas
+      {...props}
       ref={canvasRef}
       aria-busy={image === undefined || undefined}
       aria-label={page.title}
+      className={`pcv-page-canvas${className === undefined ? "" : ` ${className}`}`}
       data-placeholder={placeholder || undefined}
       height={page.height}
       width={page.width}
@@ -169,26 +200,68 @@ const CanvasPage = ({ image, page, placeholder }: CanvasPageProps) => {
   );
 };
 
-const defaultRenderPage = (page: ViewerPage, image: PageImage | undefined) => (
-  <div key={page.id} className="pcv-page">
-    <CanvasPage
-      image={image?.bitmap}
-      page={page}
-      placeholder={image?.placeholder ?? false}
-    />
+export type ViewportPageProps = ComponentPropsWithoutRef<"div">;
+
+/** Provides the page wrapper for a Viewport page template. */
+export const ViewportPage = ({
+  children,
+  className,
+  ...props
+}: ViewportPageProps) => (
+  <div
+    {...props}
+    className={`pcv-page${className === undefined ? "" : ` ${className}`}`}
+  >
+    {children ?? <PageCanvas />}
   </div>
 );
 
-interface PageImage {
-  bitmap: DecodedImage;
-  placeholder: boolean;
-}
+type ViewportChildren<TPage extends ViewerPage> =
+  | ReactNode
+  | ((page: TPage, index: number) => ReactNode);
 
 export interface ViewportProps<TPage extends ViewerPage> {
+  /**
+   * A page template rendered for each visible page. Use ViewportPage and
+   * PageCanvas to style the public page elements without private selectors.
+   */
+  children?: ViewportChildren<TPage>;
   renderPage?: (page: TPage, index: number) => ReactNode;
   className?: string;
   doublePageThreshold?: number;
 }
+
+interface ViewportPageInstanceProps<TPage extends ViewerPage> {
+  children?: ViewportChildren<TPage>;
+  image?: PageImage;
+  index: number;
+  page: TPage;
+  renderPage?: (page: TPage, index: number) => ReactNode;
+}
+
+const ViewportPageInstance = <TPage extends ViewerPage>({
+  children,
+  image,
+  index,
+  page,
+  renderPage,
+}: ViewportPageInstanceProps<TPage>) => {
+  const contextValue = useMemo(() => ({ image, page }), [image, page]);
+  let content: ReactNode;
+
+  if (children === undefined) {
+    content =
+      renderPage === undefined ? <ViewportPage /> : renderPage(page, index);
+  } else {
+    content = typeof children === "function" ? children(page, index) : children;
+  }
+
+  return (
+    <ViewportPageContext.Provider value={contextValue}>
+      {content}
+    </ViewportPageContext.Provider>
+  );
+};
 
 const EDGE_CLICK_RATIO = 0.3;
 const MIN_SWIPE_THRESHOLD_PX = 48;
@@ -239,6 +312,7 @@ const isInteractiveTarget = (
 };
 
 export const Viewport = <TPage extends ViewerPage>({
+  children,
   renderPage,
   className,
   doublePageThreshold,
@@ -267,6 +341,8 @@ export const Viewport = <TPage extends ViewerPage>({
     () => new Map()
   );
   const prefetchedPagesRef = useRef<Map<number, PrefetchedPage>>(new Map());
+  const usesManagedImageLoading =
+    children !== undefined || renderPage === undefined;
 
   const goByHorizontalDirection = useCallback(
     (direction: "left" | "right"): void => {
@@ -438,7 +514,7 @@ export const Viewport = <TPage extends ViewerPage>({
   }, [currentIndex, pages.length, plugins]);
 
   useEffect(() => {
-    if (renderPage !== undefined) {
+    if (!usesManagedImageLoading) {
       return;
     }
 
@@ -582,7 +658,14 @@ export const Viewport = <TPage extends ViewerPage>({
       abortController.abort();
       closeImageBitmaps(imageBitmaps);
     };
-  }, [currentIndex, pageSourceKey, pages, plugins, renderPage, visibleIndices]);
+  }, [
+    currentIndex,
+    pageSourceKey,
+    pages,
+    plugins,
+    usesManagedImageLoading,
+    visibleIndices,
+  ]);
 
   return (
     <div
@@ -607,11 +690,15 @@ export const Viewport = <TPage extends ViewerPage>({
         }
 
         return (
-          <Fragment key={index}>
-            {renderPage === undefined
-              ? defaultRenderPage(page, activePageImages.get(index))
-              : renderPage(page, index)}
-          </Fragment>
+          <ViewportPageInstance
+            key={index}
+            image={activePageImages.get(index)}
+            index={index}
+            page={page}
+            renderPage={renderPage}
+          >
+            {children}
+          </ViewportPageInstance>
         );
       })}
     </div>
