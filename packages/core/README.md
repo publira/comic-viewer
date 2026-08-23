@@ -69,6 +69,8 @@ export function Reader() {
 By default, the viewer manages its page index internally. Set `initialIndex` to choose its starting page. To synchronize the index with a router, persisted state, or another control, pass `currentIndex` and update it from `onIndexChange`. Both values are zero-based. The callback is called only when navigation changes the index, including navigation through buttons, keyboard input, viewport edge clicks, swipes, and `useViewerContext().goTo()`.
 
 ```tsx
+import { useState } from "react";
+
 const [currentIndex, setCurrentIndex] = useState(0);
 
 <ComicViewer
