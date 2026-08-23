@@ -113,6 +113,32 @@ describe(PageNavigation, () => {
     vi.useRealTimers();
   });
 
+  it("hides progress immediately when its trigger is clicked again", () => {
+    vi.useFakeTimers();
+    render(
+      <ViewerProvider pages={pages}>
+        <PageNavigation />
+      </ViewerProvider>
+    );
+
+    const progress = screen.getByRole("progressbar", {
+      hidden: true,
+    }).parentElement;
+    const trigger = screen.getByRole("button", {
+      name: "Show reading progress",
+    });
+
+    fireEvent.click(trigger);
+    expect(progress).toHaveAttribute("aria-hidden", "false");
+
+    fireEvent.click(trigger);
+    expect(progress).toHaveAttribute("aria-hidden", "true");
+
+    act(() => vi.advanceTimersByTime(2000));
+    expect(progress).toHaveAttribute("aria-hidden", "true");
+    vi.useRealTimers();
+  });
+
   it("moves by one page and updates its status in single-page mode", () => {
     renderPageNavigation({ initialReadingDirection: "ltr" });
 
