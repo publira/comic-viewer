@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.3.0...comic-viewer-v0.4.0) (2026-08-23)
+
+
+### Features
+
+* **core:** expose composable viewer primitives ([#97](https://github.com/publira/comic-viewer/issues/97)) ([4204784](https://github.com/publira/comic-viewer/commit/420478414688ea59c1818e8885671022a4a85bcf))
+* **core:** support controlled page navigation ([#99](https://github.com/publira/comic-viewer/issues/99)) ([6bbdfe4](https://github.com/publira/comic-viewer/commit/6bbdfe4e67c7491be249b6715529ec3f5275b43b))
+
+
+### Bug Fixes
+
+* **core:** correct mobile swipe navigation ([#101](https://github.com/publira/comic-viewer/issues/101)) ([e3cd2dd](https://github.com/publira/comic-viewer/commit/e3cd2dde7df9f9af201bcb6abbd55967c91a0de7))
+* **core:** toggle reading progress visibility ([#103](https://github.com/publira/comic-viewer/issues/103)) ([1e775c0](https://github.com/publira/comic-viewer/commit/1e775c088ef2f2fa7f75ef13aca92fd7e317b97a))
+
 ## [0.3.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.2.1...comic-viewer-v0.3.0) (2026-08-23)
 
 
