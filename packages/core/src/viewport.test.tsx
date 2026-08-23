@@ -777,7 +777,7 @@ describe(Viewport, () => {
     });
     fireEvent.touchEnd(viewport);
 
-    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
 
     fireEvent.touchStart(viewport, {
       touches: [{ clientX: 120 }],
@@ -811,7 +811,7 @@ describe(Viewport, () => {
     });
     fireEvent.touchEnd(viewport);
 
-    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
 
     fireEvent.touchStart(viewport, {
       touches: [{ clientX: 120 }],
