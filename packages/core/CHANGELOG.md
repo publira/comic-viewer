@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.4.0...comic-viewer-v0.5.0) (2026-08-23)
+
+
+### Features
+
+* **core:** add touch zoom and pan controls ([#110](https://github.com/publira/comic-viewer/issues/110)) ([dff994e](https://github.com/publira/comic-viewer/commit/dff994e5a710b899cc2316f225e73acec27bc034))
+
+
+### Bug Fixes
+
+* **core:** continue swipe momentum into page turn ([#112](https://github.com/publira/comic-viewer/issues/112)) ([45f1192](https://github.com/publira/comic-viewer/commit/45f1192bf403392c61d2005234cee8df7d38e883))
+* **core:** retain adjacent pages during page turns ([#107](https://github.com/publira/comic-viewer/issues/107)) ([9382119](https://github.com/publira/comic-viewer/commit/938211973500b06033161ddf53de8de0949354bb))
+
 ## [0.4.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.3.0...comic-viewer-v0.4.0) (2026-08-23)
 
 
