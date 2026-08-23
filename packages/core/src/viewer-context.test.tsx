@@ -176,6 +176,32 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.currentIndex).toBe(expectedIndex);
   });
 
+  it("navigates pre-spread pages individually in double mode", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({ initialViewMode: "double", spreadStartIndex: 1 }),
+    });
+
+    expect(result.current.spreadStartIndex).toBe(1);
+
+    act(() => {
+      result.current.goToNext();
+    });
+
+    expect(result.current.currentIndex).toBe(1);
+
+    act(() => {
+      result.current.goToNext();
+    });
+
+    expect(result.current.currentIndex).toBe(3);
+
+    act(() => {
+      result.current.goToPrev();
+    });
+
+    expect(result.current.currentIndex).toBe(1);
+  });
+
   it("goToNext advances by 2 pages in double mode", () => {
     const { result } = renderHook(() => useViewerContext(), {
       wrapper: makeWrapper({ initialViewMode: "double" }),

@@ -16,7 +16,7 @@ import type {
 
 import { runDataPipeline, runPageChangeHooks } from "./plugin";
 import { useViewMode } from "./use-view-mode";
-import { useViewerContext } from "./viewer-context";
+import { getVisiblePageCount, useViewerContext } from "./viewer-context";
 import type { ViewerPage } from "./viewer-context";
 
 export const getImageMimeType = (
@@ -253,8 +253,15 @@ export const Viewport = <TPage extends ViewerPage>({
     currentX: 0,
     startX: 0,
   });
-  const { pages, plugins, currentIndex, readingDirection, goToNext, goToPrev } =
-    useViewerContext<TPage>();
+  const {
+    pages,
+    plugins,
+    currentIndex,
+    readingDirection,
+    spreadStartIndex,
+    goToNext,
+    goToPrev,
+  } = useViewerContext<TPage>();
   const viewMode = useViewMode(containerRef, doublePageThreshold);
   const [pageImages, setPageImages] = useState<ReadonlyMap<string, PageImage>>(
     () => new Map()
@@ -381,12 +388,19 @@ export const Viewport = <TPage extends ViewerPage>({
   const visibleIndices = useMemo(() => {
     const indices: number[] =
       pages[currentIndex] === undefined ? [] : [currentIndex];
-    if (viewMode === "double" && currentIndex + 1 < pages.length) {
+    if (
+      getVisiblePageCount(
+        viewMode,
+        currentIndex,
+        pages.length,
+        spreadStartIndex
+      ) === 2
+    ) {
       indices.push(currentIndex + 1);
     }
 
     return indices;
-  }, [currentIndex, pages, viewMode]);
+  }, [currentIndex, pages, spreadStartIndex, viewMode]);
 
   // In RTL mode the next page visually appears on the left side
   const orderedIndices = useMemo(

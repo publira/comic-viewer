@@ -85,6 +85,7 @@ const renderViewport = ({
   initialIndex = 0,
   initialReadingDirection = "rtl" as ReadingDirection,
   plugins = [] as readonly ViewerPlugin[],
+  spreadStartIndex = 0,
   threshold = 768,
 } = {}) =>
   render(
@@ -93,6 +94,7 @@ const renderViewport = ({
       initialIndex={initialIndex}
       initialReadingDirection={initialReadingDirection}
       plugins={plugins}
+      spreadStartIndex={spreadStartIndex}
     >
       <Viewport<TestPage>
         renderPage={(page) => <div data-testid={page.id}>{page.title}</div>}
@@ -365,6 +367,45 @@ describe(Viewport, () => {
     fireEvent.click(screen.getByRole("button", { name: "Go to index" }));
 
     expect(screen.getByTestId("p2")).toBeInTheDocument();
+  });
+
+  it("renders pre-spread pages individually in double mode", () => {
+    renderViewport({ initialIndex: 0, spreadStartIndex: 1 });
+
+    act(() => {
+      MockResizeObserver.trigger(1024);
+    });
+
+    expect(screen.getByTestId("p1")).toBeInTheDocument();
+    expect(screen.queryByTestId("p2")).not.toBeInTheDocument();
+  });
+
+  it("starts odd-indexed spreads in RTL order", () => {
+    renderViewport({ initialIndex: 1, spreadStartIndex: 1 });
+
+    act(() => {
+      MockResizeObserver.trigger(1024);
+    });
+
+    const items = screen.getAllByTestId(/^p/u);
+    expect(items[0]).toHaveAttribute("data-testid", "p3");
+    expect(items[1]).toHaveAttribute("data-testid", "p2");
+  });
+
+  it("starts even-indexed spreads in LTR order", () => {
+    renderViewport({
+      initialIndex: 2,
+      initialReadingDirection: "ltr",
+      spreadStartIndex: 2,
+    });
+
+    act(() => {
+      MockResizeObserver.trigger(1024);
+    });
+
+    const items = screen.getAllByTestId(/^p/u);
+    expect(items[0]).toHaveAttribute("data-testid", "p3");
+    expect(items[1]).toHaveAttribute("data-testid", "p4");
   });
 
   it("renders 2 pages in double mode (RTL)", () => {
