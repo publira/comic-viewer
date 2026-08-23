@@ -8,11 +8,13 @@ import {
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PageNavigation } from "./page-navigation";
 import { definePlugin } from "./plugin";
 import type { ViewerPlugin } from "./plugin";
 import type { ReadingDirection } from "./viewer-context";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
 import {
+  getPageTurnDirection,
   getImageMimeType,
   PageCanvas,
   Viewport,
@@ -222,7 +224,6 @@ describe(Viewport, () => {
         ok: true,
       })
     );
-
     try {
       const { container } = render(
         <ViewerProvider pages={pages}>
@@ -303,7 +304,7 @@ describe(Viewport, () => {
     }
   });
 
-  it("prefetches the next two pages", async () => {
+  it("preloads the adjacent page in the rail", async () => {
     const image = {
       close: vi.fn<() => void>(),
       height: 1,
@@ -333,7 +334,7 @@ describe(Viewport, () => {
 
       await waitFor(() => {
         expect(fetchMock.mock.calls.map(([url]) => url)).toStrictEqual(
-          expect.arrayContaining(["page1.png", "page2.png", "page3.png"])
+          expect.arrayContaining(["page1.png", "page2.png"])
         );
       });
     } finally {
@@ -342,7 +343,7 @@ describe(Viewport, () => {
     }
   });
 
-  it("does not redraw a released bitmap after navigating back", async () => {
+  it("renders decoded neighbouring pages during back-and-forth navigation", async () => {
     const bitmaps: {
       closed: boolean;
       close: () => void;
@@ -386,21 +387,23 @@ describe(Viewport, () => {
       );
 
       await waitFor(() => {
-        expect(createImageBitmapMock).toHaveBeenCalledOnce();
+        expect(createImageBitmapMock).toHaveBeenCalledTimes(2);
       });
 
       fireEvent.keyDown(window, { key: "ArrowRight" });
 
       await waitFor(() => {
-        expect(createImageBitmapMock).toHaveBeenCalledTimes(2);
-        expect(bitmaps[0]?.closed).toBeTruthy();
+        expect(screen.getByLabelText("Page 2")).not.toHaveAttribute(
+          "aria-busy"
+        );
       });
 
       fireEvent.keyDown(window, { key: "ArrowLeft" });
 
       await waitFor(() => {
-        expect(createImageBitmapMock).toHaveBeenCalledTimes(3);
-        expect(drawImage).toHaveBeenLastCalledWith(bitmaps[2], 0, 0, 1, 1);
+        expect(screen.getByLabelText("Page 1")).not.toHaveAttribute(
+          "aria-busy"
+        );
       });
     } finally {
       getContext.mockRestore();
@@ -434,6 +437,191 @@ describe(Viewport, () => {
     await waitFor(() => {
       expect(onPageChange).toHaveBeenLastCalledWith(1, 4);
     });
+  });
+
+  it("waits for the incoming page image before starting a slide", async () => {
+    const image = {
+      close: vi.fn<() => void>(),
+      height: 1,
+      width: 1,
+    } as unknown as ImageBitmap;
+    // eslint-disable-next-line promise/avoid-new -- The unresolved promise models an in-flight image request.
+    const pendingResponse = new Promise<unknown>(() => {});
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn<() => Promise<unknown>>().mockResolvedValue(image)
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<MockFetch>((url) =>
+        url === "page1.png"
+          ? Promise.resolve({
+              arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+              ok: true,
+            })
+          : pendingResponse
+      )
+    );
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue({
+        drawImage: vi.fn<() => void>(),
+      } as unknown as CanvasRenderingContext2D);
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages} initialReadingDirection="ltr">
+          <Viewport />
+        </ViewerProvider>
+      );
+      const viewport = container.querySelector(".pcv-viewport");
+
+      expect(viewport).not.toBeNull();
+      if (viewport === null) {
+        return;
+      }
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Page 1")).not.toHaveAttribute(
+          "aria-busy"
+        );
+      });
+
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+
+      expect(viewport).toHaveAttribute("data-transition-state", "waiting");
+      expect(screen.getByLabelText("Page 2")).toHaveAttribute(
+        "aria-busy",
+        "true"
+      );
+    } finally {
+      getContext.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not remain waiting when the incoming page image fails", () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<MockFetch>().mockRejectedValue(new Error("Image unavailable"))
+    );
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages} initialReadingDirection="ltr">
+          <Viewport />
+        </ViewerProvider>
+      );
+      const viewport = container.querySelector(".pcv-viewport");
+
+      if (viewport === null) {
+        throw new Error("The viewport was not rendered.");
+      }
+
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+
+      expect(viewport).toHaveAttribute("data-transition-state", "waiting");
+
+      act(() => {
+        vi.advanceTimersByTime(1200);
+      });
+
+      expect(viewport).not.toHaveAttribute("data-transition-state", "waiting");
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("renders four pcv-page elements while double-page spreads slide", async () => {
+    const image = {
+      close: vi.fn<() => void>(),
+      height: 1,
+      width: 1,
+    } as unknown as ImageBitmap;
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue({
+        drawImage: vi.fn<() => void>(),
+      } as unknown as CanvasRenderingContext2D);
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn<() => Promise<unknown>>().mockResolvedValue(image)
+    );
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<MockFetch>().mockResolvedValue({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+        ok: true,
+      })
+    );
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages} initialReadingDirection="ltr">
+          <Viewport />
+        </ViewerProvider>
+      );
+
+      act(() => {
+        MockResizeObserver.trigger(1024);
+      });
+      await waitFor(() => {
+        expect(container.querySelectorAll("canvas")).toHaveLength(4);
+      });
+
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+
+      await waitFor(() => {
+        expect(
+          container.querySelectorAll(
+            '[data-rail-slot="current"] .pcv-page, [data-rail-slot="next"] .pcv-page'
+          )
+        ).toHaveLength(4);
+        expect(
+          container.querySelector('[data-rail-slot="current"]')
+        ).toHaveAttribute("data-page-count", "2");
+      });
+    } finally {
+      getContext.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("maps forward and backward turns to opposite physical directions", () => {
+    expect(getPageTurnDirection(0, 1, "ltr")).toBe("left");
+    expect(getPageTurnDirection(1, 0, "ltr")).toBe("right");
+    expect(getPageTurnDirection(0, 1, "rtl")).toBe("right");
+    expect(getPageTurnDirection(1, 0, "rtl")).toBe("left");
+  });
+
+  it("skips the slide when reduced motion is requested", () => {
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages} initialReadingDirection="ltr">
+          <Viewport />
+        </ViewerProvider>
+      );
+      const viewport = container.querySelector(".pcv-viewport");
+
+      expect(viewport).not.toBeNull();
+      if (viewport === null) {
+        return;
+      }
+
+      fireEvent.keyDown(window, { key: "ArrowRight" });
+
+      expect(viewport).toHaveAttribute("data-transition-state", "idle");
+      expect(viewport).not.toHaveAttribute("data-slide-direction");
+      expect(
+        viewport.querySelector('[data-rail-slot="current"]')
+      ).toContainElement(screen.getByLabelText("Page 2"));
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("renders only the current page in single mode", () => {
@@ -846,5 +1034,97 @@ describe(Viewport, () => {
     fireEvent.touchEnd(viewport);
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
+  it("moves the page rail while a touch swipe is in progress", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport />
+      </ViewerProvider>
+    );
+    const viewport = container.querySelector(".pcv-viewport");
+    const track = container.querySelector(".pcv-viewport-track");
+
+    if (viewport === null || track === null) {
+      throw new Error("The default viewport rail was not rendered.");
+    }
+
+    fireEvent.touchStart(viewport, {
+      touches: [{ clientX: 200 }],
+    });
+    fireEvent.touchMove(viewport, {
+      touches: [{ clientX: 120 }],
+    });
+
+    expect(viewport).toHaveAttribute("data-dragging", "true");
+    expect(track).toHaveStyle("--pcv-drag-offset: -80px");
+
+    fireEvent.touchCancel(viewport);
+
+    expect(viewport).not.toHaveAttribute("data-dragging");
+    expect(track).toHaveStyle("--pcv-drag-offset: 0px");
+  });
+
+  it("moves the page rail for a swipe started on the progress trigger", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <div className="pcv-root">
+          <Viewport />
+          <PageNavigation />
+        </div>
+      </ViewerProvider>
+    );
+    const progressTrigger = screen.getByRole("button", {
+      name: "Show reading progress",
+    });
+    const track = container.querySelector(".pcv-viewport-track");
+
+    if (track === null) {
+      throw new Error("The default viewport rail was not rendered.");
+    }
+
+    fireEvent.touchStart(progressTrigger, {
+      touches: [{ clientX: 200 }],
+    });
+    fireEvent.touchMove(progressTrigger, {
+      touches: [{ clientX: 120 }],
+    });
+
+    expect(track).toHaveStyle("--pcv-drag-offset: -80px");
+
+    fireEvent.touchCancel(progressTrigger);
+
+    expect(track).toHaveStyle("--pcv-drag-offset: 0px");
+  });
+
+  it("does not bubble viewport touch gestures to its parent", () => {
+    const onTouch = vi.fn<() => void>();
+    const { container } = render(
+      <div
+        onTouchCancel={onTouch}
+        onTouchEnd={onTouch}
+        onTouchMove={onTouch}
+        onTouchStart={onTouch}
+      >
+        <ViewerProvider pages={pages} initialViewMode="single">
+          <Viewport />
+        </ViewerProvider>
+      </div>
+    );
+    const viewport = container.querySelector(".pcv-viewport");
+
+    if (viewport === null) {
+      throw new Error("The viewport was not rendered.");
+    }
+
+    fireEvent.touchStart(viewport, {
+      touches: [{ clientX: 200 }],
+    });
+    fireEvent.touchMove(viewport, {
+      touches: [{ clientX: 120 }],
+    });
+    fireEvent.touchEnd(viewport);
+
+    expect(onTouch).not.toHaveBeenCalled();
   });
 });

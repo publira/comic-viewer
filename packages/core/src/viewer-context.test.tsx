@@ -135,6 +135,26 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.currentIndex).toBe(4);
   });
 
+  it("does not split the final double-page spread", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: ({ children }: { children: React.ReactNode }) => (
+        <ViewerProvider
+          initialIndex={1}
+          initialViewMode="double"
+          pages={pages.slice(0, 3)}
+        >
+          {children}
+        </ViewerProvider>
+      ),
+    });
+
+    act(() => {
+      result.current.goToNext();
+    });
+
+    expect(result.current.currentIndex).toBe(1);
+  });
+
   it("goToPrev does not go before the first page", () => {
     const { result } = renderHook(() => useViewerContext(), {
       wrapper: makeWrapper({ initialIndex: 0 }),

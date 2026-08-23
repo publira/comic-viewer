@@ -120,15 +120,17 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   );
 
   const goToNext = useCallback(() => {
-    goTo(
+    const nextIndex =
       clampedCurrentIndex +
-        getVisiblePageCount(
-          viewMode,
-          clampedCurrentIndex,
-          pages.length,
-          clampedSpreadStartIndex
-        )
-    );
+      getVisiblePageCount(
+        viewMode,
+        clampedCurrentIndex,
+        pages.length,
+        clampedSpreadStartIndex
+      );
+    if (nextIndex < pages.length) {
+      goTo(nextIndex);
+    }
   }, [
     clampedCurrentIndex,
     clampedSpreadStartIndex,
