@@ -72,6 +72,15 @@ const CurrentIndexIndicator = () => {
   return <div data-testid="current-index">{currentIndex}</div>;
 };
 
+const GoToIndexButton = ({ index }: { index: number }) => {
+  const { goTo } = useViewerContext();
+  return (
+    <button onClick={() => goTo(index)} type="button">
+      Go to index
+    </button>
+  );
+};
+
 const renderViewport = ({
   initialIndex = 0,
   initialReadingDirection = "rtl" as ReadingDirection,
@@ -341,6 +350,21 @@ describe(Viewport, () => {
 
     expect(screen.getByTestId("p1")).toBeInTheDocument();
     expect(screen.queryByTestId("p2")).not.toBeInTheDocument();
+  });
+
+  it("keeps a page visible after navigating to a fractional index", () => {
+    render(
+      <ViewerProvider pages={pages}>
+        <Viewport<TestPage>
+          renderPage={(page) => <div data-testid={page.id}>{page.title}</div>}
+        />
+        <GoToIndexButton index={1.5} />
+      </ViewerProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to index" }));
+
+    expect(screen.getByTestId("p2")).toBeInTheDocument();
   });
 
   it("renders 2 pages in double mode (RTL)", () => {

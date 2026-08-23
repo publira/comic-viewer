@@ -65,6 +65,22 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.currentIndex).toBe(0);
   });
 
+  it.each([
+    ["a fractional value", 1.5, 1],
+    ["NaN", Number.NaN, 0],
+    ["positive infinity", Number.POSITIVE_INFINITY, 0],
+    ["negative infinity", Number.NEGATIVE_INFINITY, 0],
+  ])(
+    "normalizes %s passed as initialIndex",
+    (_description, initialIndex, expectedIndex) => {
+      const { result } = renderHook(() => useViewerContext(), {
+        wrapper: makeWrapper({ initialIndex }),
+      });
+
+      expect(result.current.currentIndex).toBe(expectedIndex);
+    }
+  );
+
   it("clamps the current index when the pages list shrinks", () => {
     const { rerender } = render(
       <ViewerProvider pages={pages} initialIndex={3}>
@@ -141,6 +157,23 @@ describe("ViewerProvider / useViewerContext", () => {
     });
 
     expect(result.current.currentIndex).toBe(3);
+  });
+
+  it.each([
+    ["a fractional value", 2.9, 2],
+    ["NaN", Number.NaN, 0],
+    ["positive infinity", Number.POSITIVE_INFINITY, 0],
+    ["negative infinity", Number.NEGATIVE_INFINITY, 0],
+  ])("normalizes %s passed to goTo", (_description, index, expectedIndex) => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper(),
+    });
+
+    act(() => {
+      result.current.goTo(index);
+    });
+
+    expect(result.current.currentIndex).toBe(expectedIndex);
   });
 
   it("goToNext advances by 2 pages in double mode", () => {
