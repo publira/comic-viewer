@@ -66,18 +66,7 @@ export function Reader() {
 
 ### Page size and panning
 
-Pages initially fit their height. Pinch with two fingers to zoom and move the page; once zoomed, drag with one pointer to pan. A single-finger double tap resets the page to fit-to-width. These gestures take priority over page navigation, so they cannot accidentally turn the page. If the reader needs visible keyboard-accessible sizing controls, add the optional `PageFitModeControls` inside a `Toolbar`; its buttons expose their selected state through `aria-pressed`.
-
-```tsx
-<ComicViewer pages={pages} initialPageFitMode="height">
-  <ComicViewer.Viewport />
-  <ComicViewer.Toolbar>
-    <ComicViewer.PageFitModeControls />
-  </ComicViewer.Toolbar>
-</ComicViewer>
-```
-
-For a custom arrangement, use `ComicViewer.FitWidthButton`, `ComicViewer.FitHeightButton`, and `ComicViewer.ActualSizeButton`.
+Pages initially fit their height. Pinch with two fingers to zoom and move the page; once zoomed, drag with one pointer to pan. A single-finger double tap resets the page to fit-to-width. These gestures take priority over page navigation, so they cannot accidentally turn the page.
 
 ### Controlled navigation
 

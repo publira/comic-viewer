@@ -166,35 +166,6 @@
   background: color-mix(in oklab, #000000 70%, transparent);
 }
 
-.pcv-page-fit-mode-controls {
-  display: flex;
-  gap: 0.5rem;
-  min-width: 0;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-
-.pcv-page-fit-mode-controls > legend {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.pcv-page-fit-mode-button[aria-pressed="true"] {
-  outline: 2px solid var(--pcv-fg);
-  outline-offset: 2px;
-}
-
-.pcv-page-fit-mode-button:focus-visible {
-  outline: 2px solid var(--pcv-fg);
-  outline-offset: 2px;
-}
-
 .pcv-page-navigation {
   position: absolute;
   inset: 0;

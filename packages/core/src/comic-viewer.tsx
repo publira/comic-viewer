@@ -1,10 +1,4 @@
 import {
-  ActualSizeButton,
-  FitHeightButton,
-  FitWidthButton,
-  PageFitModeControls,
-} from "./page-fit-mode";
-import {
   NextPageButton,
   PageNavigation,
   PageProgress,
@@ -57,12 +51,8 @@ const ComicViewerRoot = <TPage extends ViewerPage>({
 );
 
 export const ComicViewer = Object.assign(ComicViewerRoot, {
-  ActualSizeButton,
-  FitHeightButton,
-  FitWidthButton,
   NextPageButton,
   PageCanvas,
-  PageFitModeControls,
   PageNavigation,
   PageProgress,
   PageProgressTrack,
@@ -73,9 +63,6 @@ export const ComicViewer = Object.assign(ComicViewerRoot, {
   Viewport,
   ViewportPage,
 }) as typeof ComicViewerRoot & {
-  ActualSizeButton: typeof ActualSizeButton;
-  FitHeightButton: typeof FitHeightButton;
-  FitWidthButton: typeof FitWidthButton;
   NextPageButton: typeof NextPageButton;
   PageNavigation: typeof PageNavigation;
   PageProgress: typeof PageProgress;
@@ -84,7 +71,6 @@ export const ComicViewer = Object.assign(ComicViewerRoot, {
   PageStatus: typeof PageStatus;
   PreviousPageButton: typeof PreviousPageButton;
   PageCanvas: typeof PageCanvas;
-  PageFitModeControls: typeof PageFitModeControls;
   Viewport: typeof Viewport;
   ViewportPage: typeof ViewportPage;
   Toolbar: typeof Toolbar;
