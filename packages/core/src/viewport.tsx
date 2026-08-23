@@ -341,6 +341,8 @@ export const Viewport = <TPage extends ViewerPage>({
     () => new Map()
   );
   const prefetchedPagesRef = useRef<Map<number, PrefetchedPage>>(new Map());
+  const usesManagedImageLoading =
+    children !== undefined || renderPage === undefined;
 
   const goByHorizontalDirection = useCallback(
     (direction: "left" | "right"): void => {
@@ -512,7 +514,7 @@ export const Viewport = <TPage extends ViewerPage>({
   }, [currentIndex, pages.length, plugins]);
 
   useEffect(() => {
-    if (renderPage !== undefined && children === undefined) {
+    if (!usesManagedImageLoading) {
       return;
     }
 
@@ -657,12 +659,11 @@ export const Viewport = <TPage extends ViewerPage>({
       closeImageBitmaps(imageBitmaps);
     };
   }, [
-    children,
     currentIndex,
     pageSourceKey,
     pages,
     plugins,
-    renderPage,
+    usesManagedImageLoading,
     visibleIndices,
   ]);
 

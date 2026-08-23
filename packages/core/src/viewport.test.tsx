@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { definePlugin } from "./plugin";
@@ -86,6 +87,26 @@ const GoToIndexButton = ({ index }: { index: number }) => {
   );
 };
 
+const RerenderingViewport = () => {
+  const [renderCount, setRenderCount] = useState(0);
+
+  return (
+    <>
+      <button
+        onClick={() => setRenderCount((count) => count + 1)}
+        type="button"
+      >
+        Rerender {renderCount}
+      </button>
+      <Viewport>
+        <ViewportPage>
+          <PageCanvas />
+        </ViewportPage>
+      </Viewport>
+    </>
+  );
+};
+
 const renderViewport = ({
   initialIndex = 0,
   initialReadingDirection = "rtl" as ReadingDirection,
@@ -132,6 +153,50 @@ describe(Viewport, () => {
     );
     expect(screen.getByTestId("page-canvas")).toHaveClass("reader-canvas");
     expect(document.querySelector(".reader-page")).not.toBeNull();
+  });
+
+  it("does not reload images when an equivalent page template rerenders", async () => {
+    const image = {
+      close: vi.fn<() => void>(),
+      height: 1,
+      width: 1,
+    } as unknown as ImageBitmap;
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue({
+        drawImage: vi.fn<() => void>(),
+      } as unknown as CanvasRenderingContext2D);
+    const fetchMock = vi.fn<MockFetch>().mockResolvedValue({
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+      ok: true,
+    });
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn<() => Promise<unknown>>().mockResolvedValue(image)
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      render(
+        <ViewerProvider pages={pages} initialViewMode="single">
+          <RerenderingViewport />
+        </ViewerProvider>
+      );
+
+      await waitFor(() => {
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Rerender 0" }));
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    } finally {
+      getContext.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("renders normal pages to canvas instead of an img element", async () => {
