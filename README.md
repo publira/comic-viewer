@@ -28,48 +28,37 @@ Import the optional core CSS and assemble the viewer using the provided Compound
 
 ```tsx
 import { ComicViewer } from "@publira/comic-viewer";
+import type { ViewerPage } from "@publira/comic-viewer";
 import "@publira/comic-viewer/core.css";
 
+const pages: ViewerPage[] = [
+  {
+    id: "page-1",
+    src: "https://example.com/pages/1.jpg",
+    title: "Page 1",
+    width: 1200,
+    height: 1800,
+  },
+  {
+    id: "page-2",
+    src: "https://example.com/pages/2.jpg",
+    title: "Page 2",
+    width: 1200,
+    height: 1800,
+  },
+];
+
 function App() {
-  const pages = [
-    {
-      id: "1",
-      src: "https://example.com/page1.jpg",
-      title: "Page 1",
-      placeholder: "data:image/svg+xml,...",
-      width: 1200,
-      height: 1800,
-    },
-    {
-      id: "2",
-      src: "https://example.com/page2.jpg",
-      title: "Page 2",
-      placeholder: "data:image/svg+xml,...",
-      width: 1200,
-      height: 1800,
-    },
-    // ...
-  ];
-
   return (
-    <ComicViewer
-      pages={pages}
-      defaultDirection="rtl" // Right-to-Left (e.g., Japanese Manga)
-    >
-      <div className="viewer-layout">
-        {/* Main viewing area (virtualized automatically) */}
-        <ComicViewer.Viewport className="viewport-container" />
-
-        {/* Custom Toolbar */}
-        <ComicViewer.Toolbar className="toolbar-container">
-          <ComicViewer.Slider />
-          <ComicViewer.PageIndicator />
-        </ComicViewer.Toolbar>
-      </div>
+    <ComicViewer pages={pages} initialReadingDirection="rtl">
+      <ComicViewer.Viewport />
+      <ComicViewer.PageNavigation />
     </ComicViewer>
   );
 }
 ```
+
+`initialReadingDirection` defaults to `"rtl"` for right-to-left manga reading. Set it to `"ltr"` for left-to-right comics.
 
 ## Styling with Tailwind CSS
 
@@ -90,7 +79,34 @@ export function Reader() {
 }
 ```
 
-You can also provide all styles independently. Use `className` on the compound components, or provide `renderPage` to control page markup and styling.
+Use `className` on the other compound components to style their controls. For page markup that keeps the viewer loading, decoding, and virtualization pipeline, provide a page template with the public `ViewportPage` and `PageCanvas` primitives:
+
+```tsx
+<ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
+  <ComicViewer.ViewportPage className="flex min-w-0 items-center justify-center">
+    <ComicViewer.PageCanvas className="h-full max-w-full object-contain" />
+  </ComicViewer.ViewportPage>
+</ComicViewer.Viewport>
+```
+
+`PageCanvas` receives the current page and decoded image from `Viewport`, so it must be used in a viewport page template. Use `renderPage` when you need to render page content entirely independently of the built-in image pipeline.
+
+## Page Navigation
+
+`ComicViewer.PageNavigation` provides accessible previous-page, page-status, and next-page controls. For a custom arrangement, compose `PreviousPageButton`, `PageStatus`, `NextPageButton`, and `PageProgress` with its public `PageProgressTrack` primitive:
+
+```tsx
+<ComicViewer.Toolbar>
+  <ComicViewer.PageNavigation className="reader-controls">
+    <ComicViewer.PreviousPageButton>Back</ComicViewer.PreviousPageButton>
+    <ComicViewer.NextPageButton>Forward</ComicViewer.NextPageButton>
+    <ComicViewer.PageProgress>
+      <ComicViewer.PageProgressTrack className="progress-bar" />
+      <ComicViewer.PageStatus />
+    </ComicViewer.PageProgress>
+  </ComicViewer.PageNavigation>
+</ComicViewer.Toolbar>
+```
 
 ## Advanced: Using Plugins
 
