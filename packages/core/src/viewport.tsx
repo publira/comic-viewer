@@ -193,6 +193,52 @@ export interface ViewportProps<TPage extends ViewerPage> {
 const EDGE_CLICK_RATIO = 0.3;
 const MIN_SWIPE_THRESHOLD_PX = 48;
 const SWIPE_THRESHOLD_RATIO = 0.12;
+const INTERACTIVE_ELEMENT_SELECTOR = [
+  "a[href]",
+  "audio[controls]",
+  "button",
+  '[contenteditable]:not([contenteditable="false"])',
+  "input",
+  "select",
+  "summary",
+  "textarea",
+  "video[controls]",
+  '[role="button"]',
+  '[role="checkbox"]',
+  '[role="combobox"]',
+  '[role="link"]',
+  '[role="listbox"]',
+  '[role="menuitem"]',
+  '[role="option"]',
+  '[role="radio"]',
+  '[role="slider"]',
+  '[role="spinbutton"]',
+  '[role="switch"]',
+  '[role="tab"]',
+  '[role="textbox"]',
+].join(", ");
+
+const getHorizontalDirection = (
+  key: string
+): "left" | "right" | undefined => {
+  if (key === "ArrowLeft") {
+    return "left";
+  }
+
+  return key === "ArrowRight" ? "right" : undefined;
+};
+
+const isInteractiveTarget = (
+  target: EventTarget | null,
+  viewport: HTMLElement | null
+): boolean => {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  const interactiveElement = target.closest(INTERACTIVE_ELEMENT_SELECTOR);
+  return interactiveElement !== null && interactiveElement !== viewport;
+};
 
 export const Viewport = <TPage extends ViewerPage>({
   renderPage,
@@ -239,11 +285,16 @@ export const Viewport = <TPage extends ViewerPage>({
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "ArrowLeft") {
-        goByHorizontalDirection("left");
-      } else if (event.key === "ArrowRight") {
-        goByHorizontalDirection("right");
+      const direction = getHorizontalDirection(event.key);
+      if (
+        direction === undefined ||
+        isInteractiveTarget(event.target, containerRef.current)
+      ) {
+        return;
       }
+
+      event.preventDefault();
+      goByHorizontalDirection(direction);
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -268,16 +319,17 @@ export const Viewport = <TPage extends ViewerPage>({
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
-    if (event.key === "ArrowLeft") {
-      event.stopPropagation();
-      goByHorizontalDirection("left");
+    const direction = getHorizontalDirection(event.key);
+    if (
+      direction === undefined ||
+      isInteractiveTarget(event.target, event.currentTarget)
+    ) {
       return;
     }
 
-    if (event.key === "ArrowRight") {
-      event.stopPropagation();
-      goByHorizontalDirection("right");
-    }
+    event.preventDefault();
+    event.stopPropagation();
+    goByHorizontalDirection(direction);
   };
 
   const handleTouchStart = (event: TouchEvent<HTMLDivElement>): void => {
