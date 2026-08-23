@@ -1,5 +1,5 @@
 import { act, render, renderHook, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { definePlugin } from "./plugin";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
@@ -157,6 +157,66 @@ describe("ViewerProvider / useViewerContext", () => {
     });
 
     expect(result.current.currentIndex).toBe(3);
+  });
+
+  it("supports controlled navigation and reports only index changes", () => {
+    const onIndexChange = vi.fn<(index: number) => void>();
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({ currentIndex: 2, onIndexChange }),
+    });
+
+    expect(result.current.currentIndex).toBe(2);
+
+    act(() => {
+      result.current.goToNext();
+    });
+
+    expect(result.current.currentIndex).toBe(2);
+    expect(onIndexChange).toHaveBeenCalledExactlyOnceWith(3);
+
+    act(() => {
+      result.current.goTo(2);
+    });
+
+    expect(onIndexChange).toHaveBeenCalledOnce();
+  });
+
+  it("updates the controlled index from the latest prop", () => {
+    const { rerender } = render(
+      <ViewerProvider pages={pages} currentIndex={1}>
+        <CurrentIndexOutput />
+      </ViewerProvider>
+    );
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+
+    rerender(
+      <ViewerProvider pages={pages} currentIndex={4}>
+        <CurrentIndexOutput />
+      </ViewerProvider>
+    );
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("4");
+  });
+
+  it("reports uncontrolled programmatic navigation without duplicate callbacks", () => {
+    const onIndexChange = vi.fn<(index: number) => void>();
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({ onIndexChange }),
+    });
+
+    act(() => {
+      result.current.goTo(3);
+    });
+
+    expect(result.current.currentIndex).toBe(3);
+    expect(onIndexChange).toHaveBeenCalledExactlyOnceWith(3);
+
+    act(() => {
+      result.current.goTo(3);
+    });
+
+    expect(onIndexChange).toHaveBeenCalledOnce();
   });
 
   it.each([

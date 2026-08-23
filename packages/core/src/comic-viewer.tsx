@@ -21,6 +21,8 @@ export interface ComicViewerProps<
 const ComicViewerRoot = <TPage extends ViewerPage>({
   children,
   className,
+  currentIndex,
+  onIndexChange,
   pages,
   plugins,
   initialIndex = 0,
@@ -31,7 +33,9 @@ const ComicViewerRoot = <TPage extends ViewerPage>({
   <ViewerProvider
     pages={pages}
     plugins={plugins}
+    currentIndex={currentIndex}
     initialIndex={initialIndex}
+    onIndexChange={onIndexChange}
     initialViewMode={initialViewMode}
     initialReadingDirection={initialReadingDirection}
     spreadStartIndex={spreadStartIndex}
