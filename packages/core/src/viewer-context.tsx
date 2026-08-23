@@ -48,11 +48,11 @@ const ViewerContext = createContext<ViewerContextValue | null>(null);
 const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
 
 const clamp = (value: number, min: number, max: number): number => {
-  if (Number.isNaN(value)) {
+  if (!Number.isFinite(value)) {
     return min;
   }
 
-  return Math.min(max, Math.max(min, value));
+  return Math.min(max, Math.max(min, Math.trunc(value)));
 };
 
 const getStep = (viewMode: ViewMode): number => (viewMode === "double" ? 2 : 1);
