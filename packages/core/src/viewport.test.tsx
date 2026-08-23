@@ -535,6 +535,55 @@ describe(Viewport, () => {
     expect(screen.getByTestId("current-index")).toHaveTextContent("1");
   });
 
+  it("does not navigate from editable or interactive descendants", () => {
+    render(
+      <ViewerProvider pages={pages} initialIndex={1}>
+        <Viewport<TestPage>
+          renderPage={() => (
+            <>
+              <input aria-label="Title" />
+              <textarea aria-label="Description" />
+              <select aria-label="Page size">
+                <option>One page</option>
+              </select>
+              <div aria-label="Notes" contentEditable />
+              <button type="button">Open menu</button>
+            </>
+          )}
+        />
+        <CurrentIndexIndicator />
+      </ViewerProvider>
+    );
+
+    for (const control of [
+      screen.getByRole("textbox", { name: "Title" }),
+      screen.getByRole("textbox", { name: "Description" }),
+      screen.getByRole("combobox", { name: "Page size" }),
+      screen.getByLabelText("Notes"),
+      screen.getByRole("button", { name: "Open menu" }),
+    ]) {
+      expect(fireEvent.keyDown(control, { key: "ArrowRight" })).toBeTruthy();
+      expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+    }
+  });
+
+  it("navigates and prevents browser scrolling when the viewport is focused", () => {
+    const { container } = renderViewport({
+      initialIndex: 1,
+      initialReadingDirection: "ltr",
+    });
+    const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
+
+    expect(viewport).not.toBeNull();
+    if (viewport === null) {
+      return;
+    }
+
+    viewport.focus();
+    expect(fireEvent.keyDown(viewport, { key: "ArrowRight" })).toBeFalsy();
+    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+  });
+
   it("navigates by edge click in LTR", () => {
     const { container } = renderViewport({
       initialIndex: 1,
