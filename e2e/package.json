@@ -8,6 +8,8 @@
     "test:e2e": "playwright test"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1"
+    "@playwright/test": "1.62.1",
+    "@publira/comic-viewer-demo": "workspace:*",
+    "@publira/comic-viewer-tailwind-demo": "workspace:*"
   }
 }

@@ -108,6 +108,7 @@ jobs:
           name: build-output
           path: |
             apps/demo/.next
+            apps/demo-tw/.next
             packages/core/dist
           retention-days: 1
 

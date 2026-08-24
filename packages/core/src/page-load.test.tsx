@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PageLoadError } from "./page-load";
@@ -278,6 +279,30 @@ describe("page load state", () => {
     });
 
     expect(screen.getByTestId("placeholder")).toHaveTextContent("false");
+  });
+
+  it("restarts an image load after Strict Mode aborts the initial effect", async () => {
+    const fetchMock = vi.fn<MockFetch>(() =>
+      Promise.resolve({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+        ok: true,
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <StrictMode>
+        <ViewerProvider pages={[singlePage]}>
+          <Viewport>
+            <PageLoadProbe />
+          </Viewport>
+        </ViewerProvider>
+      </StrictMode>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("loaded");
+    });
   });
 
   it("retries a failed page and clears its error once it succeeds", async () => {
