@@ -232,6 +232,100 @@ describe(Viewport, () => {
     }
   });
 
+  it("clears a decoded canvas while a replacement page loads", async () => {
+    const clearRect = vi.fn<() => void>();
+    const drawImage = vi.fn<() => void>();
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, "getContext")
+      .mockReturnValue({
+        clearRect,
+        drawImage,
+      } as unknown as CanvasRenderingContext2D);
+    let resolveReplacement:
+      | ((response: {
+          arrayBuffer: () => Promise<ArrayBuffer>;
+          ok: boolean;
+        }) => void)
+      | undefined;
+    const fetchMock = vi.fn<MockFetch>((input) => {
+      if (input === "replacement.png") {
+        // eslint-disable-next-line promise/avoid-new -- A pending fetch keeps the replacement page undecoded.
+        return new Promise((resolve) => {
+          resolveReplacement = resolve;
+        });
+      }
+
+      return Promise.resolve({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+        ok: true,
+      });
+    });
+    const image = {
+      close: vi.fn<() => void>(),
+      height: 1,
+      width: 1,
+    } as unknown as ImageBitmap;
+    vi.stubGlobal(
+      "createImageBitmap",
+      vi.fn<() => Promise<ImageBitmap>>().mockResolvedValue(image)
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const { rerender } = render(
+        <ViewerProvider
+          pages={[{ id: "page", src: "original.png", title: "Original page" }]}
+        >
+          <Viewport />
+        </ViewerProvider>
+      );
+
+      await waitFor(() => {
+        expect(drawImage).toHaveBeenCalledWith(image, 0, 0, 1, 1);
+      });
+      clearRect.mockClear();
+
+      rerender(
+        <ViewerProvider
+          pages={[
+            {
+              id: "page",
+              src: "replacement.png",
+              title: "Replacement page",
+            },
+          ]}
+        >
+          <Viewport />
+        </ViewerProvider>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Replacement page")).toHaveAttribute(
+          "aria-busy",
+          "true"
+        );
+        expect(clearRect).toHaveBeenCalledWith(0, 0, 1, 1);
+      });
+
+      if (resolveReplacement === undefined) {
+        throw new Error("The replacement page did not start loading.");
+      }
+      resolveReplacement({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+        ok: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Replacement page")).not.toHaveAttribute(
+          "aria-busy"
+        );
+      });
+    } finally {
+      getContext.mockRestore();
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("draws the supplied placeholder before fetching the full page", async () => {
     const image = {
       close: vi.fn<() => void>(),
@@ -240,7 +334,10 @@ describe(Viewport, () => {
     } as unknown as ImageBitmap;
     const drawImage = vi.fn<() => void>();
     const filters: string[] = [];
-    const context = { drawImage } as unknown as CanvasRenderingContext2D;
+    const context = {
+      clearRect: vi.fn<() => void>(),
+      drawImage,
+    } as unknown as CanvasRenderingContext2D;
     Object.defineProperty(context, "filter", {
       get: () => filters.at(-1) ?? "none",
       set: (filter: string) => {
@@ -325,7 +422,10 @@ describe(Viewport, () => {
     });
     const getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
-      .mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+      .mockReturnValue({
+        clearRect: vi.fn<() => void>(),
+        drawImage,
+      } as unknown as CanvasRenderingContext2D);
     const createImageBitmapMock = vi.fn<() => Promise<ImageBitmap>>(() => {
       const bitmap = {
         close: () => {

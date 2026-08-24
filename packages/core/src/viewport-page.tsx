@@ -92,7 +92,12 @@ export const PageCanvas = ({ className, ...props }: PageCanvasProps) => {
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (canvas === null || image === undefined) {
+    if (canvas === null) {
+      return;
+    }
+
+    if (image === undefined) {
+      canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
       return;
     }
 
