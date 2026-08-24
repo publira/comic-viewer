@@ -67,7 +67,7 @@ export function Reader() {
 
 ### Per-viewer theme
 
-When using `core.css`, each viewer root supplies the default `--pcv-bg` and `--pcv-fg` custom properties. Add a class to `ComicViewer.Root` and override those properties on that same element to theme viewers independently:
+When using `core.css`, each viewer root falls back to `#111111` for `--pcv-bg` and `#f3f3f3` for `--pcv-fg`. Add a class to `ComicViewer.Root` and set those properties on that same element to theme viewers independently:
 
 ```tsx
 <ComicViewer.Root pages={pages} className="night-reader">
