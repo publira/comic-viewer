@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.6.0...comic-viewer-v0.6.1) (2026-08-24)
+
+
+### Bug Fixes
+
+* **core:** meet the pages of a spread at the gutter ([#151](https://github.com/publira/comic-viewer/issues/151)) ([1fa6dea](https://github.com/publira/comic-viewer/commit/1fa6dea0a38403528961727a6ea610dd5a6905ea)), closes [#146](https://github.com/publira/comic-viewer/issues/146)
+* **core:** place an unpaired page on its facing side ([#148](https://github.com/publira/comic-viewer/issues/148)) ([47ed746](https://github.com/publira/comic-viewer/commit/47ed746bc500a3d9466295caa833eb515ad3b097)), closes [#147](https://github.com/publira/comic-viewer/issues/147)
+
 ## [0.6.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.5.1...comic-viewer-v0.6.0) (2026-08-24)
 
 
