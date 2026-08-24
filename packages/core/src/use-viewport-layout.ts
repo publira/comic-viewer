@@ -5,6 +5,24 @@ import type { ViewMode } from "./viewer-context";
 
 export type PageTurnDirection = "left" | "right";
 
+/** The half of a double-page spread that a page occupies. */
+export type PageSide = "left" | "right";
+
+/**
+ * Returns the side a page takes in double-page mode. A page whose offset from
+ * `spreadStartIndex` is even starts a spread and takes the side the reading
+ * begins on, and the page facing it takes the other side, so an unpaired page
+ * keeps the side it would have had in a printed book.
+ */
+export const getPageSide = (
+  index: number,
+  spreadStartIndex: number,
+  readingDirection: "rtl" | "ltr"
+): PageSide => {
+  const startsSpread = (index - spreadStartIndex) % 2 === 0;
+  return startsSpread === (readingDirection === "ltr") ? "left" : "right";
+};
+
 /** Returns the physical direction in which the current spread leaves the viewport. */
 export const getPageTurnDirection = (
   fromIndex: number,

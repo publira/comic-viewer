@@ -7,7 +7,8 @@ import type {
 
 import { getPageImageKey } from "./use-viewport-images";
 import type { PageImage, PageLoadEntry } from "./use-viewport-images";
-import type { PageTurnDirection } from "./use-viewport-layout";
+import { getPageSide } from "./use-viewport-layout";
+import type { PageSide, PageTurnDirection } from "./use-viewport-layout";
 import type { ViewerPage } from "./viewer-context";
 import { ViewportPageInstance } from "./viewport-page";
 import type { ViewportChildren } from "./viewport-page";
@@ -42,6 +43,7 @@ interface ViewportRailProps<TPage extends ViewerPage> {
   renderPage: ((page: TPage, index: number) => ReactNode) | undefined;
   retryPage: (index: number) => void;
   slideDirection: PageTurnDirection | undefined;
+  spreadStartIndex: number;
   transitionState: "idle" | "waiting" | "prepared" | "active";
   viewMode: "single" | "double";
 }
@@ -64,12 +66,19 @@ export const ViewportRail = <TPage extends ViewerPage>({
   renderPage,
   retryPage,
   slideDirection,
+  spreadStartIndex,
   transitionState,
   viewMode,
 }: ViewportRailProps<TPage>) => {
   const trackTemplate = layoutTemplate?.track;
   const pageSetTemplate = layoutTemplate?.pageSet;
   const pageSlotTemplate = layoutTemplate?.pageSlot;
+  // Only a spread has two halves, so a page takes a side in double-page mode
+  // alone.
+  const getSide = (index: number): PageSide | undefined =>
+    viewMode === "double"
+      ? getPageSide(index, spreadStartIndex, readingDirection)
+      : undefined;
   const pageSets = railSpreadIndices.map((spreadIndex, slot) => {
     const pageSetStyle =
       slot === 1
@@ -80,10 +89,15 @@ export const ViewportRail = <TPage extends ViewerPage>({
             "--pcv-zoom-scale": activeZoom.scale,
           } as CSSProperties)
         : pageSetTemplate?.props.style;
+    const pageIndices =
+      spreadIndex === undefined ? [] : getPageIndices(spreadIndex);
     const pageSetProps = {
       "aria-hidden": slot !== 1 || undefined,
-      "data-page-count":
-        spreadIndex === undefined ? 0 : getPageIndices(spreadIndex).length,
+      "data-page-count": pageIndices.length,
+      // An unpaired page still belongs to one half of the spread, and the set
+      // is the only element that can place it there for every page template.
+      "data-page-side":
+        pageIndices.length === 1 ? getSide(pageIndices[0]) : undefined,
       "data-rail-slot": getRailSlotName(slot),
       "data-reading-direction": readingDirection,
       "data-view-mode": viewMode,
@@ -92,7 +106,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
     const pageInstances =
       spreadIndex === undefined
         ? null
-        : getPageIndices(spreadIndex).map((index) => {
+        : pageIndices.map((index) => {
             const page = pages[index];
             if (page === undefined) {
               return null;
@@ -100,6 +114,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
 
             const imageKey = getPageImageKey(index, page);
             const loadState = pageLoadStates.get(imageKey);
+            const side = getSide(index);
             const pageInstance = (
               <ViewportPageInstance
                 key={index}
@@ -109,6 +124,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
                 page={page}
                 renderPage={renderPage}
                 retryPage={retryPage}
+                side={side}
                 status={loadState?.status ?? "idle"}
               >
                 {pageTemplate}
@@ -122,7 +138,11 @@ export const ViewportRail = <TPage extends ViewerPage>({
             // oxlint-disable-next-line react/no-clone-element -- The page slot is a public layout template instantiated for each visible page.
             return cloneElement(
               pageSlotTemplate,
-              { "data-view-mode": viewMode, key: index },
+              {
+                "data-page-side": side,
+                "data-view-mode": viewMode,
+                key: index,
+              },
               pageInstance
             );
           });

@@ -130,11 +130,115 @@ describe(Viewport, () => {
     }
 
     expect(currentPageSet).toHaveAttribute("data-page-count", "1");
+    expect(currentPageSet).toHaveAttribute("data-page-side", "right");
     expect(currentPageSet).toHaveAttribute("data-reading-direction", "rtl");
     expect(currentPageSet).toHaveAttribute("data-view-mode", "double");
     expect(currentPageSet.firstElementChild).toHaveAttribute(
       "data-view-mode",
       "double"
+    );
+  });
+
+  it.each([
+    { expectedSide: "left", readingDirection: "rtl" },
+    { expectedSide: "right", readingDirection: "ltr" },
+  ] as const)(
+    "faces a leading unpaired page toward the page after it in $readingDirection",
+    ({ expectedSide, readingDirection }) => {
+      const { container } = render(
+        <ViewerProvider
+          pages={pages}
+          initialReadingDirection={readingDirection}
+          initialViewMode="double"
+          spreadStartIndex={1}
+        >
+          <Viewport>
+            <ViewportTrack>
+              <ViewportPageSet>
+                <ViewportPageSlot>
+                  <ViewportPage />
+                </ViewportPageSlot>
+              </ViewportPageSet>
+            </ViewportTrack>
+          </Viewport>
+        </ViewerProvider>
+      );
+      const currentPageSet = container.querySelector<HTMLDivElement>(
+        '.pcv-viewport-page-set[data-rail-slot="current"]'
+      );
+
+      if (currentPageSet === null) {
+        throw new Error("The current page set was not rendered.");
+      }
+
+      expect(currentPageSet).toHaveAttribute("data-page-count", "1");
+      expect(currentPageSet).toHaveAttribute("data-page-side", expectedSide);
+      expect(currentPageSet.querySelector(".pcv-page")).toHaveAttribute(
+        "data-page-side",
+        expectedSide
+      );
+    }
+  );
+
+  it("gives each page of a spread the half it occupies", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="double">
+        <Viewport>
+          <ViewportTrack>
+            <ViewportPageSet>
+              <ViewportPageSlot>
+                <ViewportPage />
+              </ViewportPageSlot>
+            </ViewportPageSet>
+          </ViewportTrack>
+        </Viewport>
+      </ViewerProvider>
+    );
+    const currentPageSet = container.querySelector<HTMLDivElement>(
+      '.pcv-viewport-page-set[data-rail-slot="current"]'
+    );
+
+    if (currentPageSet === null) {
+      throw new Error("The current page set was not rendered.");
+    }
+
+    // The rail renders the pages left to right, so the RTL spread starts on
+    // the right with its second child.
+    expect(currentPageSet).not.toHaveAttribute("data-page-side");
+    expect(
+      [
+        ...currentPageSet.querySelectorAll<HTMLDivElement>(
+          ".pcv-viewport-page-slot"
+        ),
+      ].map((slot) => slot.dataset.pageSide)
+    ).toStrictEqual(["left", "right"]);
+  });
+
+  it("gives a page no side in single-page mode", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport>
+          <ViewportTrack>
+            <ViewportPageSet>
+              <ViewportPageSlot>
+                <ViewportPage />
+              </ViewportPageSlot>
+            </ViewportPageSet>
+          </ViewportTrack>
+        </Viewport>
+      </ViewerProvider>
+    );
+    const currentPageSet = container.querySelector<HTMLDivElement>(
+      '.pcv-viewport-page-set[data-rail-slot="current"]'
+    );
+
+    if (currentPageSet === null) {
+      throw new Error("The current page set was not rendered.");
+    }
+
+    expect(currentPageSet).not.toHaveAttribute("data-page-side");
+    expect(currentPageSet.firstElementChild).not.toHaveAttribute(
+      "data-page-side"
     );
   });
 

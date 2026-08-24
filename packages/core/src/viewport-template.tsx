@@ -2,7 +2,7 @@ import { isValidElement } from "react";
 import type { ComponentPropsWithoutRef, ReactElement } from "react";
 
 import { composeClassName } from "./class-names";
-import type { PageTurnDirection } from "./use-viewport-layout";
+import type { PageSide, PageTurnDirection } from "./use-viewport-layout";
 import type { ViewerPage } from "./viewer-context";
 import type { ViewportChildren } from "./viewport-page";
 
@@ -25,6 +25,8 @@ export const ViewportTrack = ({
 
 export interface ViewportPageSetProps extends ComponentPropsWithoutRef<"div"> {
   "data-page-count"?: number;
+  /** The side an unpaired page takes; absent while the set holds a spread. */
+  "data-page-side"?: PageSide;
   "data-rail-slot"?: "previous" | "current" | "next";
   "data-reading-direction"?: "rtl" | "ltr";
   "data-view-mode"?: "single" | "double";
@@ -45,6 +47,7 @@ export const ViewportPageSet = ({
 );
 
 export interface ViewportPageSlotProps extends ComponentPropsWithoutRef<"div"> {
+  "data-page-side"?: PageSide;
   "data-view-mode"?: "single" | "double";
 }
 

@@ -145,6 +145,7 @@ export const Viewport = <TPage extends ViewerPage>({
         renderPage={renderPage}
         retryPage={retryPage}
         slideDirection={slideDirection}
+        spreadStartIndex={spreadStartIndex}
         transitionState={transitionState}
         viewMode={viewMode}
       />

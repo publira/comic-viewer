@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getNextSpreadIndex,
+  getPageSide,
   getPageTurnDirection,
   getPreviousSpreadIndex,
   getSwipeTargetIndex,
@@ -14,6 +15,30 @@ describe(getPageTurnDirection, () => {
     expect(getPageTurnDirection(1, 0, "ltr")).toBe("right");
     expect(getPageTurnDirection(0, 1, "rtl")).toBe("right");
     expect(getPageTurnDirection(1, 0, "rtl")).toBe("left");
+  });
+});
+
+describe(getPageSide, () => {
+  it("starts a spread on the side the reading begins on", () => {
+    expect(getPageSide(0, 0, "rtl")).toBe("right");
+    expect(getPageSide(0, 0, "ltr")).toBe("left");
+  });
+
+  it("faces the page that starts the spread", () => {
+    expect(getPageSide(1, 0, "rtl")).toBe("left");
+    expect(getPageSide(1, 0, "ltr")).toBe("right");
+  });
+
+  it("places a leading unpaired page opposite the page after it", () => {
+    expect(getPageSide(0, 1, "rtl")).toBe("left");
+    expect(getPageSide(0, 1, "ltr")).toBe("right");
+    expect(getPageSide(1, 1, "rtl")).toBe("right");
+    expect(getPageSide(1, 1, "ltr")).toBe("left");
+  });
+
+  it("starts the spread of a trailing unpaired page", () => {
+    expect(getPageSide(5, 1, "rtl")).toBe("right");
+    expect(getPageSide(5, 1, "ltr")).toBe("left");
   });
 });
 
