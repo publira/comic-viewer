@@ -1,8 +1,3 @@
-:root {
-  --pcv-bg: #111111;
-  --pcv-fg: #f3f3f3;
-}
-
 .pcv-root {
   position: relative;
   display: flex;
@@ -12,8 +7,8 @@
   min-height: 0;
   overflow: hidden;
   touch-action: pan-y;
-  background: var(--pcv-bg);
-  color: var(--pcv-fg);
+  background: var(--pcv-bg, #111111);
+  color: var(--pcv-fg, #f3f3f3);
 }
 
 .pcv-viewport {
@@ -217,7 +212,7 @@
   border-radius: 999px;
   place-items: center;
   background: color-mix(in oklab, #000000 60%, transparent);
-  color: var(--pcv-fg);
+  color: var(--pcv-fg, #f3f3f3);
   pointer-events: auto;
 }
 
@@ -249,7 +244,7 @@
 
 .pcv-page-navigation > .pcv-previous-page-button:focus-visible,
 .pcv-page-navigation > .pcv-next-page-button:focus-visible {
-  outline: 2px solid var(--pcv-fg);
+  outline: 2px solid var(--pcv-fg, #f3f3f3);
   outline-offset: 2px;
 }
 
@@ -283,13 +278,13 @@
 .pcv-page-progress-track::-webkit-progress-value,
 .pcv-page-progress-track::-moz-progress-bar {
   border-radius: inherit;
-  background: var(--pcv-fg);
+  background: var(--pcv-fg, #f3f3f3);
 }
 
 .pcv-page-progress .pcv-page-status {
   display: block;
   margin-block-start: 0.375rem;
-  color: var(--pcv-fg);
+  color: var(--pcv-fg, #f3f3f3);
   font-size: 0.875rem;
   text-align: center;
 }
