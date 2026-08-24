@@ -5,18 +5,18 @@ import { WatermarkedComicViewer } from "./_components/watermarked-comic-viewer";
 
 import styles from "./page.module.css";
 
-const sourceCode = `import { ComicViewer, definePlugin } from "@publira/comic-viewer";
+const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 
-const watermarkPlugin = definePlugin({
+const watermarkPlugin = ComicViewer.definePlugin({
   name: "text-watermark",
   afterFetch: addWatermark,
 });
 
 export const Reader = ({ pages }) => (
-  <ComicViewer pages={pages} plugins={[watermarkPlugin]}>
+  <ComicViewer.Root pages={pages} plugins={[watermarkPlugin]}>
     <ComicViewer.Viewport />
     <ComicViewer.PageNavigation />
-  </ComicViewer>
+  </ComicViewer.Root>
 );`;
 
 const WatermarkPluginDemoPage = () => (

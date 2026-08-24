@@ -8,9 +8,14 @@ export {
   type ViewerProviderProps,
   type ViewMode,
 } from "./viewer-context";
-export { ComicViewer, type ComicViewerProps } from "./comic-viewer";
+export {
+  ComicViewer,
+  ComicViewer as Root,
+  type ComicViewerProps,
+} from "./comic-viewer";
 export {
   PageCanvas,
+  Viewport,
   ViewportPage,
   ViewportPageSet,
   ViewportPageSlot,
@@ -22,7 +27,7 @@ export {
   type ViewportProps,
   type ViewportTrackProps,
 } from "./viewport";
-export { type ToolbarProps } from "./toolbar";
+export { Toolbar, type ToolbarProps } from "./toolbar";
 export {
   NextPageButton,
   PageNavigation,

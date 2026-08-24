@@ -6,7 +6,7 @@ It provides robust core functionalities like memory-efficient virtualization, re
 
 ## Features
 
-- **Headless UI Architecture:** Fully customize the look and feel using Compound Components.
+- **Headless UI Architecture:** Fully customize the look and feel by composing independent, tree-shakeable components.
 - **Responsive Spread Views:** Automatically switches between single and double-page spreads based on container width.
 - **Pluggable Data Pipeline:** Easily inject custom logic for data fetching, decryption (e.g., WASM/DRM), and analytics via the `plugins` API.
 - **Virtualization & Memory Management:** Safely handles large volumes of high-resolution images or canvases without crashing mobile browsers.
@@ -28,10 +28,10 @@ This project is pre-1.0 and does not yet follow strict Semantic Versioning guara
 
 ## Basic Usage
 
-Import the optional core CSS and assemble the viewer using the provided Compound Components. The stylesheet provides the default layout and appearance; omit it when you supply the viewer's styles yourself, including through `className` utilities.
+Import the optional core CSS and assemble the viewer by importing the package namespace and composing `ComicViewer.Root` with the components you need. Each component is an independent named export, so a bundler can omit the ones you never render. The stylesheet provides the default layout and appearance; omit it when you supply the viewer's styles yourself, including through `className` utilities.
 
 ```tsx
-import { ComicViewer } from "@publira/comic-viewer";
+import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 import "@publira/comic-viewer/core.css";
 
@@ -54,10 +54,10 @@ const pages: ViewerPage[] = [
 
 function App() {
   return (
-    <ComicViewer pages={pages} initialReadingDirection="rtl">
+    <ComicViewer.Root pages={pages} initialReadingDirection="rtl">
       <ComicViewer.Viewport />
       <ComicViewer.PageNavigation />
-    </ComicViewer>
+    </ComicViewer.Root>
   );
 }
 ```
@@ -69,11 +69,11 @@ function App() {
 `core.css` is optional. When using Tailwind CSS, omit the stylesheet and apply the layout styles through `className` instead. The viewer and viewport need a defined size, flex layout, and hidden overflow. Compose the public `ViewportTrack`, `ViewportPageSet`, and `ViewportPageSlot` components to style the page-turn structure without selecting implementation classes.
 
 ```tsx
-import { ComicViewer } from "@publira/comic-viewer";
+import * as ComicViewer from "@publira/comic-viewer";
 
 export function Reader() {
   return (
-    <ComicViewer
+    <ComicViewer.Root
       pages={pages}
       className="relative flex h-screen w-full min-h-0 min-w-0 overflow-hidden bg-neutral-950 text-neutral-100"
     >
@@ -88,12 +88,12 @@ export function Reader() {
           </ComicViewer.ViewportPageSet>
         </ComicViewer.ViewportTrack>
       </ComicViewer.Viewport>
-    </ComicViewer>
+    </ComicViewer.Root>
   );
 }
 ```
 
-Use `className` on the other compound components to style their controls. For page markup that keeps the viewer loading, decoding, and virtualization pipeline, provide a page template with the public `ViewportPage` and `PageCanvas` primitives:
+Use `className` on the other components to style their controls. For page markup that keeps the viewer loading, decoding, and virtualization pipeline, provide a page template with the public `ViewportPage` and `PageCanvas` primitives:
 
 ```tsx
 <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -127,9 +127,9 @@ Use `className` on the other compound components to style their controls. For pa
 You can intercept and modify the data pipeline (e.g., decrypting binary images on the fly) using the `plugins` prop. Default pages are always decoded and rendered to a `canvas`. Provide an optional `placeholder` URL on each page to display a blurred preview while its full `src` is loading.
 
 ```tsx
-import { ComicViewer, definePlugin } from "@publira/comic-viewer";
+import * as ComicViewer from "@publira/comic-viewer";
 
-const myDecryptionPlugin = definePlugin({
+const myDecryptionPlugin = ComicViewer.definePlugin({
   name: "my-decryption-plugin",
   afterFetch: async (buffer: ArrayBuffer) => {
     // Implement your custom decryption logic here (e.g., WASM XOR)
@@ -139,9 +139,9 @@ const myDecryptionPlugin = definePlugin({
 
 function SecureApp() {
   return (
-    <ComicViewer pages={securePages} plugins={[myDecryptionPlugin]}>
+    <ComicViewer.Root pages={securePages} plugins={[myDecryptionPlugin]}>
       <ComicViewer.Viewport />
-    </ComicViewer>
+    </ComicViewer.Root>
   );
 }
 ```

@@ -4,13 +4,13 @@ import { SourceCodePanel } from "./_components/source-code-panel";
 
 import styles from "./page.module.css";
 
-const sourceCode = `import { ComicViewer } from "@publira/comic-viewer";
+const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 
 export const Reader = ({ pages }) => (
-  <ComicViewer pages={pages}>
+  <ComicViewer.Root pages={pages}>
     <ComicViewer.Viewport />
     <ComicViewer.PageNavigation />
-  </ComicViewer>
+  </ComicViewer.Root>
 );`;
 
 const Home = () => (

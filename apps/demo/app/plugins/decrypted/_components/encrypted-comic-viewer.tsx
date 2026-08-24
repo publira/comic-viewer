@@ -1,6 +1,6 @@
 "use client";
 
-import { ComicViewer, definePlugin } from "@publira/comic-viewer";
+import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 
 import { getViewerStyle } from "../../../_components/viewer-layout";
@@ -48,7 +48,7 @@ const fetchEncryptedPage = async (url: string): Promise<ArrayBuffer> => {
   return response.arrayBuffer();
 };
 
-const encryptedJpegPlugin = definePlugin({
+const encryptedJpegPlugin = ComicViewer.definePlugin({
   afterFetch: decryptPage,
   customFetch: fetchEncryptedPage,
   name: "encrypted-jpeg",
@@ -63,13 +63,13 @@ interface EncryptedComicViewerProps {
 /** Renders the decrypting plugin demo with the shared canvas viewer. */
 export const EncryptedComicViewer = ({ pages }: EncryptedComicViewerProps) => (
   <div className={styles.viewer} style={getViewerStyle(pages)}>
-    <ComicViewer
+    <ComicViewer.Root
       pages={pages}
       plugins={plugins}
       className={styles.viewerContent}
     >
       <ComicViewer.Viewport />
       <ComicViewer.PageNavigation />
-    </ComicViewer>
+    </ComicViewer.Root>
   </div>
 );

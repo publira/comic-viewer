@@ -26,10 +26,10 @@ import "@publira/comic-viewer/core.css";
 
 ## Basic usage
 
-Compose `ComicViewer` with `ComicViewer.Viewport` and provide a page list. A page needs an `id`, `src`, and accessible `title`; `width`, `height`, `mimeType`, and `placeholder` are optional.
+Import the package namespace and compose `ComicViewer.Root` with `ComicViewer.Viewport`, providing a page list. Each component is an independent named export, so a bundler can omit the ones you never render. A page needs an `id`, `src`, and accessible `title`; `width`, `height`, `mimeType`, and `placeholder` are optional.
 
 ```tsx
-import { ComicViewer } from "@publira/comic-viewer";
+import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 import "@publira/comic-viewer/core.css";
 
@@ -53,10 +53,10 @@ const pages: ViewerPage[] = [
 export function Reader() {
   return (
     <div style={{ height: "100vh" }}>
-      <ComicViewer pages={pages} initialReadingDirection="rtl">
+      <ComicViewer.Root pages={pages} initialReadingDirection="rtl">
         <ComicViewer.Viewport />
         <ComicViewer.PageNavigation />
-      </ComicViewer>
+      </ComicViewer.Root>
     </div>
   );
 }
@@ -77,13 +77,13 @@ import { useState } from "react";
 
 const [currentIndex, setCurrentIndex] = useState(0);
 
-<ComicViewer
+<ComicViewer.Root
   currentIndex={currentIndex}
   onIndexChange={setCurrentIndex}
   pages={pages}
 >
   <ComicViewer.Viewport />
-</ComicViewer>;
+</ComicViewer.Root>;
 ```
 
 ### Double-page grouping
@@ -91,9 +91,9 @@ const [currentIndex, setCurrentIndex] = useState(0);
 Use `spreadStartIndex` to leave leading pages unpaired before double-page spreads. The value is a zero-based page index: every page before it is shown individually in double-page mode, and that page begins pairing with the following page. For example, `spreadStartIndex={1}` renders page 1 as a cover and then pairs pages 2–3, 4–5, and so on. `spreadStartIndex={2}` renders pages 1 and 2 individually before pairing pages 3–4. This grouping and the navigation controls work the same way for both RTL and LTR readers. The default is `0`, which preserves the existing behavior of pairing from the first page.
 
 ```tsx
-<ComicViewer pages={pages} spreadStartIndex={1}>
+<ComicViewer.Root pages={pages} spreadStartIndex={1}>
   <ComicViewer.Viewport />
-</ComicViewer>
+</ComicViewer.Root>
 ```
 
 ## Tailwind CSS
@@ -101,9 +101,9 @@ Use `spreadStartIndex` to leave leading pages unpaired before double-page spread
 To style the viewer with Tailwind CSS, do not import `core.css`; apply the layout utilities through `className` instead. The root and viewport need an explicit size, flex layout, and hidden overflow.
 
 ```tsx
-import { ComicViewer } from "@publira/comic-viewer";
+import * as ComicViewer from "@publira/comic-viewer";
 
-<ComicViewer
+<ComicViewer.Root
   pages={pages}
   className="relative flex h-screen w-full min-h-0 min-w-0 overflow-hidden bg-neutral-950 text-neutral-100"
 >
@@ -118,10 +118,10 @@ import { ComicViewer } from "@publira/comic-viewer";
       </ComicViewer.ViewportPageSet>
     </ComicViewer.ViewportTrack>
   </ComicViewer.Viewport>
-</ComicViewer>;
+</ComicViewer.Root>;
 ```
 
-Use `className` on the other compound components to style their controls. For page markup that keeps the viewer loading, decoding, and virtualization pipeline, provide a page template with the public `ViewportPage` and `PageCanvas` primitives:
+Use `className` on the other components to style their controls. For page markup that keeps the viewer loading, decoding, and virtualization pipeline, provide a page template with the public `ViewportPage` and `PageCanvas` primitives:
 
 ```tsx
 <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
@@ -154,7 +154,7 @@ For a custom arrangement, compose `PreviousPageButton`, `PageStatus`, and `NextP
 
 ## Plugins
 
-Pass plugins through the `plugins` prop to customize the page data pipeline. Use `definePlugin` for type inference. Hooks run in registration order:
+Pass plugins through the `plugins` prop to customize the page data pipeline. Use `ComicViewer.definePlugin` for type inference. Hooks run in registration order:
 
 - `beforeFetch` can replace the page URL.
 - `customFetch` can supply the page data instead of the built-in `fetch`.
@@ -162,18 +162,18 @@ Pass plugins through the `plugins` prop to customize the page data pipeline. Use
 - `onPageChange` receives the current page index and total number of pages.
 
 ```tsx
-import { ComicViewer, definePlugin } from "@publira/comic-viewer";
+import * as ComicViewer from "@publira/comic-viewer";
 
-const decryptionPlugin = definePlugin({
+const decryptionPlugin = ComicViewer.definePlugin({
   name: "decrypt-pages",
   afterFetch: async (encryptedPage: ArrayBuffer) => decryptPage(encryptedPage),
 });
 
 export function SecureReader() {
   return (
-    <ComicViewer pages={pages} plugins={[decryptionPlugin]}>
+    <ComicViewer.Root pages={pages} plugins={[decryptionPlugin]}>
       <ComicViewer.Viewport />
-    </ComicViewer>
+    </ComicViewer.Root>
   );
 }
 ```
