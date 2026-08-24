@@ -22,6 +22,10 @@ yarn add @publira/comic-viewer
 pnpm add @publira/comic-viewer
 ```
 
+## Versioning
+
+This project is pre-1.0 and does not yet follow strict Semantic Versioning guarantees. Within a `0.x.y` line, patch releases aim to preserve compatibility where reasonably possible. Minor `0.x` releases may include breaking API changes when they improve the library design or public API, so review the [changelog](packages/core/CHANGELOG.md) before upgrading between minor versions.
+
 ## Basic Usage
 
 Import the optional core CSS and assemble the viewer using the provided Compound Components. The stylesheet provides the default layout and appearance; omit it when you supply the viewer's styles yourself, including through `className` utilities.
