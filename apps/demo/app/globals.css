@@ -1,5 +1,6 @@
 :root {
   color-scheme: light dark;
+
   --demo-background: light-dark(#fafafa, #1a1a1a);
   --demo-foreground: light-dark(#18181b, #ffffff);
   --demo-code-background: light-dark(#e4e4e7, #2a2a2a);
