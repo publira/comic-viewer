@@ -8,6 +8,7 @@ import {
 } from "react";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
+import { composeClassName } from "./class-names";
 import type { PageLoadError, PageLoadState, PageLoadStatus } from "./page-load";
 import type { PageImage } from "./use-viewport-images";
 import type { ViewerPage } from "./viewer-context";
@@ -121,7 +122,7 @@ export const PageCanvas = ({ className, ...props }: PageCanvasProps) => {
         undefined
       }
       aria-label={page.title}
-      className={`pcv-page-canvas${className === undefined ? "" : ` ${className}`}`}
+      className={composeClassName("pcv-page-canvas", className)}
       data-page-status={status}
       data-placeholder={placeholder || undefined}
       height={page.height}
@@ -138,10 +139,7 @@ export const ViewportPage = ({
   className,
   ...props
 }: ViewportPageProps) => (
-  <div
-    {...props}
-    className={`pcv-page${className === undefined ? "" : ` ${className}`}`}
-  >
+  <div {...props} className={composeClassName("pcv-page", className)}>
     {children ?? <PageCanvas />}
   </div>
 );

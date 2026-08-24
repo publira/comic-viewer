@@ -1,3 +1,4 @@
+import { composeClassName } from "./class-names";
 import { ViewerProvider } from "./viewer-context";
 import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
 
@@ -37,10 +38,6 @@ export const ComicViewer = <TPage extends ViewerPage>({
     initialReadingDirection={initialReadingDirection}
     spreadStartIndex={spreadStartIndex}
   >
-    <div
-      className={`pcv-root${className === undefined ? "" : ` ${className}`}`}
-    >
-      {children}
-    </div>
+    <div className={composeClassName("pcv-root", className)}>{children}</div>
   </ViewerProvider>
 );

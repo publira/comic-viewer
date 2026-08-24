@@ -1,5 +1,6 @@
 import type { PropsWithChildren } from "react";
 
+import { composeClassName } from "./class-names";
 import { PageProgress, PageProgressTrack, PageStatus } from "./page-navigation";
 import { useControlsHold } from "./use-controls-hold";
 import { useViewerContext } from "./viewer-context";
@@ -22,7 +23,7 @@ export const Toolbar = ({ children, className }: ToolbarProps) => {
     <div
       {...holdHandlers}
       aria-hidden={!areControlsVisible}
-      className={`pcv-toolbar${className === undefined ? "" : ` ${className}`}`}
+      className={composeClassName("pcv-toolbar", className)}
       data-reading-direction={readingDirection}
       dir={readingDirection}
       inert={!areControlsVisible}

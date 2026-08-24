@@ -1,6 +1,7 @@
 import { isValidElement } from "react";
 import type { ComponentPropsWithoutRef, ReactElement } from "react";
 
+import { composeClassName } from "./class-names";
 import type { PageTurnDirection } from "./use-viewport-layout";
 import type { ViewerPage } from "./viewer-context";
 import type { ViewportChildren } from "./viewport-page";
@@ -17,10 +18,7 @@ export const ViewportTrack = ({
   className,
   ...props
 }: ViewportTrackProps) => (
-  <div
-    {...props}
-    className={`pcv-viewport-track${className === undefined ? "" : ` ${className}`}`}
-  >
+  <div {...props} className={composeClassName("pcv-viewport-track", className)}>
     {children}
   </div>
 );
@@ -40,7 +38,7 @@ export const ViewportPageSet = ({
 }: ViewportPageSetProps) => (
   <div
     {...props}
-    className={`pcv-viewport-page-set${className === undefined ? "" : ` ${className}`}`}
+    className={composeClassName("pcv-viewport-page-set", className)}
   >
     {children}
   </div>
@@ -58,7 +56,7 @@ export const ViewportPageSlot = ({
 }: ViewportPageSlotProps) => (
   <div
     {...props}
-    className={`pcv-viewport-page-slot${className === undefined ? "" : ` ${className}`}`}
+    className={composeClassName("pcv-viewport-page-slot", className)}
   >
     {children}
   </div>

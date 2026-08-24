@@ -7,6 +7,7 @@ import type {
   ReactNode,
 } from "react";
 
+import { composeClassName } from "./class-names";
 import { useControlsHold } from "./use-controls-hold";
 import { getVisiblePageCount, useViewerContext } from "./viewer-context";
 
@@ -53,7 +54,7 @@ export const PreviousPageButton = ({
     <button
       {...props}
       aria-label={ariaLabel}
-      className={`pcv-previous-page-button${props.className === undefined ? "" : ` ${props.className}`}`}
+      className={composeClassName("pcv-previous-page-button", props.className)}
       disabled={isDisabled}
       onClick={handleClick}
       type="button"
@@ -97,7 +98,7 @@ export const NextPageButton = ({
     <button
       {...props}
       aria-label={ariaLabel}
-      className={`pcv-next-page-button${props.className === undefined ? "" : ` ${props.className}`}`}
+      className={composeClassName("pcv-next-page-button", props.className)}
       disabled={isDisabled}
       onClick={handleClick}
       type="button"
@@ -154,7 +155,7 @@ export const PageStatus = ({ className, format }: PageStatusProps) => {
   return (
     <output
       aria-live="polite"
-      className={`pcv-page-status${className === undefined ? "" : ` ${className}`}`}
+      className={composeClassName("pcv-page-status", className)}
     >
       {label}
     </output>
@@ -184,7 +185,7 @@ export const PageProgress = ({
     <PageProgressContext.Provider value={progressValue}>
       <div
         aria-hidden={!visible}
-        className={`pcv-page-progress${className === undefined ? "" : ` ${className}`}`}
+        className={composeClassName("pcv-page-progress", className)}
       >
         {children}
       </div>
@@ -217,7 +218,7 @@ export const PageProgressTrack = ({
     <progress
       {...props}
       aria-label={ariaLabel ?? pageProgress?.ariaLabel}
-      className={`pcv-page-progress-track${className === undefined ? "" : ` ${className}`}`}
+      className={composeClassName("pcv-page-progress-track", className)}
       max={max ?? Math.max(1, pages.length)}
       value={value ?? currentPage}
     />
@@ -242,7 +243,7 @@ export const PageNavigation = ({
       {...holdHandlers}
       aria-hidden={!areControlsVisible}
       aria-label={ariaLabel}
-      className={`pcv-page-navigation${className === undefined ? "" : ` ${className}`}`}
+      className={composeClassName("pcv-page-navigation", className)}
       data-reading-direction={readingDirection}
       dir={readingDirection}
       inert={!areControlsVisible}
