@@ -1,7 +1,11 @@
 "use client";
 
 import * as ComicViewer from "@publira/comic-viewer";
-import type { ViewerPage, ViewerPlugin } from "@publira/comic-viewer";
+import type {
+  ReadingDirection,
+  ViewerPage,
+  ViewerPlugin,
+} from "@publira/comic-viewer";
 
 const encryptionKey = new Uint8Array([
   45, 128, 94, 16, 201, 73, 5, 164, 220, 39, 177, 8, 93, 251, 14, 66, 57, 186,
@@ -106,8 +110,10 @@ const pluginsForMode: Readonly<Record<ReaderMode, readonly ViewerPlugin[]>> = {
 };
 
 interface TailwindReaderProps {
+  initialReadingDirection?: ReadingDirection;
   mode?: ReaderMode;
   pages: readonly ViewerPage[];
+  spreadStartIndex?: number;
 }
 
 const NavigationIcon = ({ path }: { path: string }) => (
@@ -142,12 +148,16 @@ const NavigationControls = () => {
 
 /** Renders the viewer entirely with Tailwind utilities and public primitives. */
 export const TailwindReader = ({
+  initialReadingDirection,
   mode = "basic",
   pages,
+  spreadStartIndex,
 }: TailwindReaderProps) => (
   <ComicViewer.Root
     pages={pages}
     plugins={pluginsForMode[mode]}
+    initialReadingDirection={initialReadingDirection}
+    spreadStartIndex={spreadStartIndex}
     className="relative flex h-full min-h-0 w-full min-w-0 overflow-hidden rounded-xl bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/30"
   >
     <ComicViewer.Viewport className="group/viewport relative flex min-h-0 min-w-0 flex-1 touch-pan-y overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing">
