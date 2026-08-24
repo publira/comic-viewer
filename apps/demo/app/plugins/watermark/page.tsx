@@ -9,7 +9,7 @@ const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 
 const watermarkPlugin = ComicViewer.definePlugin({
   name: "text-watermark",
-  afterFetch: addWatermark,
+  afterFetch: ({ buffer }) => addWatermark(buffer),
 });
 
 export const Reader = ({ pages }) => (

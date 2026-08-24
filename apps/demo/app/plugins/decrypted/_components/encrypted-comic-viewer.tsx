@@ -38,8 +38,11 @@ const decryptPage = async (
 };
 
 /** Fetches a ciphertext page without exposing a renderable image URL. */
-const fetchEncryptedPage = async (url: string): Promise<ArrayBuffer> => {
-  const response = await fetch(url);
+const fetchEncryptedPage = async ({
+  signal,
+  url,
+}: ComicViewer.PageLoadContext): Promise<ArrayBuffer> => {
+  const response = await fetch(url, { signal });
 
   if (!response.ok) {
     throw new Error(`Failed to fetch encrypted page: ${response.status}`);
@@ -49,7 +52,7 @@ const fetchEncryptedPage = async (url: string): Promise<ArrayBuffer> => {
 };
 
 const encryptedJpegPlugin = ComicViewer.definePlugin({
-  afterFetch: decryptPage,
+  afterFetch: ({ buffer }) => decryptPage(buffer),
   customFetch: fetchEncryptedPage,
   name: "encrypted-jpeg",
 });

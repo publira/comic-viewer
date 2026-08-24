@@ -249,9 +249,9 @@ Read `areControlsVisible` and call `toggleControls` from `useViewerContext` to d
 
 Pass plugins through the `plugins` prop to customize the page data pipeline. Use `ComicViewer.definePlugin` for type inference. Hooks run in registration order:
 
-- `beforeFetch` can replace the page URL.
-- `customFetch` can supply the page data instead of the built-in `fetch`.
-- `afterFetch` can transform the fetched `ArrayBuffer`, for example to decrypt a page or add a watermark.
+- `beforeFetch` receives `{ url, signal, page }` and can replace the page URL.
+- `customFetch` receives `{ url, signal, page }` and can supply the page data instead of the built-in `fetch`; if several return a buffer, the last buffer is used.
+- `afterFetch` receives `{ url, signal, page, buffer }` and can transform the fetched `ArrayBuffer`, for example to decrypt a page or add a watermark. Each returned buffer is passed to the following hook.
 - `onPageChange` receives the current page index and total number of pages.
 
 ```tsx
@@ -259,7 +259,7 @@ import * as ComicViewer from "@publira/comic-viewer";
 
 const decryptionPlugin = ComicViewer.definePlugin({
   name: "decrypt-pages",
-  afterFetch: async (encryptedPage: ArrayBuffer) => decryptPage(encryptedPage),
+  afterFetch: async ({ buffer }) => decryptPage(buffer),
 });
 
 export function SecureReader() {

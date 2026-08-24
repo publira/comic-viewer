@@ -8,8 +8,9 @@ const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 
 const encryptedJpegPlugin = ComicViewer.definePlugin({
   name: "encrypted-jpeg",
-  customFetch: (url) => fetch(url).then((response) => response.arrayBuffer()),
-  afterFetch: decryptPage,
+  customFetch: ({ signal, url }) =>
+    fetch(url, { signal }).then((response) => response.arrayBuffer()),
+  afterFetch: ({ buffer }) => decryptPage(buffer),
 });
 
 export const Reader = ({ pages }) => (

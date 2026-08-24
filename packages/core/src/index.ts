@@ -49,4 +49,9 @@ export {
   type PageStatusProps,
 } from "./page-navigation";
 export { useViewMode } from "./use-view-mode";
-export { definePlugin, type ViewerPlugin } from "./plugin";
+export {
+  definePlugin,
+  type FetchedPageContext,
+  type PageLoadContext,
+  type ViewerPlugin,
+} from "./plugin";

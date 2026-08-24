@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { definePlugin, runDataPipeline, runPageChangeHooks } from "./plugin";
+import type { ViewerPage } from "./viewer-context";
 
 describe("plugin pipeline", () => {
   it("defines plugins without changing their hook implementations", () => {
@@ -16,72 +17,106 @@ describe("plugin pipeline", () => {
     const secondBuffer = new ArrayBuffer(2);
     const finalBuffer = new ArrayBuffer(3);
     const fetchMock = vi.fn<() => Promise<unknown>>();
+    const abortController = new AbortController();
+    const page: ViewerPage = {
+      id: "page-1",
+      src: "page.jpg",
+      title: "Page 1",
+    };
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await runDataPipeline("page.jpg", [
-      definePlugin({
-        afterFetch: (buffer) => {
-          events.push(`after-1:${buffer.byteLength}`);
-          return secondBuffer;
-        },
-        beforeFetch: (url) => {
-          events.push(`before-1:${url}`);
-          return `secure/${url}`;
-        },
-        customFetch: (url) => {
-          events.push(`custom-1:${url}`);
-          return firstBuffer;
-        },
-      }),
-      definePlugin({
-        afterFetch: (buffer) => {
-          events.push(`after-2:${buffer.byteLength}`);
-          return finalBuffer;
-        },
-        beforeFetch: (url) => {
-          events.push(`before-2:${url}`);
-        },
-        customFetch: (url) => {
-          events.push(`custom-2:${url}`);
-        },
-      }),
-    ]);
+    const result = await runDataPipeline(
+      { page, signal: abortController.signal, url: "page.jpg" },
+      [
+        definePlugin({
+          afterFetch: ({ buffer, page: contextPage, signal, url }) => {
+            events.push(
+              `after-1:${url}:${buffer.byteLength}:${contextPage?.id}:${String(signal === abortController.signal)}`
+            );
+            return secondBuffer;
+          },
+          beforeFetch: ({ page: contextPage, signal, url }) => {
+            events.push(
+              `before-1:${url}:${contextPage?.id}:${String(signal === abortController.signal)}`
+            );
+            return `secure/${url}`;
+          },
+          customFetch: ({ page: contextPage, signal, url }) => {
+            events.push(
+              `custom-1:${url}:${contextPage?.id}:${String(signal === abortController.signal)}`
+            );
+            return firstBuffer;
+          },
+        }),
+        definePlugin({
+          afterFetch: ({ buffer, url }) => {
+            events.push(`after-2:${url}:${buffer.byteLength}`);
+            return finalBuffer;
+          },
+          beforeFetch: ({ url }) => {
+            events.push(`before-2:${url}`);
+          },
+          customFetch: ({ url }) => {
+            events.push(`custom-2:${url}`);
+          },
+        }),
+      ]
+    );
 
     expect(result).toBe(finalBuffer);
     expect(fetchMock).not.toHaveBeenCalled();
     expect(events).toStrictEqual([
-      "before-1:page.jpg",
+      "before-1:page.jpg:page-1:true",
       "before-2:secure/page.jpg",
-      "custom-1:secure/page.jpg",
+      "custom-1:secure/page.jpg:page-1:true",
       "custom-2:secure/page.jpg",
-      "after-1:1",
-      "after-2:2",
+      "after-1:secure/page.jpg:1:page-1:true",
+      "after-2:secure/page.jpg:2",
     ]);
   });
 
   it("uses the built-in fetch when no custom fetch returns a buffer", async () => {
     const buffer = new ArrayBuffer(4);
+    const abortController = new AbortController();
+    const page: ViewerPage = {
+      id: "page-1",
+      src: "page.jpg",
+      title: "Page 1",
+    };
     const fetchMock = vi.fn<() => Promise<unknown>>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(buffer),
       ok: true,
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await expect(runDataPipeline("page.jpg", [])).resolves.toBe(buffer);
+    await expect(
+      runDataPipeline(
+        { page, signal: abortController.signal, url: "page.jpg" },
+        []
+      )
+    ).resolves.toBe(buffer);
     expect(fetchMock).toHaveBeenCalledWith("page.jpg", {
-      signal: undefined,
+      signal: abortController.signal,
     });
   });
 
   it("forwards the abort signal to the built-in fetch", async () => {
     const abortController = new AbortController();
+    const page: ViewerPage = {
+      id: "page-1",
+      src: "page.jpg",
+      title: "Page 1",
+    };
     const fetchMock = vi.fn<() => Promise<unknown>>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
       ok: true,
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await runDataPipeline("page.jpg", [], abortController.signal);
+    await runDataPipeline(
+      { page, signal: abortController.signal, url: "page.jpg" },
+      []
+    );
 
     expect(fetchMock).toHaveBeenCalledWith("page.jpg", {
       signal: abortController.signal,
