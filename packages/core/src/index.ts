@@ -13,20 +13,21 @@ export {
   ComicViewer as Root,
   type ComicViewerProps,
 } from "./comic-viewer";
+export { Viewport, type ViewportProps } from "./viewport";
 export {
   PageCanvas,
-  Viewport,
   ViewportPage,
+  type PageCanvasProps,
+  type ViewportPageProps,
+} from "./viewport-page";
+export {
   ViewportPageSet,
   ViewportPageSlot,
   ViewportTrack,
-  type PageCanvasProps,
-  type ViewportPageProps,
   type ViewportPageSetProps,
   type ViewportPageSlotProps,
-  type ViewportProps,
   type ViewportTrackProps,
-} from "./viewport";
+} from "./viewport-template";
 export { Toolbar, type ToolbarProps } from "./toolbar";
 export {
   NextPageButton,
