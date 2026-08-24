@@ -15,6 +15,7 @@ const watermarkPlugin = ComicViewer.definePlugin({
 export const Reader = ({ pages }) => (
   <ComicViewer.Root pages={pages} plugins={[watermarkPlugin]}>
     <ComicViewer.Viewport />
+    <ComicViewer.Toolbar />
     <ComicViewer.PageNavigation />
   </ComicViewer.Root>
 );`;

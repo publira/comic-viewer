@@ -162,8 +162,15 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: color-mix(in oklab, #000000 70%, transparent);
+  padding: 2rem 0.75rem 0.75rem;
+  /* Monochrome artwork needs a dark ramp behind the controls, yet the page
+     underneath has to stay readable through it. */
+  background: linear-gradient(
+    to top,
+    color-mix(in oklab, #000000 80%, transparent),
+    color-mix(in oklab, #000000 55%, transparent) 45%,
+    transparent
+  );
 }
 
 .pcv-page-navigation {
@@ -171,6 +178,31 @@
   inset: 0;
   z-index: 10;
   pointer-events: none;
+}
+
+/* Toolbar and PageNavigation share one visibility state, so they reveal and
+   hide together. */
+.pcv-toolbar,
+.pcv-page-navigation {
+  opacity: 0;
+  transform: translateY(0.5rem);
+  transition:
+    opacity 160ms ease-out,
+    transform 160ms ease-out;
+}
+
+.pcv-toolbar[aria-hidden="false"],
+.pcv-page-navigation[aria-hidden="false"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pcv-toolbar,
+  .pcv-page-navigation {
+    transform: none;
+    transition: opacity 160ms ease-out;
+  }
 }
 
 .pcv-page-navigation > .pcv-previous-page-button,
@@ -216,36 +248,18 @@
 }
 
 .pcv-page-navigation > .pcv-previous-page-button:focus-visible,
-.pcv-page-navigation > .pcv-next-page-button:focus-visible,
-.pcv-page-progress-trigger:focus-visible {
+.pcv-page-navigation > .pcv-next-page-button:focus-visible {
   outline: 2px solid var(--pcv-fg);
   outline-offset: 2px;
 }
 
-.pcv-page-progress-trigger {
-  position: absolute;
-  inset-inline: 30%;
-  inset-block: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  pointer-events: auto;
-}
-
 .pcv-page-progress {
-  position: absolute;
-  inset-inline: 20%;
-  inset-block-end: 0.75rem;
-  opacity: 0;
-  transform: translateY(0.5rem);
-  transition:
-    opacity 160ms ease-out,
-    transform 160ms ease-out;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.pcv-page-progress[aria-hidden="false"] {
-  opacity: 1;
-  transform: translateY(0);
+.pcv-page-progress[aria-hidden="true"] {
+  visibility: hidden;
 }
 
 .pcv-page-progress-track {

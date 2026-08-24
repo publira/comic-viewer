@@ -80,6 +80,7 @@ export const WatermarkedComicViewer = ({
     className={styles.viewerContent}
   >
     <ComicViewer.Viewport />
+    <ComicViewer.Toolbar />
     <ComicViewer.PageNavigation />
   </ComicViewer.Root>
 );

@@ -2,7 +2,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { PropsWithChildren } from "react";
@@ -32,6 +34,13 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   pageFitMode: PageFitMode;
   readingDirection: ReadingDirection;
   spreadStartIndex: number;
+  /** Whether the reader controls, such as Toolbar and PageNavigation, show. */
+  areControlsVisible: boolean;
+  /**
+   * Reveals the reader controls, or hides them again. Revealed controls hide
+   * themselves once the reader stops interacting with them.
+   */
+  toggleControls: () => void;
   setViewMode: (mode: ViewMode) => void;
   setPageFitMode: (mode: PageFitMode) => void;
   setReadingDirection: (direction: ReadingDirection) => void;
@@ -61,6 +70,7 @@ export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
 
 const ViewerContext = createContext<ViewerContextValue | null>(null);
 const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
+const CONTROLS_HIDE_DELAY_MS = 2000;
 
 const clamp = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) {
@@ -114,6 +124,34 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     initialReadingDirection
   );
 
+  const [areControlsVisible, setAreControlsVisible] = useState(false);
+  const hideControlsTimeout = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const toggleControls = useCallback(() => {
+    setAreControlsVisible((areVisible) => {
+      if (hideControlsTimeout.current !== null) {
+        clearTimeout(hideControlsTimeout.current);
+        hideControlsTimeout.current = null;
+      }
+      if (!areVisible) {
+        hideControlsTimeout.current = setTimeout(() => {
+          setAreControlsVisible(false);
+          hideControlsTimeout.current = null;
+        }, CONTROLS_HIDE_DELAY_MS);
+      }
+      return !areVisible;
+    });
+  }, []);
+  useEffect(
+    () => () => {
+      if (hideControlsTimeout.current !== null) {
+        clearTimeout(hideControlsTimeout.current);
+      }
+    },
+    []
+  );
+
   const goTo = useCallback(
     (index: number) => {
       const nextIndex = clamp(index, 0, maxIndex);
@@ -160,6 +198,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
 
   const value = useMemo<ViewerContextValue<TPage>>(
     () => ({
+      areControlsVisible,
       currentIndex: clampedCurrentIndex,
       goTo,
       goToNext,
@@ -172,13 +211,16 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       setReadingDirection,
       setViewMode,
       spreadStartIndex: clampedSpreadStartIndex,
+      toggleControls,
       viewMode,
     }),
     [
+      areControlsVisible,
       pages,
       plugins,
       clampedCurrentIndex,
       clampedSpreadStartIndex,
+      toggleControls,
       viewMode,
       pageFitMode,
       readingDirection,

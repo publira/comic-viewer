@@ -34,13 +34,11 @@ export {
   PageNavigation,
   PageProgress,
   PageProgressTrack,
-  PageProgressTrigger,
   PageStatus,
   PreviousPageButton,
   type PageNavigationProps,
   type PageProgressProps,
   type PageProgressTrackProps,
-  type PageProgressTriggerProps,
   type PageStatusProps,
 } from "./page-navigation";
 export { useViewMode } from "./use-view-mode";

@@ -56,6 +56,7 @@ function App() {
   return (
     <ComicViewer.Root pages={pages} initialReadingDirection="rtl">
       <ComicViewer.Viewport />
+      <ComicViewer.Toolbar />
       <ComicViewer.PageNavigation />
     </ComicViewer.Root>
   );
@@ -107,19 +108,21 @@ Use `className` on the other components to style their controls. For page markup
 
 ## Page Navigation
 
-`ComicViewer.PageNavigation` provides accessible previous-page, page-status, and next-page controls. For a custom arrangement, compose `PreviousPageButton`, `PageStatus`, `NextPageButton`, and `PageProgress` with its public `PageProgressTrack` primitive:
+`ComicViewer.PageNavigation` provides accessible previous-page and next-page controls, while `ComicViewer.Toolbar` holds the reading progress. They are siblings, and they share one visibility state: a click or tap away from the page-turn edges reveals both, and a second one hides them again, as does a short pause.
+
+For a custom arrangement, compose `PreviousPageButton`, `NextPageButton`, `PageStatus`, and `PageProgress` with its public `PageProgressTrack` primitive:
 
 ```tsx
-<ComicViewer.Toolbar>
-  <ComicViewer.PageNavigation className="reader-controls">
-    <ComicViewer.PreviousPageButton>Back</ComicViewer.PreviousPageButton>
-    <ComicViewer.NextPageButton>Forward</ComicViewer.NextPageButton>
-    <ComicViewer.PageProgress>
-      <ComicViewer.PageProgressTrack className="progress-bar" />
-      <ComicViewer.PageStatus />
-    </ComicViewer.PageProgress>
-  </ComicViewer.PageNavigation>
+<ComicViewer.Toolbar className="reader-toolbar">
+  <ComicViewer.PageProgress>
+    <ComicViewer.PageProgressTrack className="progress-bar" />
+    <ComicViewer.PageStatus />
+  </ComicViewer.PageProgress>
 </ComicViewer.Toolbar>
+<ComicViewer.PageNavigation className="reader-controls">
+  <ComicViewer.PreviousPageButton>Back</ComicViewer.PreviousPageButton>
+  <ComicViewer.NextPageButton>Forward</ComicViewer.NextPageButton>
+</ComicViewer.PageNavigation>
 ```
 
 ## Advanced: Using Plugins

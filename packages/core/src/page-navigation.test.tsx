@@ -1,5 +1,5 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 
 import {
   NextPageButton,
@@ -9,7 +9,7 @@ import {
   PageStatus,
   PreviousPageButton,
 } from "./page-navigation";
-import { ViewerProvider } from "./viewer-context";
+import { useViewerContext, ViewerProvider } from "./viewer-context";
 import type { ReadingDirection, ViewMode } from "./viewer-context";
 
 const pages = [
@@ -19,6 +19,34 @@ const pages = [
   { id: "p4", src: "page4.png", title: "Page 4" },
   { id: "p5", src: "page5.png", title: "Page 5" },
 ];
+
+/** Stands in for the viewport tap that reveals the shared reader controls. */
+const ControlsToggle = () => {
+  const { toggleControls } = useViewerContext();
+
+  return (
+    <button onClick={toggleControls} type="button">
+      Toggle controls
+    </button>
+  );
+};
+
+const toggleControls = (): void => {
+  fireEvent.click(screen.getByRole("button", { name: "Toggle controls" }));
+};
+
+/** Hidden controls carry no accessible name, so the class is the only handle. */
+const getNavigation = (container: HTMLElement): HTMLElement => {
+  const navigation = container.querySelector<HTMLElement>(
+    ".pcv-page-navigation"
+  );
+
+  if (navigation === null) {
+    throw new Error("The page navigation was not rendered.");
+  }
+
+  return navigation;
+};
 
 interface RenderPageNavigationOptions {
   initialIndex?: number;
@@ -32,8 +60,8 @@ const renderPageNavigation = ({
   initialReadingDirection = "rtl",
   initialViewMode = "single",
   spreadStartIndex = 0,
-}: RenderPageNavigationOptions = {}) =>
-  render(
+}: RenderPageNavigationOptions = {}) => {
+  const result = render(
     <ViewerProvider
       pages={pages}
       initialIndex={initialIndex}
@@ -41,15 +69,18 @@ const renderPageNavigation = ({
       initialViewMode={initialViewMode}
       spreadStartIndex={spreadStartIndex}
     >
+      <ControlsToggle />
       <PageNavigation>
         <PreviousPageButton />
-        <PageProgress>
-          <PageStatus />
-        </PageProgress>
+        <PageStatus />
         <NextPageButton />
       </PageNavigation>
     </ViewerProvider>
   );
+  toggleControls();
+
+  return result;
+};
 
 describe(PageNavigation, () => {
   it("renders an accessible default navigation group", () => {
@@ -68,6 +99,41 @@ describe(PageNavigation, () => {
     );
   });
 
+  it("stays hidden until the shared reader controls are revealed", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages}>
+        <ControlsToggle />
+        <PageNavigation />
+      </ViewerProvider>
+    );
+
+    const navigation = getNavigation(container);
+
+    expect(navigation).toHaveAttribute("aria-hidden", "true");
+    expect(navigation).toHaveAttribute("inert");
+
+    toggleControls();
+
+    expect(navigation).toHaveAttribute("aria-hidden", "false");
+    expect(navigation).not.toHaveAttribute("inert");
+    expect(screen.getByRole("button", { name: "Next page" })).toBeEnabled();
+  });
+
+  it("renders only the page-turn controls by default", () => {
+    render(
+      <ViewerProvider pages={pages}>
+        <ControlsToggle />
+        <PageNavigation />
+      </ViewerProvider>
+    );
+    toggleControls();
+
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Next page" })).toBeVisible();
+    expect(screen.getAllByRole("button")).toHaveLength(3);
+    expect(screen.queryByRole("progressbar")).toBeNull();
+  });
+
   it("derives public progress-track values from the viewer state", () => {
     render(
       <ViewerProvider pages={pages} initialIndex={1} initialViewMode="double">
@@ -81,62 +147,18 @@ describe(PageNavigation, () => {
     expect(screen.getByTestId("progress-track")).toHaveAttribute("value", "3");
   });
 
-  it("renders and reveals the default navigation progress", () => {
-    vi.useFakeTimers();
+  it("hides the progress only when a consumer asks for it", () => {
     render(
       <ViewerProvider pages={pages}>
-        <PageNavigation />
+        <PageProgress visible={false}>
+          <PageProgressTrack />
+        </PageProgress>
       </ViewerProvider>
     );
 
     expect(
-      screen.getByRole("button", { name: "Previous page" })
-    ).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Next page" })).toBeEnabled();
-    expect(
       screen.getByRole("progressbar", { hidden: true }).parentElement
     ).toHaveAttribute("aria-hidden", "true");
-
-    fireEvent.click(
-      screen.getByRole("button", { name: "Show reading progress" })
-    );
-
-    expect(
-      screen.getByRole("progressbar", { hidden: true }).parentElement
-    ).toHaveAttribute("aria-hidden", "false");
-
-    act(() => vi.advanceTimersByTime(2000));
-
-    expect(
-      screen.getByRole("progressbar", { hidden: true }).parentElement
-    ).toHaveAttribute("aria-hidden", "true");
-    vi.useRealTimers();
-  });
-
-  it("hides progress immediately when its trigger is clicked again", () => {
-    vi.useFakeTimers();
-    render(
-      <ViewerProvider pages={pages}>
-        <PageNavigation />
-      </ViewerProvider>
-    );
-
-    const progress = screen.getByRole("progressbar", {
-      hidden: true,
-    }).parentElement;
-    const trigger = screen.getByRole("button", {
-      name: "Show reading progress",
-    });
-
-    fireEvent.click(trigger);
-    expect(progress).toHaveAttribute("aria-hidden", "false");
-
-    fireEvent.click(trigger);
-    expect(progress).toHaveAttribute("aria-hidden", "true");
-
-    act(() => vi.advanceTimersByTime(2000));
-    expect(progress).toHaveAttribute("aria-hidden", "true");
-    vi.useRealTimers();
   });
 
   it("moves by one page and updates its status in single-page mode", () => {
@@ -208,6 +230,7 @@ describe(PageNavigation, () => {
   it("permits custom arrangement and styling with the individual controls", () => {
     render(
       <ViewerProvider pages={pages} initialReadingDirection="ltr">
+        <ControlsToggle />
         <PageNavigation className="reader-controls">
           <NextPageButton className="next-control">Forward</NextPageButton>
           <PageStatus className="status-control" />
@@ -217,6 +240,7 @@ describe(PageNavigation, () => {
         </PageNavigation>
       </ViewerProvider>
     );
+    toggleControls();
 
     const navigation = screen.getByRole("navigation", {
       name: "Page navigation",
