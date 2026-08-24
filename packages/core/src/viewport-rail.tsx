@@ -6,7 +6,7 @@ import type {
 } from "react";
 
 import { getPageImageKey } from "./use-viewport-images";
-import type { PageImage } from "./use-viewport-images";
+import type { PageImage, PageLoadEntry } from "./use-viewport-images";
 import type { PageTurnDirection } from "./use-viewport-layout";
 import type { ViewerPage } from "./viewer-context";
 import { ViewportPageInstance } from "./viewport-page";
@@ -34,11 +34,13 @@ interface ViewportRailProps<TPage extends ViewerPage> {
   layoutTemplate: ViewportLayoutTemplate<TPage> | undefined;
   onTransitionEnd: (event: ReactTransitionEvent<HTMLDivElement>) => void;
   pageImages: ReadonlyMap<string, PageImage>;
+  pageLoadStates: ReadonlyMap<string, PageLoadEntry<TPage>>;
   pageTemplate: ViewportChildren<TPage> | undefined;
   pages: readonly TPage[];
   railSpreadIndices: readonly (number | undefined)[];
   readingDirection: "rtl" | "ltr";
   renderPage: ((page: TPage, index: number) => ReactNode) | undefined;
+  retryPage: (index: number) => void;
   slideDirection: PageTurnDirection | undefined;
   transitionState: "idle" | "waiting" | "prepared" | "active";
   viewMode: "single" | "double";
@@ -54,11 +56,13 @@ export const ViewportRail = <TPage extends ViewerPage>({
   layoutTemplate,
   onTransitionEnd,
   pageImages,
+  pageLoadStates,
   pageTemplate,
   pages,
   railSpreadIndices,
   readingDirection,
   renderPage,
+  retryPage,
   slideDirection,
   transitionState,
   viewMode,
@@ -94,13 +98,18 @@ export const ViewportRail = <TPage extends ViewerPage>({
               return null;
             }
 
+            const imageKey = getPageImageKey(index, page);
+            const loadState = pageLoadStates.get(imageKey);
             const pageInstance = (
               <ViewportPageInstance
                 key={index}
-                image={pageImages.get(getPageImageKey(index, page))}
+                error={loadState?.error}
+                image={pageImages.get(imageKey)}
                 index={index}
                 page={page}
                 renderPage={renderPage}
+                retryPage={retryPage}
+                status={loadState?.status ?? "idle"}
               >
                 {pageTemplate}
               </ViewportPageInstance>

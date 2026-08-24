@@ -17,9 +17,16 @@ export { Viewport, type ViewportProps } from "./viewport";
 export {
   PageCanvas,
   ViewportPage,
+  usePageLoadState,
   type PageCanvasProps,
   type ViewportPageProps,
 } from "./viewport-page";
+export type {
+  PageLoadError,
+  PageLoadStage,
+  PageLoadState,
+  PageLoadStatus,
+} from "./page-load";
 export {
   ViewportPageSet,
   ViewportPageSlot,

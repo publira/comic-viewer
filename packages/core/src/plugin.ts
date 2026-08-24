@@ -1,3 +1,6 @@
+import { PageDataError } from "./page-load";
+import type { PageDataStage } from "./page-load";
+
 type TransformHook<TInput, TOutput = TInput> =
   | ((value: TInput) => TOutput | Promise<TOutput | undefined> | undefined)
   | ((value: TInput) => void)
@@ -52,42 +55,65 @@ const fetchPage = async (
   return response.arrayBuffer();
 };
 
+/** Labels whatever a pipeline stage throws with the stage it came from. */
+const runStage = async <TResult>(
+  stage: PageDataStage,
+  run: () => Promise<TResult>
+): Promise<TResult> => {
+  try {
+    return await run();
+  } catch (error) {
+    throw new PageDataError(stage, error);
+  }
+};
+
 /** Runs the registered URL, fetch, and buffer transforms in registration order. */
 export const runDataPipeline = async (
   initialUrl: string,
   plugins: readonly ViewerPlugin[],
   signal?: AbortSignal
 ): Promise<ArrayBuffer> => {
-  let url = initialUrl;
+  const url = await runStage("transform", async () => {
+    let currentUrl = initialUrl;
 
-  for (const plugin of plugins) {
-    // eslint-disable-next-line no-await-in-loop -- Each hook receives the previous hook's URL.
-    const nextUrl = await plugin.beforeFetch?.(url);
-    if (typeof nextUrl === "string") {
-      url = nextUrl;
+    for (const plugin of plugins) {
+      // eslint-disable-next-line no-await-in-loop -- Each hook receives the previous hook's URL.
+      const nextUrl = await plugin.beforeFetch?.(currentUrl);
+      if (typeof nextUrl === "string") {
+        currentUrl = nextUrl;
+      }
     }
-  }
 
-  let buffer: ArrayBuffer | undefined;
-  for (const plugin of plugins) {
-    // eslint-disable-next-line no-await-in-loop -- Custom fetchers run in plugin registration order.
-    const customBuffer = await plugin.customFetch?.(url);
-    if (customBuffer instanceof ArrayBuffer) {
-      buffer = customBuffer;
+    return currentUrl;
+  });
+
+  const fetched = await runStage("fetch", async () => {
+    let buffer: ArrayBuffer | undefined;
+
+    for (const plugin of plugins) {
+      // eslint-disable-next-line no-await-in-loop -- Custom fetchers run in plugin registration order.
+      const customBuffer = await plugin.customFetch?.(url);
+      if (customBuffer instanceof ArrayBuffer) {
+        buffer = customBuffer;
+      }
     }
-  }
 
-  let result = buffer ?? (await fetchPage(url, signal));
+    return buffer ?? (await fetchPage(url, signal));
+  });
 
-  for (const plugin of plugins) {
-    // eslint-disable-next-line no-await-in-loop -- Each hook receives the previous hook's buffer.
-    const nextBuffer = await plugin.afterFetch?.(result);
-    if (nextBuffer instanceof ArrayBuffer) {
-      result = nextBuffer;
+  return runStage("transform", async () => {
+    let result = fetched;
+
+    for (const plugin of plugins) {
+      // eslint-disable-next-line no-await-in-loop -- Each hook receives the previous hook's buffer.
+      const nextBuffer = await plugin.afterFetch?.(result);
+      if (nextBuffer instanceof ArrayBuffer) {
+        result = nextBuffer;
+      }
     }
-  }
 
-  return result;
+    return result;
+  });
 };
 
 /** Notifies each page-change hook without allowing one plugin to block another. */
