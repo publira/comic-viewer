@@ -106,6 +106,33 @@ Use `className` on the other components to style their controls. For page markup
 
 `PageCanvas` receives the current page and decoded image from `Viewport`, so it must be used in a viewport page template. Use `renderPage` when you need to render page content entirely independently of the built-in image pipeline.
 
+## Page Loading State
+
+`Viewport` reports every page that fails to fetch, transform, or decode through `onPageLoadError`, and page templates can read the same state with `usePageLoadState()` to render an error state and offer a retry. A page's blurred `placeholder` stays visible while the full page loads and after a failure.
+
+```tsx
+function Page() {
+  const { error, retry, status } = ComicViewer.usePageLoadState();
+
+  return (
+    <ComicViewer.ViewportPage>
+      <ComicViewer.PageCanvas />
+      {status === "error" && (
+        <button onClick={retry} type="button">
+          Retry ({error?.stage})
+        </button>
+      )}
+    </ComicViewer.ViewportPage>
+  );
+}
+
+<ComicViewer.Viewport onPageLoadError={reportPageFailure}>
+  <Page />
+</ComicViewer.Viewport>;
+```
+
+See the [package README](packages/core/README.md#page-loading-state-and-errors) for the full loading-state model.
+
 `Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert` only, so without `core.css` they would stay on screen permanently. Style both states through the `aria-hidden` variant, which matches only the hidden state; `inert` already blocks pointer and keyboard access while hidden.
 
 ```tsx

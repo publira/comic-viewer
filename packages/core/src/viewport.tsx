@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import type { ReactNode } from "react";
 
+import type { PageLoadError } from "./page-load";
 import { usePageTurn } from "./use-page-turn";
 import { useViewMode } from "./use-view-mode";
 import { useViewportGestures } from "./use-viewport-gestures";
@@ -16,6 +17,13 @@ export interface ViewportProps<TPage extends ViewerPage> {
    * PageCanvas to style the public page elements without private selectors.
    */
   children?: ViewportChildren<TPage>;
+  /**
+   * Called whenever a page fails to fetch, transform, or decode. The failure
+   * carries the page, its index, the stage that failed, and the original error.
+   * Pages rendered through `renderPage` never report here because the viewer
+   * loads nothing for them.
+   */
+  onPageLoadError?: (error: PageLoadError<TPage>) => void;
   renderPage?: (page: TPage, index: number) => ReactNode;
   className?: string;
   doublePageThreshold?: number;
@@ -24,6 +32,7 @@ export interface ViewportProps<TPage extends ViewerPage> {
 /** Composes the page rail, its page-turn state, and the viewport gestures. */
 export const Viewport = <TPage extends ViewerPage>({
   children,
+  onPageLoadError,
   renderPage,
   className,
   doublePageThreshold,
@@ -58,12 +67,15 @@ export const Viewport = <TPage extends ViewerPage>({
     orderedIndices,
     orderedIndicesFor,
     pageImages,
+    pageLoadStates,
     railSpreadIndices,
+    retryPage,
     setDragOffset,
     slideDirection,
     transitionState,
   } = usePageTurn({
     currentIndex,
+    onPageLoadError,
     pages,
     plugins,
     readingDirection,
@@ -124,11 +136,13 @@ export const Viewport = <TPage extends ViewerPage>({
         layoutTemplate={layoutTemplate}
         onTransitionEnd={onTransitionEnd}
         pageImages={pageImages}
+        pageLoadStates={pageLoadStates}
         pageTemplate={pageTemplate}
         pages={pages}
         railSpreadIndices={railSpreadIndices}
         readingDirection={readingDirection}
         renderPage={renderPage}
+        retryPage={retryPage}
         slideDirection={slideDirection}
         transitionState={transitionState}
         viewMode={viewMode}

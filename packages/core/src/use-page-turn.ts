@@ -7,6 +7,7 @@ import {
 } from "react";
 import type { TransitionEvent as ReactTransitionEvent } from "react";
 
+import type { PageLoadError } from "./page-load";
 import { runPageChangeHooks } from "./plugin";
 import type { ViewerPlugin } from "./plugin";
 import { getPageImageKey, useViewportImages } from "./use-viewport-images";
@@ -32,6 +33,7 @@ interface PageTurnTransition {
 
 interface UsePageTurnOptions<TPage extends ViewerPage> {
   currentIndex: number;
+  onPageLoadError?: (error: PageLoadError<TPage>) => void;
   pages: readonly TPage[];
   plugins: readonly ViewerPlugin[];
   readingDirection: "rtl" | "ltr";
@@ -48,6 +50,7 @@ interface UsePageTurnOptions<TPage extends ViewerPage> {
  */
 export const usePageTurn = <TPage extends ViewerPage>({
   currentIndex,
+  onPageLoadError,
   pages,
   plugins,
   readingDirection,
@@ -75,9 +78,14 @@ export const usePageTurn = <TPage extends ViewerPage>({
     usesPageRail,
     viewMode,
   });
-  const pageImages = useViewportImages({
+  const {
+    images: pageImages,
+    loadStates: pageLoadStates,
+    retryPage,
+  } = useViewportImages({
     cachedIndices,
     keepImages: pageTurnTransition !== null,
+    onPageLoadError,
     pages,
     plugins,
     shouldLoadImages: usesManagedImageLoading,
@@ -260,7 +268,9 @@ export const usePageTurn = <TPage extends ViewerPage>({
     orderedIndices,
     orderedIndicesFor,
     pageImages,
+    pageLoadStates,
     railSpreadIndices,
+    retryPage,
     setDragOffset,
     slideDirection: pageTurnTransition?.direction,
     transitionState: pageTurnTransition?.phase ?? ("idle" as const),

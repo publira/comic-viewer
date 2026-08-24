@@ -151,6 +151,56 @@ Use `className` on the other components to style their controls. For page markup
 
 `PageCanvas` receives the current page and decoded image from `Viewport`, so it must be used in a viewport page template. Use `renderPage` when you need to render page content entirely independently of the built-in image pipeline.
 
+## Page loading state and errors
+
+`Viewport` loads, transforms, and decodes every page it manages. Pass `onPageLoadError` to observe a failure, and read `usePageLoadState()` inside a page template to render a loading or error state.
+
+```tsx
+<ComicViewer.Viewport
+  onPageLoadError={({ cause, index, page, stage }) => {
+    reportError(cause, { pageId: page.id, index, stage });
+  }}
+/>
+```
+
+Each failure reports the `page` it belongs to, its zero-based `index`, the `stage` that failed, and the original error as `cause`:
+
+- `"fetch"` — the built-in `fetch` rejected or returned a non-OK response, or a `customFetch` hook threw.
+- `"transform"` — a `beforeFetch` or `afterFetch` hook threw.
+- `"decode"` — the fetched data could not be decoded as an image.
+
+`usePageLoadState()` exposes the same failure to the page template, together with the page's `status` (`"idle"`, `"loading"`, `"loaded"`, or `"error"`), whether a `placeholder` is currently drawn, and a `retry` function that starts a new attempt for a failed page. A failed page is not retried automatically, so nothing is refetched until `retry` is called or the page is evicted from the cache and scrolled back into view.
+
+```tsx
+import * as ComicViewer from "@publira/comic-viewer";
+
+function Page() {
+  const { error, retry, status } = ComicViewer.usePageLoadState();
+
+  return (
+    <ComicViewer.ViewportPage>
+      <ComicViewer.PageCanvas />
+      {status === "error" && (
+        <div role="alert">
+          <p>This page could not be loaded ({error?.stage}).</p>
+          <button onClick={retry} type="button">
+            Try again
+          </button>
+        </div>
+      )}
+    </ComicViewer.ViewportPage>
+  );
+}
+
+<ComicViewer.Viewport>
+  <Page />
+</ComicViewer.Viewport>;
+```
+
+A page's `placeholder` stays on the canvas while the full-resolution image loads and after it fails, so a retry never blanks the viewport. `PageCanvas` reflects the same state through `data-page-status`, `data-placeholder`, and `aria-busy`, which is set until the full page is drawn or the load fails.
+
+Pages rendered through `renderPage` bypass this pipeline entirely: they stay `"idle"` and never report an error, because the consumer loads their content.
+
 `Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else. Without `core.css` they would stay on screen permanently, so style both states yourself through the `aria-hidden` variant, which matches only the hidden state. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. `Toolbar` sets `dir` from the reading direction, so logical utilities such as `start-3` and the progress fill follow the reader automatically.
 
 ```tsx
