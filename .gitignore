@@ -64,6 +64,8 @@ out/
 .nuxt/
 .cache/
 .turbo/
+playwright-report/
+test-results/
 public/
 next-env.d.ts
 
