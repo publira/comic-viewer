@@ -51,6 +51,7 @@ export const Viewport = <TPage extends ViewerPage>({
     goToNext,
     goToPrev,
     setPageFitMode,
+    toggleControls,
   } = useViewerContext<TPage>();
   const viewMode = useViewMode(containerRef, doublePageThreshold);
   const usesManagedImageLoading =
@@ -103,6 +104,7 @@ export const Viewport = <TPage extends ViewerPage>({
     setDragOffset,
     setPageFitMode,
     spreadStartIndex,
+    toggleControls,
     usesPageRail,
     viewMode,
   });

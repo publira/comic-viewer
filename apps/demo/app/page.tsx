@@ -9,6 +9,7 @@ const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 export const Reader = ({ pages }) => (
   <ComicViewer.Root pages={pages}>
     <ComicViewer.Viewport />
+    <ComicViewer.Toolbar />
     <ComicViewer.PageNavigation />
   </ComicViewer.Root>
 );`;

@@ -15,6 +15,7 @@ const encryptedJpegPlugin = ComicViewer.definePlugin({
 export const Reader = ({ pages }) => (
   <ComicViewer.Root pages={pages} plugins={[encryptedJpegPlugin]}>
     <ComicViewer.Viewport />
+    <ComicViewer.Toolbar />
     <ComicViewer.PageNavigation />
   </ComicViewer.Root>
 );`;

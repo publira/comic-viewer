@@ -94,9 +94,14 @@ describe(ComicViewer, () => {
       </ComicViewer>
     );
 
+    // The toolbar stays hidden until a viewport tap reveals the reader controls.
     expect(container.querySelector(".pcv-toolbar")).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Prev" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { hidden: true, name: "Prev" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { hidden: true, name: "Next" })
+    ).toBeInTheDocument();
   });
 
   it("can render Viewport and Toolbar together", () => {

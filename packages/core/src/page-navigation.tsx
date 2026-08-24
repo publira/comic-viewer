@@ -1,12 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 import type {
   ButtonHTMLAttributes,
   ComponentPropsWithoutRef,
@@ -15,14 +7,8 @@ import type {
   ReactNode,
 } from "react";
 
+import { useControlsHold } from "./use-controls-hold";
 import { getVisiblePageCount, useViewerContext } from "./viewer-context";
-
-interface PageNavigationState {
-  isProgressVisible: boolean;
-  toggleProgress: () => void;
-}
-
-const PageNavigationContext = createContext<PageNavigationState | null>(null);
 
 interface PageProgressState {
   ariaLabel: string;
@@ -178,6 +164,10 @@ export const PageStatus = ({ className, format }: PageStatusProps) => {
 export interface PageProgressProps {
   "aria-label"?: string;
   className?: string;
+  /**
+   * Hides the progress independently of its container. Compose PageProgress
+   * inside Toolbar to follow the shared reader-control visibility instead.
+   */
   visible?: boolean;
 }
 
@@ -186,16 +176,14 @@ export const PageProgress = ({
   "aria-label": ariaLabel = "Reading progress",
   className,
   children,
-  visible,
+  visible = true,
 }: PageProgressProps & PropsWithChildren) => {
-  const navigation = useContext(PageNavigationContext);
-  const isVisible = visible ?? navigation?.isProgressVisible ?? true;
   const progressValue = useMemo(() => ({ ariaLabel }), [ariaLabel]);
 
   return (
     <PageProgressContext.Provider value={progressValue}>
       <div
-        aria-hidden={!isVisible}
+        aria-hidden={!visible}
         className={`pcv-page-progress${className === undefined ? "" : ` ${className}`}`}
       >
         {children}
@@ -236,118 +224,51 @@ export const PageProgressTrack = ({
   );
 };
 
-export type PageProgressTriggerProps = ButtonHTMLAttributes<HTMLButtonElement>;
-
-/** A non-navigating control that consumers can use to toggle reading progress. */
-export const PageProgressTrigger = ({
-  "aria-label": ariaLabel = "Show reading progress",
-  className,
-  onClick,
-  ...props
-}: PageProgressTriggerProps) => {
-  const navigation = useContext(PageNavigationContext);
-  const handleClick = (event: MouseEvent<HTMLButtonElement>): void => {
-    onClick?.(event);
-    if (!event.defaultPrevented) {
-      navigation?.toggleProgress();
-    }
-  };
-
-  return (
-    <button
-      {...props}
-      aria-label={ariaLabel}
-      className={`pcv-page-progress-trigger${className === undefined ? "" : ` ${className}`}`}
-      onClick={handleClick}
-      type="button"
-    />
-  );
-};
-
 /**
  * A semantic, unthemed page-navigation group. Supply children to arrange the
- * controls yourself, or omit them to render the standard previous/status/next
- * sequence.
+ * controls yourself, or omit them to render the standard previous/next pair.
+ * It follows the reader-control visibility it shares with Toolbar.
  */
 export const PageNavigation = ({
   "aria-label": ariaLabel = "Page navigation",
   children,
   className,
 }: PageNavigationProps) => {
-  const { readingDirection } = useViewerContext();
-  const [isProgressVisible, setIsProgressVisible] = useState(false);
-  const hideProgressTimeout = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
-  const toggleProgress = useCallback(() => {
-    setIsProgressVisible((isVisible) => {
-      if (isVisible) {
-        if (hideProgressTimeout.current !== null) {
-          clearTimeout(hideProgressTimeout.current);
-          hideProgressTimeout.current = null;
-        }
-      } else {
-        hideProgressTimeout.current = setTimeout(() => {
-          setIsProgressVisible(false);
-          hideProgressTimeout.current = null;
-        }, 2000);
-      }
-      return !isVisible;
-    });
-  }, []);
-  useEffect(
-    () => () => {
-      if (hideProgressTimeout.current !== null) {
-        clearTimeout(hideProgressTimeout.current);
-      }
-    },
-    []
-  );
-  const navigationValue = useMemo(
-    () => ({ isProgressVisible, toggleProgress }),
-    [isProgressVisible, toggleProgress]
-  );
+  const { areControlsVisible, readingDirection } = useViewerContext();
+  const holdHandlers = useControlsHold();
 
   return (
-    <PageNavigationContext.Provider value={navigationValue}>
-      <nav
-        aria-label={ariaLabel}
-        className={`pcv-page-navigation${className === undefined ? "" : ` ${className}`}`}
-        data-reading-direction={readingDirection}
-        dir={readingDirection}
-      >
-        {children ?? (
-          <>
-            <PreviousPageButton>
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path
-                  d={
-                    readingDirection === "rtl"
-                      ? "m10 6 6 6-6 6"
-                      : "m14 6-6 6 6 6"
-                  }
-                />
-              </svg>
-            </PreviousPageButton>
-            <PageProgressTrigger />
-            <PageProgress>
-              <PageProgressTrack />
-              <PageStatus />
-            </PageProgress>
-            <NextPageButton>
-              <svg aria-hidden="true" viewBox="0 0 24 24">
-                <path
-                  d={
-                    readingDirection === "rtl"
-                      ? "m14 6-6 6 6 6"
-                      : "m10 6 6 6-6 6"
-                  }
-                />
-              </svg>
-            </NextPageButton>
-          </>
-        )}
-      </nav>
-    </PageNavigationContext.Provider>
+    <nav
+      {...holdHandlers}
+      aria-hidden={!areControlsVisible}
+      aria-label={ariaLabel}
+      className={`pcv-page-navigation${className === undefined ? "" : ` ${className}`}`}
+      data-reading-direction={readingDirection}
+      dir={readingDirection}
+      inert={!areControlsVisible}
+    >
+      {children ?? (
+        <>
+          <PreviousPageButton>
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path
+                d={
+                  readingDirection === "rtl" ? "m10 6 6 6-6 6" : "m14 6-6 6 6 6"
+                }
+              />
+            </svg>
+          </PreviousPageButton>
+          <NextPageButton>
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              <path
+                d={
+                  readingDirection === "rtl" ? "m14 6-6 6 6 6" : "m10 6 6 6-6 6"
+                }
+              />
+            </svg>
+          </NextPageButton>
+        </>
+      )}
+    </nav>
   );
 };
