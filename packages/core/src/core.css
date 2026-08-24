@@ -145,6 +145,24 @@
   justify-content: flex-end;
 }
 
+/* The two pages of a spread meet at the centre line as they do on a printed
+   sheet, so each page hugs the edge of its half that faces the gutter instead
+   of centring inside it. Both the page slot and the page carry the side, so
+   the pair keeps meeting whether or not the layout adds a slot of its own. */
+.pcv-viewport[data-view-mode="double"]
+  .pcv-viewport-page-set
+  > [data-page-side="left"],
+.pcv-viewport[data-view-mode="double"] .pcv-page[data-page-side="left"] {
+  justify-content: flex-end;
+}
+
+.pcv-viewport[data-view-mode="double"]
+  .pcv-viewport-page-set
+  > [data-page-side="right"],
+.pcv-viewport[data-view-mode="double"] .pcv-page[data-page-side="right"] {
+  justify-content: flex-start;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .pcv-viewport .pcv-viewport-track {
     transition: none;
