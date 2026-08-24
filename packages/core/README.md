@@ -65,6 +65,23 @@ export function Reader() {
 
 `initialReadingDirection` defaults to `"rtl"` for right-to-left manga reading. Set it to `"ltr"` for left-to-right comics. The viewport switches between single and double-page display based on its width; use `doublePageThreshold` to change the default 768px breakpoint.
 
+### Per-viewer theme
+
+When using `core.css`, each viewer root supplies the default `--pcv-bg` and `--pcv-fg` custom properties. Add a class to `ComicViewer.Root` and override those properties on that same element to theme viewers independently:
+
+```tsx
+<ComicViewer.Root pages={pages} className="night-reader">
+  <ComicViewer.Viewport />
+</ComicViewer.Root>
+```
+
+```css
+.pcv-root.night-reader {
+  --pcv-bg: #0f172a;
+  --pcv-fg: #e2e8f0;
+}
+```
+
 ### Page size and panning
 
 Pages initially fit their height. Pinch with two fingers to zoom and move the page; once zoomed, drag with one pointer to pan. A single-finger double tap resets the page to fit-to-width. These gestures take priority over page navigation, so they cannot accidentally turn the page.

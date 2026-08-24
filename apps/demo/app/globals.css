@@ -17,7 +17,9 @@
   --demo-viewer-background: light-dark(#f4f4f5, #0a0a0a);
   --demo-viewer-border: light-dark(#a1a1aa, #333333);
   --demo-viewer-foreground: light-dark(#f3f3f3, #f3f3f3);
+}
 
+.pcv-root {
   --pcv-bg: var(--demo-viewer-background);
   --pcv-fg: var(--demo-viewer-foreground);
 }

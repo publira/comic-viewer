@@ -1,9 +1,6 @@
-:root {
+.pcv-root {
   --pcv-bg: #111111;
   --pcv-fg: #f3f3f3;
-}
-
-.pcv-root {
   position: relative;
   display: flex;
   width: 100%;
