@@ -304,9 +304,8 @@ export const useViewportImages = <TPage extends ViewerPage>({
         try {
           return {
             buffer: await runDataPipeline(
-              page.src,
-              plugins,
-              abortController.signal
+              { page, signal: abortController.signal, url: page.src },
+              plugins
             ),
           };
         } catch (error) {
@@ -317,9 +316,8 @@ export const useViewportImages = <TPage extends ViewerPage>({
       if (page.placeholder !== undefined) {
         try {
           const placeholderBuffer = await runDataPipeline(
-            page.placeholder,
-            [],
-            abortController.signal
+            { page, signal: abortController.signal, url: page.placeholder },
+            []
           );
           const placeholderBitmap = await decodeImage(
             placeholderBuffer,

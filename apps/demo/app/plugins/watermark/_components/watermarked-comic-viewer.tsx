@@ -60,7 +60,7 @@ const addWatermark = async (buffer: ArrayBuffer): Promise<ArrayBuffer> => {
 };
 
 const watermarkPlugin = ComicViewer.definePlugin({
-  afterFetch: addWatermark,
+  afterFetch: ({ buffer }) => addWatermark(buffer),
   name: "text-watermark",
 });
 

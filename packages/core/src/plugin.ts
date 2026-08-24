@@ -1,10 +1,25 @@
 import { PageDataError } from "./page-load";
 import type { PageDataStage } from "./page-load";
+import type { ViewerPage } from "./viewer-context";
 
-type TransformHook<TInput, TOutput = TInput> =
-  | ((value: TInput) => TOutput | Promise<TOutput | undefined> | undefined)
-  | ((value: TInput) => void)
-  | ((value: TInput) => Promise<void>);
+/** Information about the page currently moving through the data pipeline. */
+export interface PageLoadContext {
+  /** The source URL currently being processed by the pipeline. */
+  url: string;
+  /** Cancels work when the page is no longer needed by the viewer. */
+  signal: AbortSignal;
+  /** The viewer page that owns this load. */
+  page: ViewerPage;
+}
+
+/** A fetched buffer together with the context that produced it. */
+export interface FetchedPageContext extends PageLoadContext {
+  buffer: ArrayBuffer;
+}
+
+type PipelineHook<TContext, TResult> =
+  | ((context: TContext) => TResult | Promise<TResult | undefined> | undefined)
+  | ((context: TContext) => void | Promise<void>);
 
 type PageChangeHook =
   | ((index: number, total: number) => void)
@@ -14,21 +29,21 @@ export interface ViewerPlugin {
   /** An optional label that helps identify the plugin during debugging. */
   name?: string;
   /**
-   * Runs before a page is fetched. Returning a URL passes it to the next hook.
-   * Returning nothing leaves the current URL unchanged.
+   * Runs before a page is fetched. Returning a URL passes it to the next hook;
+   * returning nothing leaves the URL unchanged.
    */
-  beforeFetch?: TransformHook<string>;
+  beforeFetch?: PipelineHook<PageLoadContext, string>;
   /**
    * Optionally fetches a page instead of the built-in fetch implementation.
    * When multiple plugins provide this hook, they run in order and the last
    * returned buffer is used.
    */
-  customFetch?: TransformHook<string, ArrayBuffer>;
+  customFetch?: PipelineHook<PageLoadContext, ArrayBuffer>;
   /**
    * Runs after a page has been fetched. Returning a buffer passes it to the
    * next hook; returning nothing leaves the current buffer unchanged.
    */
-  afterFetch?: TransformHook<ArrayBuffer>;
+  afterFetch?: PipelineHook<FetchedPageContext, ArrayBuffer>;
   /** Runs whenever the current page changes. */
   onPageChange?: PageChangeHook;
 }
@@ -40,10 +55,10 @@ export const definePlugin = <TPlugin extends ViewerPlugin>(
   plugin: TPlugin
 ): TPlugin => plugin;
 
-const fetchPage = async (
-  url: string,
-  signal?: AbortSignal
-): Promise<ArrayBuffer> => {
+const fetchPage = async ({
+  signal,
+  url,
+}: PageLoadContext): Promise<ArrayBuffer> => {
   const response = await fetch(url, { signal });
 
   if (!response.ok) {
@@ -69,22 +84,24 @@ const runStage = async <TResult>(
 
 /** Runs the registered URL, fetch, and buffer transforms in registration order. */
 export const runDataPipeline = async (
-  initialUrl: string,
-  plugins: readonly ViewerPlugin[],
-  signal?: AbortSignal
+  initialContext: PageLoadContext,
+  plugins: readonly ViewerPlugin[]
 ): Promise<ArrayBuffer> => {
-  const url = await runStage("transform", async () => {
-    let currentUrl = initialUrl;
+  const context = await runStage("transform", async () => {
+    let currentUrl = initialContext.url;
 
     for (const plugin of plugins) {
       // eslint-disable-next-line no-await-in-loop -- Each hook receives the previous hook's URL.
-      const nextUrl = await plugin.beforeFetch?.(currentUrl);
+      const nextUrl = await plugin.beforeFetch?.({
+        ...initialContext,
+        url: currentUrl,
+      });
       if (typeof nextUrl === "string") {
         currentUrl = nextUrl;
       }
     }
 
-    return currentUrl;
+    return { ...initialContext, url: currentUrl };
   });
 
   const fetched = await runStage("fetch", async () => {
@@ -92,13 +109,13 @@ export const runDataPipeline = async (
 
     for (const plugin of plugins) {
       // eslint-disable-next-line no-await-in-loop -- Custom fetchers run in plugin registration order.
-      const customBuffer = await plugin.customFetch?.(url);
+      const customBuffer = await plugin.customFetch?.(context);
       if (customBuffer instanceof ArrayBuffer) {
         buffer = customBuffer;
       }
     }
 
-    return buffer ?? (await fetchPage(url, signal));
+    return buffer ?? (await fetchPage(context));
   });
 
   return runStage("transform", async () => {
@@ -106,7 +123,10 @@ export const runDataPipeline = async (
 
     for (const plugin of plugins) {
       // eslint-disable-next-line no-await-in-loop -- Each hook receives the previous hook's buffer.
-      const nextBuffer = await plugin.afterFetch?.(result);
+      const nextBuffer = await plugin.afterFetch?.({
+        ...context,
+        buffer: result,
+      });
       if (nextBuffer instanceof ArrayBuffer) {
         result = nextBuffer;
       }
