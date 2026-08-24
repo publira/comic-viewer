@@ -1,6 +1,6 @@
 "use client";
 
-import { ComicViewer, definePlugin } from "@publira/comic-viewer";
+import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 
 import styles from "../page.module.css";
@@ -59,7 +59,7 @@ const addWatermark = async (buffer: ArrayBuffer): Promise<ArrayBuffer> => {
   return canvasToBuffer(canvas);
 };
 
-const watermarkPlugin = definePlugin({
+const watermarkPlugin = ComicViewer.definePlugin({
   afterFetch: addWatermark,
   name: "text-watermark",
 });
@@ -74,8 +74,12 @@ interface WatermarkedComicViewerProps {
 export const WatermarkedComicViewer = ({
   pages,
 }: WatermarkedComicViewerProps) => (
-  <ComicViewer pages={pages} plugins={plugins} className={styles.viewerContent}>
+  <ComicViewer.Root
+    pages={pages}
+    plugins={plugins}
+    className={styles.viewerContent}
+  >
     <ComicViewer.Viewport />
     <ComicViewer.PageNavigation />
-  </ComicViewer>
+  </ComicViewer.Root>
 );

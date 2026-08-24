@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ComicViewer } from "./comic-viewer";
 import { definePlugin } from "./plugin";
+import { Toolbar } from "./toolbar";
 import { useViewerContext } from "./viewer-context";
+import { Viewport } from "./viewport";
 
 class MockResizeObserver {
   observe = vi.fn<() => void>();
@@ -69,10 +71,10 @@ describe(ComicViewer, () => {
     expect(screen.getByTestId("plugin-count")).toHaveTextContent("1");
   });
 
-  it("ComicViewer.Viewport works as a sub-component", () => {
+  it("Viewport works alongside ComicViewer", () => {
     const { container } = render(
       <ComicViewer pages={pages}>
-        <ComicViewer.Viewport<TestPage>
+        <Viewport<TestPage>
           renderPage={(page) => <div data-testid={page.id}>{page.title}</div>}
         />
       </ComicViewer>
@@ -82,13 +84,13 @@ describe(ComicViewer, () => {
     expect(screen.getByTestId("p1")).toBeInTheDocument();
   });
 
-  it("ComicViewer.Toolbar works as a sub-component", () => {
+  it("Toolbar works alongside ComicViewer", () => {
     const { container } = render(
       <ComicViewer pages={pages}>
-        <ComicViewer.Toolbar>
+        <Toolbar>
           <button type="button">Prev</button>
           <button type="button">Next</button>
-        </ComicViewer.Toolbar>
+        </Toolbar>
       </ComicViewer>
     );
 
@@ -100,12 +102,12 @@ describe(ComicViewer, () => {
   it("can render Viewport and Toolbar together", () => {
     const { container } = render(
       <ComicViewer pages={pages}>
-        <ComicViewer.Viewport<TestPage>
+        <Viewport<TestPage>
           renderPage={(page) => <div data-testid={page.id}>{page.title}</div>}
         />
-        <ComicViewer.Toolbar>
+        <Toolbar>
           <span data-testid="toolbar-label">controls</span>
-        </ComicViewer.Toolbar>
+        </Toolbar>
       </ComicViewer>
     );
 
