@@ -285,6 +285,10 @@ export const useViewportGestures = ({
       }
 
       const direction = deltaX > 0 ? "left" : "right";
+      // The target index is only a boundary probe: a swipe past the first or
+      // last spread has to snap the rail back instead of leaving it dragged.
+      // Navigation itself stays with the viewer context so that a swipe and an
+      // arrow key move the reader through exactly the same code path.
       const targetIndex = getSwipeTargetIndex(
         direction,
         displayedIndex,
