@@ -103,7 +103,10 @@ export const mockPageImages = ({ fetch }: MockPageImagesOptions = {}) => {
   const drawImage = vi.fn<() => void>();
   const getContext = vi
     .spyOn(HTMLCanvasElement.prototype, "getContext")
-    .mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    .mockReturnValue({
+      clearRect: vi.fn<() => void>(),
+      drawImage,
+    } as unknown as CanvasRenderingContext2D);
   const fetchMock = vi.fn<MockFetch>(
     fetch ??
       (() =>

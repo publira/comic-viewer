@@ -88,6 +88,7 @@ describe("page load state", () => {
     getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue({
+        clearRect: vi.fn<() => void>(),
         drawImage: vi.fn<() => void>(),
       } as unknown as CanvasRenderingContext2D);
     vi.stubGlobal(
