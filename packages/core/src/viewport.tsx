@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import type { ReactNode } from "react";
 
+import { composeClassName } from "./class-names";
 import type { PageLoadError } from "./page-load";
 import { usePageTurn } from "./use-page-turn";
 import { useViewMode } from "./use-view-mode";
@@ -112,7 +113,7 @@ export const Viewport = <TPage extends ViewerPage>({
   return (
     <div
       ref={containerRef}
-      className={`pcv-viewport${className === undefined ? "" : ` ${className}`}`}
+      className={composeClassName("pcv-viewport", className)}
       data-reading-direction={readingDirection}
       data-slide-direction={slideDirection}
       data-transition-state={transitionState}
