@@ -128,8 +128,8 @@ import * as ComicViewer from "@publira/comic-viewer";
   <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
     <ComicViewer.ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset)))] transition-transform duration-[260ms] ease-out data-[dragging]:transition-none data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]">
       <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 [transform:translate(var(--pcv-pan-x,0),var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))] data-[page-side=left]:justify-start data-[page-side=right]:justify-end">
-        <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[view-mode=double]:basis-1/2 data-[view-mode=double]:max-w-1/2">
-          <ComicViewer.ViewportPage className="flex h-full w-full min-w-0 items-center justify-center">
+        <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:basis-1/2 data-[view-mode=double]:max-w-1/2">
+          <ComicViewer.ViewportPage className="flex h-full w-full min-w-0 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
             <ComicViewer.PageCanvas className="h-full max-w-full object-contain" />
           </ComicViewer.ViewportPage>
         </ComicViewer.ViewportPageSlot>
@@ -139,7 +139,7 @@ import * as ComicViewer from "@publira/comic-viewer";
 </ComicViewer.Root>;
 ```
 
-In double-page mode the rail reports the half of the spread a page takes as `data-page-side="left"` or `data-page-side="right"`, on `ViewportPageSlot` and `ViewportPage`, and on `ViewportPageSet` while it holds a single page. The side follows the parity of the page's offset from `spreadStartIndex`, so an unpaired page keeps the side it would have had in a printed book: with `spreadStartIndex={1}` the cover faces the page after it instead of sharing its side. The attribute is absent in single-page mode, where a page has no facing half.
+In double-page mode the rail reports the half of the spread a page takes as `data-page-side="left"` or `data-page-side="right"`, on `ViewportPageSlot` and `ViewportPage`, and on `ViewportPageSet` while it holds a single page. The side follows the parity of the page's offset from `spreadStartIndex`, so an unpaired page keeps the side it would have had in a printed book: with `spreadStartIndex={1}` the cover faces the page after it instead of sharing its side. The attribute is absent in single-page mode, where a page has no facing half. Align each page against the edge of its half that faces the gutter, as the example does, so the two pages of a spread meet at the centre line instead of drifting apart on a viewport wider than the pages.
 
 Use `className` on the other components to style their controls. For page markup that keeps the viewer loading, decoding, and virtualization pipeline, provide a page template with the public `ViewportPage` and `PageCanvas` primitives:
 

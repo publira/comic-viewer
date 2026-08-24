@@ -76,3 +76,42 @@ test("applies the watermark plugin before rendering a page", async ({
   const canvas = page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`);
   await expect(canvas).toHaveAttribute("data-page-status", "loaded");
 });
+
+test("keeps the two pages of a spread meeting at the gutter", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/");
+
+  // Both demos size the viewer to the aspect ratio of a full spread, so the
+  // pages fill it exactly. Shortening the viewer makes it wider than the pages
+  // are, which is where the halves of a spread used to drift apart.
+  await page.addStyleTag({
+    content: ".pcv-root { height: 420px !important; }",
+  });
+
+  const pageCanvases = page.locator(`${currentPageSet} canvas`);
+  await expect(pageCanvases).toHaveCount(2);
+  await expect(pageCanvases.first()).toHaveAttribute(
+    "data-page-status",
+    "loaded"
+  );
+  await expect(pageCanvases.last()).toHaveAttribute(
+    "data-page-status",
+    "loaded"
+  );
+
+  const pageSetBox = await page.locator(currentPageSet).boundingBox();
+  const leftPageBox = await pageCanvases.first().boundingBox();
+  const rightPageBox = await pageCanvases.last().boundingBox();
+
+  if (pageSetBox === null || leftPageBox === null || rightPageBox === null) {
+    throw new Error("The current spread was not laid out.");
+  }
+
+  // The pages are narrower than the halves they occupy, so this only holds
+  // once each page is aligned against the centre line.
+  expect(leftPageBox.width).toBeLessThan(pageSetBox.width / 2);
+  expect(leftPageBox.x + leftPageBox.width).toBeCloseTo(rightPageBox.x, 0);
+  expect(rightPageBox.x).toBeCloseTo(pageSetBox.x + pageSetBox.width / 2, 0);
+});
