@@ -5,11 +5,14 @@
   "license": "Apache-2.0",
   "type": "module",
   "scripts": {
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "1.62.1",
     "@publira/comic-viewer-demo": "workspace:*",
-    "@publira/comic-viewer-tailwind-demo": "workspace:*"
+    "@publira/comic-viewer-tailwind-demo": "workspace:*",
+    "@types/node": "24.13.3",
+    "typescript": "6.0.3"
   }
 }
