@@ -16,7 +16,8 @@
     },
     "test:e2e": {
       "cache": false,
-      "dependsOn": ["@publira/comic-viewer-demo#build"],
+      "dependsOn": ["^build"],
+      "env": ["E2E_*"],
       "outputs": []
     },
     "typegen": {

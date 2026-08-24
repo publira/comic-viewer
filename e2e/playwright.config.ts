@@ -3,17 +3,23 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 const workspaceRoot = fileURLToPath(new URL("..", import.meta.url));
-const configuredBaseURL = process.env.E2E_BASE_URL;
 const port = process.env.E2E_PORT ?? "3000";
-const baseURL = configuredBaseURL ?? `http://127.0.0.1:${port}`;
+const tailwindPort = process.env.E2E_TAILWIND_PORT ?? "4000";
+const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${port}`;
+const tailwindBaseURL =
+  process.env.E2E_TAILWIND_BASE_URL ?? `http://127.0.0.1:${tailwindPort}`;
 
 export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   fullyParallel: true,
   projects: [
     {
-      name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      name: "default-css",
+      use: { ...devices["Desktop Chrome"], baseURL },
+    },
+    {
+      name: "tailwind-css",
+      use: { ...devices["Desktop Chrome"], baseURL: tailwindBaseURL },
     },
   ],
   reporter: process.env.CI === undefined ? "list" : "github",
@@ -21,16 +27,20 @@ export default defineConfig({
   testDir: "./tests",
   testMatch: "**/*.e2e.ts",
   use: {
-    baseURL,
     trace: "on-first-retry",
   },
-  webServer:
-    configuredBaseURL === undefined
-      ? {
-          command: `pnpm --filter @publira/comic-viewer-demo exec next start --hostname 127.0.0.1 --port ${port}`,
-          cwd: workspaceRoot,
-          reuseExistingServer: process.env.CI === undefined,
-          url: baseURL,
-        }
-      : undefined,
+  webServer: [
+    {
+      command: `pnpm --filter @publira/comic-viewer-demo exec next start --hostname 127.0.0.1 --port ${port}`,
+      cwd: workspaceRoot,
+      reuseExistingServer: process.env.CI === undefined,
+      url: baseURL,
+    },
+    {
+      command: `pnpm --filter @publira/comic-viewer-tailwind-demo exec next start --hostname 127.0.0.1 --port ${tailwindPort}`,
+      cwd: workspaceRoot,
+      reuseExistingServer: process.env.CI === undefined,
+      url: tailwindBaseURL,
+    },
+  ],
 });

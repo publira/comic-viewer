@@ -69,6 +69,8 @@ function App() {
 
 `core.css` is optional. When using Tailwind CSS, omit the stylesheet and apply the layout styles through `className` instead. The viewer and viewport need a defined size, flex layout, and hidden overflow. Compose the public `ViewportTrack`, `ViewportPageSet`, and `ViewportPageSlot` components to style the page-turn structure without selecting implementation classes.
 
+For a maintained, runnable reference, see the [Tailwind CSS demo](apps/demo-tw/README.md).
+
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
 

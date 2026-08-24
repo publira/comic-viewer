@@ -438,6 +438,12 @@ export const useViewportImages = <TPage extends ViewerPage>({
         ...[...pageImagesRef.current.values()].map((image) => image.bitmap),
         ...retiredImageBitmapsRef.current,
       ]);
+      // React Strict Mode deliberately re-runs effects during development.
+      // Its simulated unmount preserves state, so an aborted "loading" entry
+      // must not prevent the following effect from starting a fresh request.
+      pageImagesRef.current = new Map();
+      pageLoadStatesRef.current = new Map();
+      retiredImageBitmapsRef.current = [];
     },
     []
   );

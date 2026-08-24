@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { PageLoadError } from "./page-load";
@@ -278,6 +279,49 @@ describe("page load state", () => {
     });
 
     expect(screen.getByTestId("placeholder")).toHaveTextContent("false");
+  });
+
+  it("restarts an image load after Strict Mode aborts the initial effect", async () => {
+    const fetchMock = vi.fn<MockFetch>((_input, init) => {
+      const signal = init?.signal;
+
+      // eslint-disable-next-line promise/avoid-new -- The first Strict Mode request must stay pending until it is aborted.
+      return new Promise((resolve, reject) => {
+        if (signal === undefined || signal === null) {
+          reject(
+            new Error("Expected the page request to receive an abort signal.")
+          );
+          return;
+        }
+
+        signal.addEventListener("abort", () => reject(signal.reason), {
+          once: true,
+        });
+        if (fetchMock.mock.calls.length === 2) {
+          resolve({
+            arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+            ok: true,
+          });
+        }
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <StrictMode>
+        <ViewerProvider pages={[singlePage]}>
+          <Viewport>
+            <PageLoadProbe />
+          </Viewport>
+        </ViewerProvider>
+      </StrictMode>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("loaded");
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("retries a failed page and clears its error once it succeeds", async () => {
