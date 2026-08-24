@@ -133,6 +133,91 @@ describe(Toolbar, () => {
     }
   });
 
+  it("lays its controls out along the reading direction", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialReadingDirection="rtl">
+        <Toolbar />
+      </ViewerProvider>
+    );
+    const toolbar = getToolbar(container);
+
+    expect(toolbar).toHaveAttribute("dir", "rtl");
+    expect(toolbar).toHaveAttribute("data-reading-direction", "rtl");
+  });
+
+  it("keeps its controls visible while a pointer rests on them", () => {
+    vi.useFakeTimers();
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages}>
+          <ControlsToggle />
+          <Toolbar />
+        </ViewerProvider>
+      );
+      const toolbar = getToolbar(container);
+
+      toggleControls();
+      fireEvent.pointerOver(toolbar);
+
+      act(() => vi.advanceTimersByTime(10_000));
+      expect(toolbar).toHaveAttribute("aria-hidden", "false");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("restarts the countdown when the pointer leaves its controls", () => {
+    vi.useFakeTimers();
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages}>
+          <ControlsToggle />
+          <Toolbar />
+        </ViewerProvider>
+      );
+      const toolbar = getToolbar(container);
+
+      toggleControls();
+      fireEvent.pointerOver(toolbar);
+      act(() => vi.advanceTimersByTime(10_000));
+
+      fireEvent.pointerOut(toolbar);
+      act(() => vi.advanceTimersByTime(1500));
+      expect(toolbar).toHaveAttribute("aria-hidden", "false");
+
+      act(() => vi.advanceTimersByTime(500));
+      expect(toolbar).toHaveAttribute("aria-hidden", "true");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps its controls visible while they hold focus", () => {
+    vi.useFakeTimers();
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages}>
+          <ControlsToggle />
+          <Toolbar>
+            <button type="button">Zoom</button>
+          </Toolbar>
+        </ViewerProvider>
+      );
+      const toolbar = getToolbar(container);
+
+      toggleControls();
+      fireEvent.focusIn(screen.getByRole("button", { name: "Zoom" }));
+
+      act(() => vi.advanceTimersByTime(10_000));
+      expect(toolbar).toHaveAttribute("aria-hidden", "false");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("applies a consumer class name alongside the base class", () => {
     const { container } = render(
       <ViewerProvider pages={pages}>

@@ -7,6 +7,7 @@ import type {
   ReactNode,
 } from "react";
 
+import { useControlsHold } from "./use-controls-hold";
 import { getVisiblePageCount, useViewerContext } from "./viewer-context";
 
 interface PageProgressState {
@@ -234,9 +235,11 @@ export const PageNavigation = ({
   className,
 }: PageNavigationProps) => {
   const { areControlsVisible, readingDirection } = useViewerContext();
+  const holdHandlers = useControlsHold();
 
   return (
     <nav
+      {...holdHandlers}
       aria-hidden={!areControlsVisible}
       aria-label={ariaLabel}
       className={`pcv-page-navigation${className === undefined ? "" : ` ${className}`}`}

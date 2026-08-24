@@ -155,9 +155,13 @@ For a custom arrangement, compose `PreviousPageButton`, `NextPageButton`, `PageP
 
 ### Reader control visibility
 
-`Toolbar` and `PageNavigation` share one visibility state. Both start hidden, and a click or tap on the viewport away from the page-turn edges reveals them; a pannable page reveals them from anywhere. Another click, or a short pause, hides them again. Pressing <kbd>Enter</kbd> or <kbd>Space</kbd> on the focused viewport does the same from the keyboard. While hidden, both are `inert` and outside the accessibility tree, so their controls cannot be focused or read.
+`Toolbar` and `PageNavigation` share one visibility state. Both start hidden, and a click or tap on the viewport away from the page-turn edges reveals them; a pannable page reveals them from anywhere. Another click, or a two-second pause, hides them again. Pressing <kbd>Enter</kbd> or <kbd>Space</kbd> on the focused viewport does the same from the keyboard. While hidden, both are `inert` and outside the accessibility tree, so their controls cannot be focused or read.
 
-Read `areControlsVisible` and call `toggleControls` from `useViewerContext` to drive the same state from your own controls. `PageProgress` also takes a `visible` prop when it needs to hide independently of its container.
+The countdown does not run while a pointer rests on either container or focus sits inside one, so the controls cannot vanish mid-interaction. A touch reports the same hold for the length of the tap, so releasing a button starts a fresh countdown rather than letting a spent one run out.
+
+Read `areControlsVisible` and call `toggleControls` from `useViewerContext` to drive the same state from your own controls, and `holdControls(true)` / `holdControls(false)` in balanced pairs to suspend and restart the countdown around your own container. `PageProgress` also takes a `visible` prop when it needs to hide independently of its container.
+
+`Toolbar` sets `dir` and `data-reading-direction` from the reader's direction, so its controls lay out along the reading direction and `PageProgressTrack` fills toward the page the reader is heading for: leftward in `rtl`, rightward in `ltr`.
 
 ## Plugins
 

@@ -108,7 +108,7 @@ Use `className` on the other components to style their controls. For page markup
 
 ## Page Navigation
 
-`ComicViewer.PageNavigation` provides accessible previous-page and next-page controls, while `ComicViewer.Toolbar` holds the reading progress. They are siblings, and they share one visibility state: a click or tap away from the page-turn edges reveals both, and a second one hides them again, as does a short pause.
+`ComicViewer.PageNavigation` provides accessible previous-page and next-page controls, while `ComicViewer.Toolbar` holds the reading progress. They are siblings, and they share one visibility state: a click or tap away from the page-turn edges reveals both, and a second one hides them again, as does a two-second pause. The countdown is suspended while a pointer rests on the controls or focus sits inside them, so they cannot vanish mid-interaction. `Toolbar` also lays out along the reading direction, so progress fills leftward in `rtl`.
 
 For a custom arrangement, compose `PreviousPageButton`, `NextPageButton`, `PageStatus`, and `PageProgress` with its public `PageProgressTrack` primitive:
 
