@@ -73,14 +73,16 @@ interface UseViewportGesturesOptions {
   setDragOffset: (offset: number) => void;
   setPageFitMode: (mode: PageFitMode) => void;
   spreadStartIndex: number;
+  toggleControls: () => void;
   usesPageRail: boolean;
   viewMode: ViewMode;
 }
 
 /**
  * Turns viewport input — keyboard, edge click, and swipe, plus the pan, pinch,
- * and double-tap gestures of useViewportZoom — into navigation and rail state,
- * and returns the handlers that the viewport element attaches.
+ * and double-tap gestures of useViewportZoom — into navigation, rail state,
+ * and reader-control visibility, and returns the handlers that the viewport
+ * element attaches.
  */
 export const useViewportGestures = ({
   containerRef,
@@ -95,6 +97,7 @@ export const useViewportGestures = ({
   setDragOffset,
   setPageFitMode,
   spreadStartIndex,
+  toggleControls,
   usesPageRail,
   viewMode,
 }: UseViewportGesturesOptions) => {
@@ -341,108 +344,42 @@ export const useViewportGestures = ({
     setIsDragging(false);
   }, [endPan, endPinch, isPinching, isTouchPanning, setDragOffset]);
 
-  useEffect(() => {
-    const root = containerRef.current?.closest(".pcv-root");
-    if (root === null || root === undefined) {
-      return;
-    }
-
-    const originatesOnProgressTrigger = (target: EventTarget | null): boolean =>
-      target instanceof Element &&
-      target.closest(".pcv-page-progress-trigger") !== null;
-    const getTouches = (event: Event): TouchInput =>
-      (event as unknown as { touches: TouchInput }).touches;
-    const isGestureActive = (): boolean =>
-      touchStateRef.current.active || isTouchPanning() || isPinching();
-    const onTouchStart = (event: Event): void => {
-      if (originatesOnProgressTrigger(event.target)) {
-        event.stopPropagation();
-        beginTouch(getTouches(event));
-      }
-    };
-    const onTouchMove = (event: Event): void => {
-      if (isGestureActive()) {
-        event.stopPropagation();
-        moveTouch(getTouches(event));
-        if (
-          (isPinching() ||
-            isTouchPanning() ||
-            Math.abs(
-              touchStateRef.current.currentX - touchStateRef.current.startX
-            ) >= MIN_SWIPE_THRESHOLD_PX) &&
-          event.cancelable
-        ) {
-          event.preventDefault();
-        }
-      }
-    };
-    const onTouchEnd = (event: Event): void => {
-      if (isGestureActive()) {
-        event.stopPropagation();
-        endTouch(
-          (event as unknown as { changedTouches: TouchInput }).changedTouches
-        );
-        didPanRef.current = false;
-      }
-    };
-    const onTouchCancel = (event: Event): void => {
-      if (isGestureActive()) {
-        event.stopPropagation();
-        cancelTouch();
-        didPanRef.current = false;
-      }
-    };
-
-    root.addEventListener("touchstart", onTouchStart);
-    root.addEventListener("touchmove", onTouchMove, { passive: false });
-    root.addEventListener("touchend", onTouchEnd);
-    root.addEventListener("touchcancel", onTouchCancel);
-
-    return () => {
-      root.removeEventListener("touchstart", onTouchStart);
-      root.removeEventListener("touchmove", onTouchMove);
-      root.removeEventListener("touchend", onTouchEnd);
-      root.removeEventListener("touchcancel", onTouchCancel);
-    };
-  }, [
-    beginTouch,
-    cancelTouch,
-    containerRef,
-    didPanRef,
-    endTouch,
-    isPinching,
-    isTouchPanning,
-    moveTouch,
-  ]);
-
-  const handleEdgeClick = (event: MouseEvent<HTMLDivElement>): void => {
+  const handleViewportClick = (event: MouseEvent<HTMLDivElement>): void => {
     if (didPanRef.current) {
       didPanRef.current = false;
-      return;
-    }
-    if (isPannable) {
       return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
     const offsetX = event.clientX - rect.left;
     const edgeWidth = rect.width * EDGE_CLICK_RATIO;
 
-    if (offsetX <= edgeWidth) {
-      goByHorizontalDirection("left");
+    // A pannable page reserves its whole surface for panning gestures, so its
+    // edges toggle the controls instead of turning the page.
+    if (
+      isPannable ||
+      (offsetX > edgeWidth && offsetX < rect.width - edgeWidth)
+    ) {
+      toggleControls();
       return;
     }
 
-    if (offsetX >= rect.width - edgeWidth) {
-      goByHorizontalDirection("right");
-    }
+    goByHorizontalDirection(offsetX <= edgeWidth ? "left" : "right");
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
+    if (isInteractiveTarget(event.target, event.currentTarget)) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleControls();
+      return;
+    }
+
     const direction = getHorizontalDirection(event.key);
-    if (
-      direction === undefined ||
-      isInteractiveTarget(event.target, event.currentTarget)
-    ) {
+    if (direction === undefined) {
       return;
     }
 
@@ -452,7 +389,7 @@ export const useViewportGestures = ({
   };
 
   const viewportProps: DOMAttributes<HTMLDivElement> = {
-    onClick: handleEdgeClick,
+    onClick: handleViewportClick,
     onKeyDown: handleKeyDown,
     onPointerCancel: (event) => {
       endPan(event.pointerId);

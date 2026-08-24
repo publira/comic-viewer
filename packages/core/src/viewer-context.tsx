@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -32,6 +33,20 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   pageFitMode: PageFitMode;
   readingDirection: ReadingDirection;
   spreadStartIndex: number;
+  /** Whether the reader controls, such as Toolbar and PageNavigation, show. */
+  areControlsVisible: boolean;
+  /**
+   * Reveals the reader controls, or hides them again. Revealed controls hide
+   * themselves once the reader stops interacting with them.
+   */
+  toggleControls: () => void;
+  /**
+   * Suspends the auto-hide countdown while `held` is true, for a pointer that
+   * rests on a control or focus that sits inside one. Releasing every hold
+   * restarts the countdown, which also gives a tapped control a fresh window.
+   * Calls must be balanced.
+   */
+  holdControls: (held: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
   setPageFitMode: (mode: PageFitMode) => void;
   setReadingDirection: (direction: ReadingDirection) => void;
@@ -61,6 +76,7 @@ export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
 
 const ViewerContext = createContext<ViewerContextValue | null>(null);
 const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
+const CONTROLS_HIDE_DELAY_MS = 2000;
 
 const clamp = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) {
@@ -114,6 +130,30 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     initialReadingDirection
   );
 
+  const [areControlsVisible, setAreControlsVisible] = useState(false);
+  const [controlsHoldCount, setControlsHoldCount] = useState(0);
+  const toggleControls = useCallback(() => {
+    setAreControlsVisible((areVisible) => !areVisible);
+  }, []);
+  const holdControls = useCallback((held: boolean) => {
+    setControlsHoldCount((count) => Math.max(0, count + (held ? 1 : -1)));
+  }, []);
+  // A held control keeps its countdown from running at all, so releasing the
+  // hold starts a whole fresh window rather than resuming a spent one.
+  useEffect(() => {
+    if (!areControlsVisible || controlsHoldCount > 0) {
+      return;
+    }
+
+    const hideTimeout = setTimeout(() => {
+      setAreControlsVisible(false);
+    }, CONTROLS_HIDE_DELAY_MS);
+
+    return () => {
+      clearTimeout(hideTimeout);
+    };
+  }, [areControlsVisible, controlsHoldCount]);
+
   const goTo = useCallback(
     (index: number) => {
       const nextIndex = clamp(index, 0, maxIndex);
@@ -160,10 +200,12 @@ export const ViewerProvider = <TPage extends ViewerPage>({
 
   const value = useMemo<ViewerContextValue<TPage>>(
     () => ({
+      areControlsVisible,
       currentIndex: clampedCurrentIndex,
       goTo,
       goToNext,
       goToPrev,
+      holdControls,
       pageFitMode,
       pages,
       plugins,
@@ -172,13 +214,17 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       setReadingDirection,
       setViewMode,
       spreadStartIndex: clampedSpreadStartIndex,
+      toggleControls,
       viewMode,
     }),
     [
+      areControlsVisible,
       pages,
       plugins,
       clampedCurrentIndex,
       clampedSpreadStartIndex,
+      holdControls,
+      toggleControls,
       viewMode,
       pageFitMode,
       readingDirection,

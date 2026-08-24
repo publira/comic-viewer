@@ -55,6 +55,7 @@ export function Reader() {
     <div style={{ height: "100vh" }}>
       <ComicViewer.Root pages={pages} initialReadingDirection="rtl">
         <ComicViewer.Viewport />
+        <ComicViewer.Toolbar />
         <ComicViewer.PageNavigation />
       </ComicViewer.Root>
     </div>
@@ -133,24 +134,49 @@ Use `className` on the other components to style their controls. For page markup
 
 `PageCanvas` receives the current page and decoded image from `Viewport`, so it must be used in a viewport page template. Use `renderPage` when you need to render page content entirely independently of the built-in image pipeline.
 
-## Page navigation
-
-`ComicViewer.PageNavigation` provides accessible previous-page, page-status, and next-page controls. Buttons are disabled at the first and last spread, and the status reports the currently visible page or range. The control order follows the reader's direction.
-
-For a custom arrangement, compose `PreviousPageButton`, `PageStatus`, and `NextPageButton` as children. These components render only semantic HTML and class names, leaving visual styling to the consumer.
+`Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else. Without `core.css` they would stay on screen permanently, so style both states yourself through the `aria-hidden` variant, which matches only the hidden state. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. `Toolbar` sets `dir` from the reading direction, so logical utilities such as `start-3` and the progress fill follow the reader automatically.
 
 ```tsx
-<ComicViewer.Toolbar>
-  <ComicViewer.PageNavigation className="reader-controls">
-    <ComicViewer.PreviousPageButton>Back</ComicViewer.PreviousPageButton>
-    <ComicViewer.NextPageButton>Forward</ComicViewer.NextPageButton>
-    <ComicViewer.PageProgress>
-      <ComicViewer.PageProgressTrack className="progress-bar" />
-      <ComicViewer.PageStatus />
-    </ComicViewer.PageProgress>
-  </ComicViewer.PageNavigation>
+<ComicViewer.Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-linear-to-t from-black/80 via-black/55 to-transparent px-3 pt-8 pb-3 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
+  <ComicViewer.PageProgress className="mx-auto min-w-0 shrink basis-3/5">
+    <ComicViewer.PageProgressTrack className="block h-1 w-full appearance-none overflow-hidden rounded-full bg-black/65 [&::-moz-progress-bar]:bg-neutral-100 [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-neutral-100" />
+    <ComicViewer.PageStatus className="mt-1.5 block text-center text-sm" />
+  </ComicViewer.PageProgress>
 </ComicViewer.Toolbar>
+<ComicViewer.PageNavigation className="pointer-events-none absolute inset-0 z-10 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
+  <ComicViewer.PreviousPageButton className="pointer-events-auto absolute start-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
+  <ComicViewer.NextPageButton className="pointer-events-auto absolute end-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
+</ComicViewer.PageNavigation>
 ```
+
+## Page navigation
+
+`ComicViewer.PageNavigation` provides accessible previous-page and next-page controls. Buttons are disabled at the first and last spread, and the control order follows the reader's direction. `ComicViewer.Toolbar` is its sibling and holds the reading progress: `PageProgressTrack` and `PageStatus`, which reports the currently visible page or range.
+
+For a custom arrangement, compose `PreviousPageButton`, `NextPageButton`, `PageProgress`, `PageProgressTrack`, and `PageStatus` as children. These components render only semantic HTML and class names, leaving visual styling to the consumer.
+
+```tsx
+<ComicViewer.Toolbar className="reader-toolbar">
+  <ComicViewer.PageProgress>
+    <ComicViewer.PageProgressTrack className="progress-bar" />
+    <ComicViewer.PageStatus />
+  </ComicViewer.PageProgress>
+</ComicViewer.Toolbar>
+<ComicViewer.PageNavigation className="reader-controls">
+  <ComicViewer.PreviousPageButton>Back</ComicViewer.PreviousPageButton>
+  <ComicViewer.NextPageButton>Forward</ComicViewer.NextPageButton>
+</ComicViewer.PageNavigation>
+```
+
+### Reader control visibility
+
+`Toolbar` and `PageNavigation` share one visibility state. Both start hidden, and a click or tap on the viewport away from the page-turn edges reveals them; a pannable page reveals them from anywhere. Another click, or a two-second pause, hides them again. Pressing <kbd>Enter</kbd> or <kbd>Space</kbd> on the focused viewport does the same from the keyboard. While hidden, both are `inert` and outside the accessibility tree, so their controls cannot be focused or read.
+
+The countdown does not run while a pointer rests on either container or focus sits inside one, so the controls cannot vanish mid-interaction. A touch reports the same hold for the length of the tap, so releasing a button starts a fresh countdown rather than letting a spent one run out.
+
+Read `areControlsVisible` and call `toggleControls` from `useViewerContext` to drive the same state from your own controls, and `holdControls(true)` / `holdControls(false)` in balanced pairs to suspend and restart the countdown around your own container. `PageProgress` also takes a `visible` prop when it needs to hide independently of its container.
+
+`Toolbar` sets `dir` and `data-reading-direction` from the reader's direction, so its controls lay out along the reading direction and `PageProgressTrack` fills toward the page the reader is heading for: leftward in `rtl`, rightward in `ltr`.
 
 ## Plugins
 

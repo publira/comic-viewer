@@ -56,6 +56,7 @@ function App() {
   return (
     <ComicViewer.Root pages={pages} initialReadingDirection="rtl">
       <ComicViewer.Viewport />
+      <ComicViewer.Toolbar />
       <ComicViewer.PageNavigation />
     </ComicViewer.Root>
   );
@@ -105,21 +106,38 @@ Use `className` on the other components to style their controls. For page markup
 
 `PageCanvas` receives the current page and decoded image from `Viewport`, so it must be used in a viewport page template. Use `renderPage` when you need to render page content entirely independently of the built-in image pipeline.
 
-## Page Navigation
-
-`ComicViewer.PageNavigation` provides accessible previous-page, page-status, and next-page controls. For a custom arrangement, compose `PreviousPageButton`, `PageStatus`, `NextPageButton`, and `PageProgress` with its public `PageProgressTrack` primitive:
+`Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert` only, so without `core.css` they would stay on screen permanently. Style both states through the `aria-hidden` variant, which matches only the hidden state; `inert` already blocks pointer and keyboard access while hidden.
 
 ```tsx
-<ComicViewer.Toolbar>
-  <ComicViewer.PageNavigation className="reader-controls">
-    <ComicViewer.PreviousPageButton>Back</ComicViewer.PreviousPageButton>
-    <ComicViewer.NextPageButton>Forward</ComicViewer.NextPageButton>
-    <ComicViewer.PageProgress>
-      <ComicViewer.PageProgressTrack className="progress-bar" />
-      <ComicViewer.PageStatus />
-    </ComicViewer.PageProgress>
-  </ComicViewer.PageNavigation>
+<ComicViewer.Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-linear-to-t from-black/80 via-black/55 to-transparent px-3 pt-8 pb-3 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
+  <ComicViewer.PageProgress className="mx-auto min-w-0 shrink basis-3/5">
+    <ComicViewer.PageProgressTrack className="block h-1 w-full appearance-none overflow-hidden rounded-full bg-black/65 [&::-moz-progress-bar]:bg-neutral-100 [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-neutral-100" />
+    <ComicViewer.PageStatus className="mt-1.5 block text-center text-sm" />
+  </ComicViewer.PageProgress>
 </ComicViewer.Toolbar>
+<ComicViewer.PageNavigation className="pointer-events-none absolute inset-0 z-10 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
+  <ComicViewer.PreviousPageButton className="pointer-events-auto absolute start-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
+  <ComicViewer.NextPageButton className="pointer-events-auto absolute end-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
+</ComicViewer.PageNavigation>
+```
+
+## Page Navigation
+
+`ComicViewer.PageNavigation` provides accessible previous-page and next-page controls, while `ComicViewer.Toolbar` holds the reading progress. They are siblings, and they share one visibility state: a click or tap away from the page-turn edges reveals both, and a second one hides them again, as does a two-second pause. The countdown is suspended while a pointer rests on the controls or focus sits inside them, so they cannot vanish mid-interaction. `Toolbar` also lays out along the reading direction, so progress fills leftward in `rtl`.
+
+For a custom arrangement, compose `PreviousPageButton`, `NextPageButton`, `PageStatus`, and `PageProgress` with its public `PageProgressTrack` primitive:
+
+```tsx
+<ComicViewer.Toolbar className="reader-toolbar">
+  <ComicViewer.PageProgress>
+    <ComicViewer.PageProgressTrack className="progress-bar" />
+    <ComicViewer.PageStatus />
+  </ComicViewer.PageProgress>
+</ComicViewer.Toolbar>
+<ComicViewer.PageNavigation className="reader-controls">
+  <ComicViewer.PreviousPageButton>Back</ComicViewer.PreviousPageButton>
+  <ComicViewer.NextPageButton>Forward</ComicViewer.NextPageButton>
+</ComicViewer.PageNavigation>
 ```
 
 ## Advanced: Using Plugins

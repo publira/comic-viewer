@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PageNavigation } from "./page-navigation";
 import { useViewportGestures } from "./use-viewport-gestures";
 import { ViewerProvider } from "./viewer-context";
+import type { PageFitMode } from "./viewer-context";
 import { Viewport } from "./viewport";
 import type { TestPage } from "./viewport-test-helpers";
 import {
@@ -13,6 +14,37 @@ import {
   renderViewport,
   setViewportRect,
 } from "./viewport-test-helpers";
+
+const renderControlledViewport = ({
+  initialPageFitMode = "height" as PageFitMode,
+} = {}) =>
+  render(
+    <ViewerProvider
+      pages={pages}
+      initialPageFitMode={initialPageFitMode}
+      initialViewMode="single"
+    >
+      <div className="pcv-root">
+        <Viewport />
+        <PageNavigation />
+      </div>
+      <CurrentIndexIndicator />
+    </ViewerProvider>
+  );
+
+/** Hidden controls carry no accessible name, so the class is the only handle. */
+const getControlElements = (container: HTMLElement) => {
+  const navigation = container.querySelector<HTMLElement>(
+    ".pcv-page-navigation"
+  );
+  const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
+
+  if (navigation === null || viewport === null) {
+    throw new Error("The viewport and its navigation were not rendered.");
+  }
+
+  return { navigation, viewport };
+};
 
 describe(useViewportGestures, () => {
   beforeEach(() => {
@@ -252,36 +284,44 @@ describe(useViewportGestures, () => {
     expect(track).toHaveStyle("--pcv-drag-offset: 0px");
   });
 
-  it("moves the page rail for a swipe started on the progress trigger", () => {
-    const { container } = render(
-      <ViewerProvider pages={pages} initialViewMode="single">
-        <div className="pcv-root">
-          <Viewport />
-          <PageNavigation />
-        </div>
-      </ViewerProvider>
-    );
-    const progressTrigger = screen.getByRole("button", {
-      name: "Show reading progress",
+  it("toggles the shared reader controls with a click away from the edges", () => {
+    const { container } = renderControlledViewport();
+    const { navigation, viewport } = getControlElements(container);
+
+    setViewportRect(viewport);
+    fireEvent.click(viewport, { clientX: 50 });
+
+    expect(navigation).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+
+    fireEvent.click(viewport, { clientX: 50 });
+
+    expect(navigation).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("toggles the shared reader controls when a pannable page is clicked", () => {
+    const { container } = renderControlledViewport({
+      initialPageFitMode: "actual",
     });
-    const track = container.querySelector(".pcv-viewport-track");
+    const { navigation, viewport } = getControlElements(container);
 
-    if (track === null) {
-      throw new Error("The default viewport rail was not rendered.");
-    }
+    setViewportRect(viewport);
+    fireEvent.click(viewport, { clientX: 5 });
 
-    fireEvent.touchStart(progressTrigger, {
-      touches: [{ clientX: 200 }],
-    });
-    fireEvent.touchMove(progressTrigger, {
-      touches: [{ clientX: 120 }],
-    });
+    expect(navigation).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+  });
 
-    expect(track).toHaveStyle("--pcv-drag-offset: -80px");
+  it("toggles the shared reader controls from the keyboard", () => {
+    const { container } = renderControlledViewport();
+    const { navigation, viewport } = getControlElements(container);
 
-    fireEvent.touchCancel(progressTrigger);
+    viewport.focus();
+    expect(fireEvent.keyDown(viewport, { key: "Enter" })).toBeFalsy();
+    expect(navigation).toHaveAttribute("aria-hidden", "false");
 
-    expect(track).toHaveStyle("--pcv-drag-offset: 0px");
+    expect(fireEvent.keyDown(viewport, { key: " " })).toBeFalsy();
+    expect(navigation).toHaveAttribute("aria-hidden", "true");
   });
 
   it("does not bubble viewport touch gestures to its parent", () => {

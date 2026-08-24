@@ -16,6 +16,7 @@ export const ComicViewerDemo = ({ pages }: ComicViewerDemoProps) => (
   <div className={styles.viewer} style={getViewerStyle(pages)}>
     <ComicViewer.Root pages={pages} className={styles.viewerContent}>
       <ComicViewer.Viewport />
+      <ComicViewer.Toolbar />
       <ComicViewer.PageNavigation />
     </ComicViewer.Root>
   </div>
