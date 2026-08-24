@@ -134,6 +134,21 @@ Use `className` on the other components to style their controls. For page markup
 
 `PageCanvas` receives the current page and decoded image from `Viewport`, so it must be used in a viewport page template. Use `renderPage` when you need to render page content entirely independently of the built-in image pipeline.
 
+`Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else. Without `core.css` they would stay on screen permanently, so style both states yourself through the `aria-hidden` variant, which matches only the hidden state. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. `Toolbar` sets `dir` from the reading direction, so logical utilities such as `start-3` and the progress fill follow the reader automatically.
+
+```tsx
+<ComicViewer.Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-linear-to-t from-black/80 via-black/55 to-transparent px-3 pt-8 pb-3 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
+  <ComicViewer.PageProgress className="mx-auto min-w-0 shrink basis-3/5">
+    <ComicViewer.PageProgressTrack className="block h-1 w-full appearance-none overflow-hidden rounded-full bg-black/65 [&::-moz-progress-bar]:bg-neutral-100 [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-neutral-100" />
+    <ComicViewer.PageStatus className="mt-1.5 block text-center text-sm" />
+  </ComicViewer.PageProgress>
+</ComicViewer.Toolbar>
+<ComicViewer.PageNavigation className="pointer-events-none absolute inset-0 z-10 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
+  <ComicViewer.PreviousPageButton className="pointer-events-auto absolute start-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
+  <ComicViewer.NextPageButton className="pointer-events-auto absolute end-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
+</ComicViewer.PageNavigation>
+```
+
 ## Page navigation
 
 `ComicViewer.PageNavigation` provides accessible previous-page and next-page controls. Buttons are disabled at the first and last spread, and the control order follows the reader's direction. `ComicViewer.Toolbar` is its sibling and holds the reading progress: `PageProgressTrack` and `PageStatus`, which reports the currently visible page or range.
