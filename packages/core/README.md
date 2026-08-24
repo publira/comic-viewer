@@ -106,7 +106,7 @@ const [currentIndex, setCurrentIndex] = useState(0);
 
 ### Double-page grouping
 
-Use `spreadStartIndex` to leave leading pages unpaired before double-page spreads. The value is a zero-based page index: every page before it is shown individually in double-page mode, and that page begins pairing with the following page. For example, `spreadStartIndex={1}` renders page 1 as a cover and then pairs pages 2–3, 4–5, and so on. `spreadStartIndex={2}` renders pages 1 and 2 individually before pairing pages 3–4. This grouping and the navigation controls work the same way for both RTL and LTR readers. The default is `0`, which preserves the existing behavior of pairing from the first page.
+Use `spreadStartIndex` to leave leading pages unpaired before double-page spreads. The value is a zero-based page index: every page before it is shown individually in double-page mode, and that page begins pairing with the following page. For example, `spreadStartIndex={1}` renders page 1 as a cover and then pairs pages 2–3, 4–5, and so on. `spreadStartIndex={2}` renders pages 1 and 2 individually before pairing pages 3–4. This grouping and the navigation controls work the same way for both RTL and LTR readers. The default is `0`, which preserves the existing behavior of pairing from the first page. A page shown individually still takes the side its position in the spread gives it, so a cover sits opposite the page that follows it rather than on the same side.
 
 ```tsx
 <ComicViewer.Root pages={pages} spreadStartIndex={1}>
@@ -127,7 +127,7 @@ import * as ComicViewer from "@publira/comic-viewer";
 >
   <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
     <ComicViewer.ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset)))] transition-transform duration-[260ms] ease-out data-[dragging]:transition-none data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]">
-      <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 [transform:translate(var(--pcv-pan-x,0),var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))] data-[view-mode=double]:data-[page-count=1]:data-[reading-direction=rtl]:justify-end data-[view-mode=double]:data-[page-count=1]:data-[reading-direction=ltr]:justify-start">
+      <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 [transform:translate(var(--pcv-pan-x,0),var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))] data-[page-side=left]:justify-start data-[page-side=right]:justify-end">
         <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[view-mode=double]:basis-1/2 data-[view-mode=double]:max-w-1/2">
           <ComicViewer.ViewportPage className="flex h-full w-full min-w-0 items-center justify-center">
             <ComicViewer.PageCanvas className="h-full max-w-full object-contain" />
@@ -138,6 +138,8 @@ import * as ComicViewer from "@publira/comic-viewer";
   </ComicViewer.Viewport>
 </ComicViewer.Root>;
 ```
+
+In double-page mode the rail reports the half of the spread a page takes as `data-page-side="left"` or `data-page-side="right"`, on `ViewportPageSlot` and `ViewportPage`, and on `ViewportPageSet` while it holds a single page. The side follows the parity of the page's offset from `spreadStartIndex`, so an unpaired page keeps the side it would have had in a printed book: with `spreadStartIndex={1}` the cover faces the page after it instead of sharing its side. The attribute is absent in single-page mode, where a page has no facing half.
 
 Use `className` on the other components to style their controls. For page markup that keeps the viewer loading, decoding, and virtualization pipeline, provide a page template with the public `ViewportPage` and `PageCanvas` primitives:
 

@@ -11,6 +11,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { composeClassName } from "./class-names";
 import type { PageLoadError, PageLoadState, PageLoadStatus } from "./page-load";
 import type { PageImage } from "./use-viewport-images";
+import type { PageSide } from "./use-viewport-layout";
 import type { ViewerPage } from "./viewer-context";
 
 /** A page template rendered either as static markup or per visible page. */
@@ -24,6 +25,7 @@ interface ViewportPageContextValue {
   index: number;
   page: ViewerPage;
   retry: () => void;
+  side?: PageSide;
   status: PageLoadStatus;
 }
 
@@ -43,6 +45,13 @@ const useViewportPageContext = (
 
   return context;
 };
+
+/**
+ * Reads the side of the page being rendered, or `undefined` outside a page
+ * managed by Viewport, so a page element can carry it without requiring one.
+ */
+const useViewportPageSide = (): PageSide | undefined =>
+  useContext(ViewportPageContext)?.side;
 
 /**
  * Reads the load state of the page being rendered by a Viewport page template,
@@ -136,18 +145,29 @@ export const PageCanvas = ({ className, ...props }: PageCanvasProps) => {
   );
 };
 
-export type ViewportPageProps = ComponentPropsWithoutRef<"div">;
+export type ViewportPageProps = Omit<
+  ComponentPropsWithoutRef<"div">,
+  "data-page-side"
+>;
 
 /** Provides the page wrapper for a Viewport page template. */
 export const ViewportPage = ({
   children,
   className,
   ...props
-}: ViewportPageProps) => (
-  <div {...props} className={composeClassName("pcv-page", className)}>
-    {children ?? <PageCanvas />}
-  </div>
-);
+}: ViewportPageProps) => {
+  const side = useViewportPageSide();
+
+  return (
+    <div
+      {...props}
+      className={composeClassName("pcv-page", className)}
+      data-page-side={side}
+    >
+      {children ?? <PageCanvas />}
+    </div>
+  );
+};
 
 interface ViewportPageInstanceProps<TPage extends ViewerPage> {
   children?: ViewportChildren<TPage>;
@@ -157,6 +177,7 @@ interface ViewportPageInstanceProps<TPage extends ViewerPage> {
   page: TPage;
   renderPage?: (page: TPage, index: number) => ReactNode;
   retryPage: (index: number) => void;
+  side?: PageSide;
   status: PageLoadStatus;
 }
 
@@ -169,14 +190,15 @@ export const ViewportPageInstance = <TPage extends ViewerPage>({
   page,
   renderPage,
   retryPage,
+  side,
   status,
 }: ViewportPageInstanceProps<TPage>) => {
   const retry = useCallback(() => {
     retryPage(index);
   }, [index, retryPage]);
   const contextValue = useMemo(
-    () => ({ error, image, index, page, retry, status }),
-    [error, image, index, page, retry, status]
+    () => ({ error, image, index, page, retry, side, status }),
+    [error, image, index, page, retry, side, status]
   );
   let content: ReactNode;
 

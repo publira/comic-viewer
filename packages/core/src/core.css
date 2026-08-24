@@ -133,14 +133,16 @@
   max-width: 50%;
 }
 
+/* An unpaired page keeps the half of the spread its own parity gives it, so a
+   leading page faces the page that follows it instead of sharing its side. */
 .pcv-viewport[data-view-mode="double"]
-  .pcv-viewport-page-set[data-page-count="1"][data-reading-direction="rtl"] {
-  justify-content: flex-end;
+  .pcv-viewport-page-set[data-page-side="left"] {
+  justify-content: flex-start;
 }
 
 .pcv-viewport[data-view-mode="double"]
-  .pcv-viewport-page-set[data-page-count="1"][data-reading-direction="ltr"] {
-  justify-content: flex-start;
+  .pcv-viewport-page-set[data-page-side="right"] {
+  justify-content: flex-end;
 }
 
 @media (prefers-reduced-motion: reduce) {
