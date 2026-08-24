@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.5.1...comic-viewer-v0.6.0) (2026-08-24)
+
+
+### Features
+
+* **core:** export ComicViewer.Root instead of an Object.assign compound component ([#130](https://github.com/publira/comic-viewer/issues/130)) ([c3ce4c8](https://github.com/publira/comic-viewer/commit/c3ce4c817dacc8b5c1a3240e641c5089f7e019ad))
+* **core:** expose page load state, errors, and retry ([#137](https://github.com/publira/comic-viewer/issues/137)) ([1fd98a2](https://github.com/publira/comic-viewer/commit/1fd98a2131f6132888f94cbfdfd6bfc09e95a4d4)), closes [#123](https://github.com/publira/comic-viewer/issues/123)
+* **core:** pass loading context to page plugins ([#140](https://github.com/publira/comic-viewer/issues/140)) ([beef6e9](https://github.com/publira/comic-viewer/commit/beef6e9a78a681ab50b64a85eeef97d32d27d9b3)), closes [#121](https://github.com/publira/comic-viewer/issues/121)
+* **core:** place PageProgress in the Toolbar ([#132](https://github.com/publira/comic-viewer/issues/132)) ([8ce62b4](https://github.com/publira/comic-viewer/commit/8ce62b4fc57cb2669c06a3218621e681103ad645))
+* **demo-tw:** add Tailwind CSS reference application ([#143](https://github.com/publira/comic-viewer/issues/143)) ([08211ab](https://github.com/publira/comic-viewer/commit/08211ab00df0f3e62918646669382dfa1231f3ec))
+
+
+### Bug Fixes
+
+* **core:** clear stale canvas while page loads ([#139](https://github.com/publira/comic-viewer/issues/139)) ([460b402](https://github.com/publira/comic-viewer/commit/460b4028ff89482ce0b9fac118742f5cc296d9c6)), closes [#134](https://github.com/publira/comic-viewer/issues/134)
+* **core:** scope theme variables to viewer root ([#135](https://github.com/publira/comic-viewer/issues/135)) ([44805a4](https://github.com/publira/comic-viewer/commit/44805a43f3e7b3c275b803b527e55c134cffc7d6))
+
 ## [0.5.1](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.5.0...comic-viewer-v0.5.1) (2026-08-23)
 
 
