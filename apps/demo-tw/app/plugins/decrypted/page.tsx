@@ -31,8 +31,9 @@ const DecryptedPluginDemoPage = () => (
       <section className="rounded-xl border border-slate-300 bg-white p-5 text-sm leading-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <h2 className="font-semibold">Decrypted plugin sample</h2>
         <p className="mt-2 text-slate-600 dark:text-slate-300">
-          A custom fetch hook encrypts each source image for this demo, and an
-          <code>afterFetch</code> hook decrypts it before the viewer renders it.
+          A custom fetch hook retrieves pre-encrypted <code>.enc</code> pages,
+          and an <code>afterFetch</code> hook decrypts them before the viewer
+          renders them.
         </p>
       </section>
       <SourceCodePanel code={sourceCode} />

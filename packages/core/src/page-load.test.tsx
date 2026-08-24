@@ -282,12 +282,29 @@ describe("page load state", () => {
   });
 
   it("restarts an image load after Strict Mode aborts the initial effect", async () => {
-    const fetchMock = vi.fn<MockFetch>(() =>
-      Promise.resolve({
-        arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
-        ok: true,
-      })
-    );
+    const fetchMock = vi.fn<MockFetch>((_input, init) => {
+      const signal = init?.signal;
+
+      // eslint-disable-next-line promise/avoid-new -- The first Strict Mode request must stay pending until it is aborted.
+      return new Promise((resolve, reject) => {
+        if (signal === undefined || signal === null) {
+          reject(
+            new Error("Expected the page request to receive an abort signal.")
+          );
+          return;
+        }
+
+        signal.addEventListener("abort", () => reject(signal.reason), {
+          once: true,
+        });
+        if (fetchMock.mock.calls.length === 2) {
+          resolve({
+            arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+            ok: true,
+          });
+        }
+      });
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     render(
@@ -303,6 +320,8 @@ describe("page load state", () => {
     await waitFor(() => {
       expect(screen.getByTestId("status")).toHaveTextContent("loaded");
     });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("retries a failed page and clears its error once it succeeds", async () => {

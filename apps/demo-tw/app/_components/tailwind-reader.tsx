@@ -110,6 +110,36 @@ interface TailwindReaderProps {
   pages: readonly ViewerPage[];
 }
 
+const NavigationIcon = ({ path }: { path: string }) => (
+  <svg
+    aria-hidden="true"
+    className="size-6 fill-none stroke-current stroke-2 [stroke-linecap:round] [stroke-linejoin:round]"
+    viewBox="0 0 24 24"
+  >
+    <path d={path} />
+  </svg>
+);
+
+/** Renders direction-aware navigation icons using the public viewer context. */
+const NavigationControls = () => {
+  const { readingDirection } = ComicViewer.useViewerContext();
+  const previousIcon =
+    readingDirection === "rtl" ? "m10 6 6 6-6 6" : "m14 6-6 6 6 6";
+  const nextIcon =
+    readingDirection === "rtl" ? "m14 6-6 6 6 6" : "m10 6 6 6-6 6";
+
+  return (
+    <>
+      <ComicViewer.PreviousPageButton className="pointer-events-auto absolute start-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 p-0 text-slate-100 shadow-lg outline-offset-2 outline-slate-100 transition hover:bg-black/80 focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50">
+        <NavigationIcon path={previousIcon} />
+      </ComicViewer.PreviousPageButton>
+      <ComicViewer.NextPageButton className="pointer-events-auto absolute end-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 p-0 text-slate-100 shadow-lg outline-offset-2 outline-slate-100 transition hover:bg-black/80 focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50">
+        <NavigationIcon path={nextIcon} />
+      </ComicViewer.NextPageButton>
+    </>
+  );
+};
+
 /** Renders the viewer entirely with Tailwind utilities and public primitives. */
 export const TailwindReader = ({
   mode = "basic",
@@ -138,24 +168,7 @@ export const TailwindReader = ({
       </ComicViewer.PageProgress>
     </ComicViewer.Toolbar>
     <ComicViewer.PageNavigation className="pointer-events-none absolute inset-0 z-10 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
-      <ComicViewer.PreviousPageButton className="pointer-events-auto absolute start-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 p-0 text-slate-100 shadow-lg outline-offset-2 outline-slate-100 transition hover:bg-black/80 focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50">
-        <svg
-          aria-hidden="true"
-          className="size-6 fill-none stroke-current stroke-2 [stroke-linecap:round] [stroke-linejoin:round]"
-          viewBox="0 0 24 24"
-        >
-          <path d="m10 6 6 6-6 6" />
-        </svg>
-      </ComicViewer.PreviousPageButton>
-      <ComicViewer.NextPageButton className="pointer-events-auto absolute end-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 p-0 text-slate-100 shadow-lg outline-offset-2 outline-slate-100 transition hover:bg-black/80 focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50">
-        <svg
-          aria-hidden="true"
-          className="size-6 fill-none stroke-current stroke-2 [stroke-linecap:round] [stroke-linejoin:round]"
-          viewBox="0 0 24 24"
-        >
-          <path d="m14 6-6 6 6 6" />
-        </svg>
-      </ComicViewer.NextPageButton>
+      <NavigationControls />
     </ComicViewer.PageNavigation>
   </ComicViewer.Root>
 );
