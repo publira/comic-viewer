@@ -166,8 +166,7 @@ import { ComicViewer, definePlugin } from "@publira/comic-viewer";
 
 const decryptionPlugin = definePlugin({
   name: "decrypt-pages",
-  afterFetch: async (encryptedPage: ArrayBuffer) =>
-    decryptPage(encryptedPage),
+  afterFetch: async (encryptedPage: ArrayBuffer) => decryptPage(encryptedPage),
 });
 
 export function SecureReader() {
@@ -176,4 +175,5 @@ export function SecureReader() {
       <ComicViewer.Viewport />
     </ComicViewer>
   );
+}
 ```
