@@ -1,6 +1,6 @@
 {
   "name": "Publira Comic Viewer",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:5.1.1-24-trixie@sha256:fb4652b1a9bca94d31eaa4d8446176e96350a7644b4633675612ce6b2c1e2b1f",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:5.1.2-24-trixie@sha256:4c09888a2acdaf619daa79d2e811329536450a1045be9243fe03d4b02c81e91e",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1.1.1": {
       "version": "2.88.1"
