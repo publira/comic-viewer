@@ -113,10 +113,14 @@ const pluginsForMode: Readonly<Record<ReaderMode, readonly ViewerPlugin[]>> = {
 // The reader is given a page list, a page count, or both, exactly as the
 // viewer root is, and hands that pair straight through to it.
 type TailwindReaderProps = ViewerPageListProps & {
+  /** The controlled zero-based page index, for a host that owns the position. */
+  currentIndex?: number;
   initialReadingDirection?: ReadingDirection;
   mode?: ReaderMode;
   /** Called as the reader comes within two pages of the last one. */
   onEndReached?: () => void;
+  /** Called when navigation requests a different zero-based page index. */
+  onIndexChange?: (index: number) => void;
   /** Resolves the metadata of a page the reader is approaching. */
   resolvePage?: PageResolver;
   spreadStartIndex?: number;
@@ -159,16 +163,20 @@ const NavigationControls = () => {
 
 /** Renders the viewer entirely with Tailwind utilities and public primitives. */
 export const TailwindReader = ({
+  currentIndex,
   initialReadingDirection,
   mode = "basic",
   onEndReached,
+  onIndexChange,
   resolvePage,
   spreadStartIndex,
   ...pageListProps
 }: TailwindReaderProps) => (
   <ComicViewer.Root
     {...pageListProps}
+    currentIndex={currentIndex}
     onEndReached={onEndReached}
+    onIndexChange={onIndexChange}
     resolvePage={resolvePage}
     plugins={pluginsForMode[mode]}
     initialReadingDirection={initialReadingDirection}
