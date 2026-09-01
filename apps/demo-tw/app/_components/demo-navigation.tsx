@@ -7,6 +7,7 @@ const navigationItems = [
   { href: "/", label: "Basic" },
   { href: "/spreads", label: "Spreads" },
   { href: "/ltr", label: "LTR" },
+  { href: "/fullscreen", label: "Fullscreen" },
   { href: "/plugins/decrypted", label: "Decrypt" },
   { href: "/plugins/watermark", label: "Watermark" },
 ] as const;
