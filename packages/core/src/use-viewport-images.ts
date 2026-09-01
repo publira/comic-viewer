@@ -132,7 +132,8 @@ interface UseViewportImagesOptions<TPage extends ViewerPage> {
   cachedIndices: readonly number[];
   keepImages: boolean;
   onPageLoadError?: (error: PageLoadError<TPage>) => void;
-  pages: readonly TPage[];
+  /** An entry is `undefined` while the metadata of that page is unresolved. */
+  pages: readonly (TPage | undefined)[];
   plugins: readonly ViewerPlugin[];
   shouldLoadImages: boolean;
 }

@@ -1,0 +1,231 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import type { ViewerPage } from "./viewer-context";
+
+/** The context a page resolver receives with every request. */
+export interface PageResolveContext {
+  /** Aborts once the viewer stops needing the page. */
+  signal: AbortSignal;
+}
+
+/**
+ * Resolves the metadata of a single page on demand, so a viewer can be given a
+ * `pageCount` instead of the whole page list. Returning `undefined` leaves the
+ * page unresolved until it enters the resolve window again.
+ */
+export type PageResolver<TPage extends ViewerPage = ViewerPage> = (
+  index: number,
+  context: PageResolveContext
+) => Promise<TPage | undefined> | TPage | undefined;
+
+/** A page whose metadata could not be resolved, reported with its index. */
+export interface PageResolveError {
+  /** The error thrown by the resolver. */
+  cause: unknown;
+  /** The zero-based index of the page within the viewer page list. */
+  index: number;
+}
+
+/**
+ * How many pages on either side of the current one are resolved ahead of the
+ * reader by default. It covers a double-page spread and the spread that
+ * follows it, so a page turn finds its metadata already resolved.
+ */
+export const DEFAULT_PAGE_RESOLVE_OVERSCAN = 4;
+
+/**
+ * How far from the current index a resolved page is retained however narrow
+ * the resolve window is. The rail renders the spread before and the spread
+ * after the displayed one, and the displayed spread trails the current index
+ * by a whole spread while a page turn runs, which reaches five pages ahead of
+ * it. Retaining that much keeps a page the rail is still rendering from losing
+ * its metadata mid-transition.
+ */
+const RAIL_RETENTION_DISTANCE = 5;
+
+const EMPTY_PAGES: readonly never[] = [];
+
+interface UsePageSourceOptions<TPage extends ViewerPage> {
+  currentIndex: number;
+  onPageResolveError?: (error: PageResolveError) => void;
+  overscan: number;
+  pageCount: number;
+  pages: readonly (TPage | undefined)[];
+  resolvePage?: PageResolver<TPage>;
+}
+
+/**
+ * Merges the statically provided pages with the ones a resolver produces on
+ * demand, into a list of `pageCount` entries where an unresolved page reads as
+ * `undefined`.
+ *
+ * Only the pages within `overscan` of the current index are asked for. A
+ * resolved page keeps its metadata while it stays within that window or within
+ * the reach of the rail, whichever is further, and loses it beyond that, so a
+ * page returned to later is resolved again, which is what keeps expiring URLs
+ * usable.
+ */
+export const usePageSource = <TPage extends ViewerPage>({
+  currentIndex,
+  onPageResolveError,
+  overscan,
+  pageCount,
+  pages,
+  resolvePage,
+}: UsePageSourceOptions<TPage>): readonly (TPage | undefined)[] => {
+  const [resolvedPages, setResolvedPages] = useState<
+    ReadonlyMap<number, TPage>
+  >(() => new Map());
+  const resolvedPagesRef = useRef<ReadonlyMap<number, TPage>>(new Map());
+  const pageRequestsRef = useRef(new Map<number, AbortController>());
+  // An index that failed, or that the resolver declined, is not asked again
+  // until it leaves the resolve window, so a failure cannot become a loop.
+  const settledIndicesRef = useRef(new Set<number>());
+  const onPageResolveErrorRef = useRef(onPageResolveError);
+  const resolvePageRef = useRef(resolvePage);
+
+  useEffect(() => {
+    onPageResolveErrorRef.current = onPageResolveError;
+    resolvePageRef.current = resolvePage;
+  }, [onPageResolveError, resolvePage]);
+
+  const commitResolvedPages = useCallback(
+    (update: (nextPages: Map<number, TPage>) => void): void => {
+      const nextPages = new Map(resolvedPagesRef.current);
+      update(nextPages);
+      resolvedPagesRef.current = nextPages;
+      setResolvedPages(nextPages);
+    },
+    []
+  );
+
+  const hasResolver = resolvePage !== undefined;
+
+  useEffect(() => {
+    if (!hasResolver) {
+      return;
+    }
+
+    const pageWindow = (distance: number): Set<number> => {
+      const indices = new Set<number>();
+
+      for (
+        let index = Math.max(0, currentIndex - distance);
+        index <= Math.min(pageCount - 1, currentIndex + distance);
+        index += 1
+      ) {
+        indices.add(index);
+      }
+
+      return indices;
+    };
+    const resolveWindow = pageWindow(overscan);
+    // A page the rail still renders keeps its metadata even once it falls
+    // outside the resolve window, so a narrow window cannot turn the spread a
+    // page turn is leaving behind into pending placeholders.
+    const retainedWindow =
+      overscan >= RAIL_RETENTION_DISTANCE
+        ? resolveWindow
+        : pageWindow(RAIL_RETENTION_DISTANCE);
+
+    for (const [index, controller] of pageRequestsRef.current) {
+      if (!retainedWindow.has(index)) {
+        controller.abort();
+        pageRequestsRef.current.delete(index);
+      }
+    }
+
+    for (const index of settledIndicesRef.current) {
+      if (!retainedWindow.has(index)) {
+        settledIndicesRef.current.delete(index);
+      }
+    }
+
+    const expiredIndices = [...resolvedPagesRef.current.keys()].filter(
+      (index) => !retainedWindow.has(index)
+    );
+    if (expiredIndices.length > 0) {
+      // oxlint-disable-next-line react/set-state-in-effect -- A page leaving the window must forget its metadata so it resolves again with a fresh URL.
+      commitResolvedPages((nextPages) => {
+        for (const index of expiredIndices) {
+          nextPages.delete(index);
+        }
+      });
+    }
+
+    const resolvePageAt = async (index: number): Promise<void> => {
+      const controller = new AbortController();
+      pageRequestsRef.current.set(index, controller);
+
+      try {
+        const page = await resolvePageRef.current?.(index, {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        pageRequestsRef.current.delete(index);
+        if (page === undefined) {
+          settledIndicesRef.current.add(index);
+          return;
+        }
+
+        commitResolvedPages((nextPages) => {
+          nextPages.set(index, page);
+        });
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        pageRequestsRef.current.delete(index);
+        settledIndicesRef.current.add(index);
+        onPageResolveErrorRef.current?.({ cause: error, index });
+      }
+    };
+
+    const pendingIndices = [...resolveWindow].filter(
+      (index) =>
+        pages[index] === undefined &&
+        !resolvedPagesRef.current.has(index) &&
+        !pageRequestsRef.current.has(index) &&
+        !settledIndicesRef.current.has(index)
+    );
+
+    void Promise.all(pendingIndices.map(resolvePageAt));
+  }, [
+    commitResolvedPages,
+    currentIndex,
+    hasResolver,
+    overscan,
+    pageCount,
+    pages,
+  ]);
+
+  useEffect(
+    () => () => {
+      for (const controller of pageRequestsRef.current.values()) {
+        controller.abort();
+      }
+      pageRequestsRef.current.clear();
+      settledIndicesRef.current.clear();
+    },
+    []
+  );
+
+  return useMemo(() => {
+    if (!hasResolver && pageCount === pages.length) {
+      return pages;
+    }
+
+    if (pageCount === 0) {
+      return EMPTY_PAGES;
+    }
+
+    return Array.from(
+      { length: pageCount },
+      (_, index) => pages[index] ?? resolvedPages.get(index)
+    );
+  }, [hasResolver, pageCount, pages, resolvedPages]);
+};

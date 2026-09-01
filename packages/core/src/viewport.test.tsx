@@ -336,6 +336,66 @@ describe(Viewport, () => {
     }
   });
 
+  it("renders a pending placeholder until the page metadata resolves", async () => {
+    const { restore } = mockPageImages();
+    let resolvePageMetadata: ((page: TestPage) => void) | undefined;
+    const resolvePage = () =>
+      // eslint-disable-next-line promise/avoid-new -- The page metadata stays unresolved until the test resolves it.
+      new Promise<TestPage>((resolve) => {
+        resolvePageMetadata = resolve;
+      });
+
+    try {
+      const { container } = render(
+        <ViewerProvider<TestPage> pageCount={1} resolvePage={resolvePage}>
+          <Viewport<TestPage> />
+        </ViewerProvider>
+      );
+
+      expect(container.querySelector(".pcv-page-pending")).not.toBeNull();
+      expect(container.querySelector("canvas")).toBeNull();
+
+      await act(async () => {
+        resolvePageMetadata?.(pages[0]);
+        await Promise.resolve();
+      });
+
+      expect(container.querySelector(".pcv-page-pending")).toBeNull();
+      expect(container.querySelector("canvas")).not.toBeNull();
+    } finally {
+      restore();
+    }
+  });
+
+  it("renders the pending page template given to the viewport", () => {
+    const { restore } = mockPageImages();
+    // eslint-disable-next-line promise/avoid-new -- The page metadata never resolves in this test.
+    const pendingMetadata = new Promise<TestPage>(() => {
+      // The viewer keeps waiting for the page metadata.
+    });
+
+    try {
+      render(
+        <ViewerProvider<TestPage>
+          pageCount={2}
+          resolvePage={() => pendingMetadata}
+        >
+          <Viewport<TestPage>
+            renderPendingPage={(index) => (
+              <div data-testid={`pending-${index}`}>
+                Loading page {index + 1}
+              </div>
+            )}
+          />
+        </ViewerProvider>
+      );
+
+      expect(screen.getByTestId("pending-0")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
   it("clears a decoded canvas while a replacement page loads", async () => {
     const clearRect = vi.fn<() => void>();
     const drawImage = vi.fn<() => void>();

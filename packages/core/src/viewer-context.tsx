@@ -4,10 +4,13 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { PropsWithChildren } from "react";
 
+import { DEFAULT_PAGE_RESOLVE_OVERSCAN, usePageSource } from "./page-source";
+import type { PageResolveError, PageResolver } from "./page-source";
 import type { ViewerPlugin } from "./plugin";
 
 export type ViewMode = "single" | "double";
@@ -26,7 +29,13 @@ export interface ViewerPage {
 }
 
 export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
-  pages: readonly TPage[];
+  /**
+   * The page list, holding one entry per page of the document. An entry is
+   * `undefined` while a page provided by `resolvePage` is still unresolved.
+   */
+  pages: readonly (TPage | undefined)[];
+  /** The total number of pages, including the ones not resolved yet. */
+  pageCount: number;
   plugins: readonly ViewerPlugin[];
   currentIndex: number;
   viewMode: ViewMode;
@@ -55,28 +64,80 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   goTo: (index: number) => void;
 }
 
+/**
+ * How long the document is. A viewer needs `pages`, `pageCount`, or both,
+ * because one given nothing but a `resolvePage` function would have no idea
+ * how many pages to resolve.
+ */
+export type ViewerPageListProps<TPage extends ViewerPage = ViewerPage> =
+  | {
+      /** The pages of the document, known upfront. */
+      pages: readonly (TPage | undefined)[];
+      /**
+       * The total number of pages. Defaults to the length of `pages`, and is
+       * required when `resolvePage` provides pages that `pages` omits.
+       */
+      pageCount?: number;
+    }
+  | {
+      /**
+       * The pages known upfront, if any. The rest are left to `resolvePage`.
+       */
+      pages?: readonly (TPage | undefined)[];
+      /** The total number of pages, resolved and unresolved alike. */
+      pageCount: number;
+    };
+
+export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
+  /**
+   * Resolves the metadata of a page the reader is approaching. The viewer
+   * asks only for pages within `pageResolveOverscan` of the current one, and
+   * forgets a page once it is further away than both that window and the
+   * pages the viewport can render, so a page returned to much later is
+   * resolved again with a fresh URL.
+   */
+  resolvePage?: PageResolver<TPage>;
+  /**
+   * How many pages on either side of the current one are asked for ahead of
+   * the reader. It decides which pages are requested, not how long a resolved
+   * page keeps its metadata: a page the viewport can still render keeps it
+   * however narrow this window is.
+   */
+  pageResolveOverscan?: number;
+  /** Called when `resolvePage` rejects for a page. */
+  onPageResolveError?: (error: PageResolveError) => void;
+  /**
+   * Called once the current page comes within `endReachedThreshold` pages of
+   * the end, so that a longer list can be appended. It is called again only
+   * after the page count changes.
+   */
+  onEndReached?: () => void;
+  /** How close to the last page `onEndReached` is called. Defaults to 2. */
+  endReachedThreshold?: number;
+  plugins?: readonly ViewerPlugin[];
+  /**
+   * The controlled zero-based page index. When omitted, the viewer manages
+   * its own index, starting from `initialIndex`.
+   */
+  currentIndex?: number;
+  initialIndex?: number;
+  /** Called when navigation requests a different zero-based page index. */
+  onIndexChange?: (index: number) => void;
+  initialViewMode?: ViewMode;
+  /** The initial page sizing mode. Defaults to fit-to-height. */
+  initialPageFitMode?: PageFitMode;
+  initialReadingDirection?: ReadingDirection;
+  spreadStartIndex?: number;
+}
+
 export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
-  PropsWithChildren<{
-    pages: readonly TPage[];
-    plugins?: readonly ViewerPlugin[];
-    /**
-     * The controlled zero-based page index. When omitted, the viewer manages
-     * its own index, starting from `initialIndex`.
-     */
-    currentIndex?: number;
-    initialIndex?: number;
-    /** Called when navigation requests a different zero-based page index. */
-    onIndexChange?: (index: number) => void;
-    initialViewMode?: ViewMode;
-    /** The initial page sizing mode. Defaults to fit-to-height. */
-    initialPageFitMode?: PageFitMode;
-    initialReadingDirection?: ReadingDirection;
-    spreadStartIndex?: number;
-  }>;
+  PropsWithChildren<ViewerPageListProps<TPage> & ViewerOptionsProps<TPage>>;
 
 const ViewerContext = createContext<ViewerContextValue | null>(null);
+const EMPTY_PAGES: readonly never[] = [];
 const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
 const CONTROLS_HIDE_DELAY_MS = 2000;
+const DEFAULT_END_REACHED_THRESHOLD = 2;
 
 const clamp = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) {
@@ -99,7 +160,13 @@ export const getVisiblePageCount = (
     : 1;
 
 export const ViewerProvider = <TPage extends ViewerPage>({
-  pages,
+  pages = EMPTY_PAGES,
+  pageCount,
+  resolvePage,
+  pageResolveOverscan = DEFAULT_PAGE_RESOLVE_OVERSCAN,
+  onPageResolveError,
+  onEndReached,
+  endReachedThreshold = DEFAULT_END_REACHED_THRESHOLD,
   plugins = EMPTY_PLUGINS,
   children,
   currentIndex: controlledIndex,
@@ -110,8 +177,13 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   initialReadingDirection = "rtl",
   spreadStartIndex = 0,
 }: ViewerProviderProps<TPage>) => {
-  const maxIndex = Math.max(0, pages.length - 1);
-  const clampedSpreadStartIndex = clamp(spreadStartIndex, 0, pages.length);
+  const totalPageCount = clamp(
+    pageCount ?? pages.length,
+    0,
+    Number.MAX_SAFE_INTEGER
+  );
+  const maxIndex = Math.max(0, totalPageCount - 1);
+  const clampedSpreadStartIndex = clamp(spreadStartIndex, 0, totalPageCount);
   const [uncontrolledIndex, setUncontrolledIndex] = useState(() =>
     clamp(initialIndex, 0, maxIndex)
   );
@@ -120,6 +192,14 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     0,
     maxIndex
   );
+  const sourcePages = usePageSource({
+    currentIndex: clampedCurrentIndex,
+    onPageResolveError,
+    overscan: clamp(pageResolveOverscan, 0, Number.MAX_SAFE_INTEGER),
+    pageCount: totalPageCount,
+    pages,
+    resolvePage,
+  });
 
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
 
@@ -175,17 +255,17 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       getVisiblePageCount(
         viewMode,
         clampedCurrentIndex,
-        pages.length,
+        totalPageCount,
         clampedSpreadStartIndex
       );
-    if (nextIndex < pages.length) {
+    if (nextIndex < totalPageCount) {
       goTo(nextIndex);
     }
   }, [
     clampedCurrentIndex,
     clampedSpreadStartIndex,
     goTo,
-    pages.length,
+    totalPageCount,
     viewMode,
   ]);
 
@@ -198,6 +278,33 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     );
   }, [clampedCurrentIndex, clampedSpreadStartIndex, goTo, viewMode]);
 
+  // A page count that has already been reported is not reported again, so a
+  // consumer that has nothing more to append is not asked in a loop.
+  const onEndReachedRef = useRef(onEndReached);
+  const reportedEndPageCountRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    onEndReachedRef.current = onEndReached;
+  }, [onEndReached]);
+
+  useEffect(() => {
+    const remainingPageCount = totalPageCount - (clampedCurrentIndex + 1);
+    if (
+      totalPageCount === 0 ||
+      remainingPageCount >
+        clamp(endReachedThreshold, 0, Number.MAX_SAFE_INTEGER)
+    ) {
+      return;
+    }
+
+    if (reportedEndPageCountRef.current === totalPageCount) {
+      return;
+    }
+
+    reportedEndPageCountRef.current = totalPageCount;
+    onEndReachedRef.current?.();
+  }, [clampedCurrentIndex, endReachedThreshold, totalPageCount]);
+
   const value = useMemo<ViewerContextValue<TPage>>(
     () => ({
       areControlsVisible,
@@ -206,8 +313,9 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       goToNext,
       goToPrev,
       holdControls,
+      pageCount: totalPageCount,
       pageFitMode,
-      pages,
+      pages: sourcePages,
       plugins,
       readingDirection,
       setPageFitMode,
@@ -219,7 +327,8 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     }),
     [
       areControlsVisible,
-      pages,
+      sourcePages,
+      totalPageCount,
       plugins,
       clampedCurrentIndex,
       clampedSpreadStartIndex,

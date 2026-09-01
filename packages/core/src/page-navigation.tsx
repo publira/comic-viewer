@@ -72,7 +72,7 @@ export const NextPageButton = ({
   onClick,
   ...props
 }: PageNavigationButtonProps) => {
-  const { currentIndex, goToNext, pages, spreadStartIndex, viewMode } =
+  const { currentIndex, goToNext, pageCount, spreadStartIndex, viewMode } =
     useViewerContext();
   const isDisabled =
     disabled ||
@@ -80,10 +80,10 @@ export const NextPageButton = ({
       getVisiblePageCount(
         viewMode,
         currentIndex,
-        pages.length,
+        pageCount,
         spreadStartIndex
       ) >=
-      pages.length;
+      pageCount;
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
@@ -123,32 +123,27 @@ export interface PageStatusProps {
 
 /** Announces the current visible page or spread. */
 export const PageStatus = ({ className, format }: PageStatusProps) => {
-  const { currentIndex, pages, spreadStartIndex, viewMode } =
+  const { currentIndex, pageCount, spreadStartIndex, viewMode } =
     useViewerContext();
-  const firstPage = pages.length === 0 ? 0 : currentIndex + 1;
+  const firstPage = pageCount === 0 ? 0 : currentIndex + 1;
   const lastPage = Math.min(
     currentIndex +
-      getVisiblePageCount(
-        viewMode,
-        currentIndex,
-        pages.length,
-        spreadStartIndex
-      ),
-    pages.length
+      getVisiblePageCount(viewMode, currentIndex, pageCount, spreadStartIndex),
+    pageCount
   );
   let defaultLabel = "No pages";
-  if (pages.length > 0) {
+  if (pageCount > 0) {
     defaultLabel =
       firstPage === lastPage
-        ? `Page ${firstPage} of ${pages.length}`
-        : `Pages ${firstPage}-${lastPage} of ${pages.length}`;
+        ? `Page ${firstPage} of ${pageCount}`
+        : `Pages ${firstPage}-${lastPage} of ${pageCount}`;
   }
   const label =
     format?.({
       currentIndex,
       firstPage,
       lastPage,
-      pageCount: pages.length,
+      pageCount,
       viewMode,
     }) ?? defaultLabel;
 
@@ -204,22 +199,22 @@ export const PageProgressTrack = ({
   ...props
 }: PageProgressTrackProps) => {
   const pageProgress = useContext(PageProgressContext);
-  const { currentIndex, pages, spreadStartIndex, viewMode } =
+  const { currentIndex, pageCount, spreadStartIndex, viewMode } =
     useViewerContext();
   const visiblePageCount = getVisiblePageCount(
     viewMode,
     currentIndex,
-    pages.length,
+    pageCount,
     spreadStartIndex
   );
-  const currentPage = Math.min(currentIndex + visiblePageCount, pages.length);
+  const currentPage = Math.min(currentIndex + visiblePageCount, pageCount);
 
   return (
     <progress
       {...props}
       aria-label={ariaLabel ?? pageProgress?.ariaLabel}
       className={composeClassName("pcv-page-progress-track", className)}
-      max={max ?? Math.max(1, pages.length)}
+      max={max ?? Math.max(1, pageCount)}
       value={value ?? currentPage}
     />
   );

@@ -2,7 +2,7 @@
 
 This maintained demo application is a styling reference for using `@publira/comic-viewer` with Tailwind CSS. It intentionally does not import `@publira/comic-viewer/core.css`.
 
-The reader composes the public `ViewportTrack`, `ViewportPageSet`, `ViewportPageSlot`, `ViewportPage`, and `PageCanvas` primitives so that its page rail, responsive spreads, page-fit modes, and reader controls are styled with Tailwind utilities rather than implementation selectors.
+The reader composes the public `ViewportTrack`, `ViewportPageSet`, `ViewportPageSlot`, `ViewportPage`, `ViewportPendingPage`, and `PageCanvas` primitives so that its page rail, responsive spreads, page-fit modes, and reader controls are styled with Tailwind utilities rather than implementation selectors.
 
 ## Run locally
 

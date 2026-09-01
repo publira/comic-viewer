@@ -34,7 +34,8 @@ interface PageTurnTransition {
 interface UsePageTurnOptions<TPage extends ViewerPage> {
   currentIndex: number;
   onPageLoadError?: (error: PageLoadError<TPage>) => void;
-  pages: readonly TPage[];
+  pageCount: number;
+  pages: readonly (TPage | undefined)[];
   plugins: readonly ViewerPlugin[];
   readingDirection: "rtl" | "ltr";
   spreadStartIndex: number;
@@ -51,6 +52,7 @@ interface UsePageTurnOptions<TPage extends ViewerPage> {
 export const usePageTurn = <TPage extends ViewerPage>({
   currentIndex,
   onPageLoadError,
+  pageCount,
   pages,
   plugins,
   readingDirection,
@@ -71,7 +73,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
     railSpreadIndices,
   } = useViewportLayout({
     displayedIndex,
-    pageCount: pages.length,
+    pageCount,
     readingDirection,
     spreadStartIndex,
     transitionToIndex: pageTurnTransition?.toIndex,
@@ -94,7 +96,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
     pageTurnTransition !== null &&
     getVisibleIndices(
       pageTurnTransition.toIndex,
-      pages.length,
+      pageCount,
       spreadStartIndex,
       viewMode
     ).every((index) => {
@@ -114,7 +116,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
     );
     const nextIndex = getNextSpreadIndex(
       displayedIndex,
-      pages.length,
+      pageCount,
       spreadStartIndex,
       viewMode
     );
@@ -149,8 +151,8 @@ export const usePageTurn = <TPage extends ViewerPage>({
   }, [
     currentIndex,
     displayedIndex,
+    pageCount,
     pageTurnTransition,
-    pages.length,
     readingDirection,
     spreadStartIndex,
     usesManagedImageLoading,
@@ -232,14 +234,14 @@ export const usePageTurn = <TPage extends ViewerPage>({
   useEffect(() => {
     const notifyPageChange = async (): Promise<void> => {
       try {
-        await runPageChangeHooks(plugins, currentIndex, pages.length);
+        await runPageChangeHooks(plugins, currentIndex, pageCount);
       } catch {
         // Page-change reporting must not make the viewer unusable.
       }
     };
 
     void notifyPageChange();
-  }, [currentIndex, pages.length, plugins]);
+  }, [currentIndex, pageCount, plugins]);
 
   const onTransitionEnd = useCallback(
     (event: ReactTransitionEvent<HTMLDivElement>): void => {
