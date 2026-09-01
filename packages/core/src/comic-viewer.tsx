@@ -2,11 +2,10 @@ import { composeClassName } from "./class-names";
 import { ViewerProvider } from "./viewer-context";
 import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
 
-export interface ComicViewerProps<
-  TPage extends ViewerPage,
-> extends ViewerProviderProps<TPage> {
-  className?: string;
-}
+export type ComicViewerProps<TPage extends ViewerPage> =
+  ViewerProviderProps<TPage> & {
+    className?: string;
+  };
 
 /**
  * The viewer root. Import the rest of the API as independent named exports
@@ -17,38 +16,16 @@ export interface ComicViewerProps<
 export const ComicViewer = <TPage extends ViewerPage>({
   children,
   className,
-  currentIndex,
-  endReachedThreshold,
-  onEndReached,
-  onIndexChange,
-  onPageResolveError,
-  pageCount,
-  pageResolveOverscan,
-  pages,
-  plugins,
-  resolvePage,
   initialIndex = 0,
   initialViewMode = "double",
-  initialPageFitMode,
   initialReadingDirection = "rtl",
-  spreadStartIndex,
+  ...viewerProps
 }: ComicViewerProps<TPage>) => (
   <ViewerProvider
-    pages={pages}
-    pageCount={pageCount}
-    resolvePage={resolvePage}
-    pageResolveOverscan={pageResolveOverscan}
-    onPageResolveError={onPageResolveError}
-    onEndReached={onEndReached}
-    endReachedThreshold={endReachedThreshold}
-    plugins={plugins}
-    currentIndex={currentIndex}
+    {...viewerProps}
     initialIndex={initialIndex}
-    onIndexChange={onIndexChange}
     initialViewMode={initialViewMode}
-    initialPageFitMode={initialPageFitMode}
     initialReadingDirection={initialReadingDirection}
-    spreadStartIndex={spreadStartIndex}
   >
     <div className={composeClassName("pcv-root", className)}>{children}</div>
   </ViewerProvider>

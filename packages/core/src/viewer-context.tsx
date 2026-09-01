@@ -64,52 +64,68 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   goTo: (index: number) => void;
 }
 
+/**
+ * How long the document is. A viewer needs `pages`, `pageCount`, or both,
+ * because one given nothing but a `resolvePage` function would have no idea
+ * how many pages to resolve.
+ */
+export type ViewerPageListProps<TPage extends ViewerPage = ViewerPage> =
+  | {
+      /** The pages of the document, known upfront. */
+      pages: readonly (TPage | undefined)[];
+      /**
+       * The total number of pages. Defaults to the length of `pages`, and is
+       * required when `resolvePage` provides pages that `pages` omits.
+       */
+      pageCount?: number;
+    }
+  | {
+      /**
+       * The pages known upfront, if any. The rest are left to `resolvePage`.
+       */
+      pages?: readonly (TPage | undefined)[];
+      /** The total number of pages, resolved and unresolved alike. */
+      pageCount: number;
+    };
+
+export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
+  /**
+   * Resolves the metadata of a page the reader is approaching. The viewer
+   * asks only for pages within `pageResolveOverscan` of the current one, and
+   * forgets a page once it leaves that window so that a page returned to
+   * later is resolved again with a fresh URL.
+   */
+  resolvePage?: PageResolver<TPage>;
+  /** How many pages on either side of the current one are resolved ahead. */
+  pageResolveOverscan?: number;
+  /** Called when `resolvePage` rejects for a page. */
+  onPageResolveError?: (error: PageResolveError) => void;
+  /**
+   * Called once the current page comes within `endReachedThreshold` pages of
+   * the end, so that a longer list can be appended. It is called again only
+   * after the page count changes.
+   */
+  onEndReached?: () => void;
+  /** How close to the last page `onEndReached` is called. Defaults to 2. */
+  endReachedThreshold?: number;
+  plugins?: readonly ViewerPlugin[];
+  /**
+   * The controlled zero-based page index. When omitted, the viewer manages
+   * its own index, starting from `initialIndex`.
+   */
+  currentIndex?: number;
+  initialIndex?: number;
+  /** Called when navigation requests a different zero-based page index. */
+  onIndexChange?: (index: number) => void;
+  initialViewMode?: ViewMode;
+  /** The initial page sizing mode. Defaults to fit-to-height. */
+  initialPageFitMode?: PageFitMode;
+  initialReadingDirection?: ReadingDirection;
+  spreadStartIndex?: number;
+}
+
 export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
-  PropsWithChildren<{
-    /**
-     * The pages known upfront. Provide `pageCount` and `resolvePage` instead,
-     * or alongside a partial list, to resolve page metadata as it is reached.
-     */
-    pages?: readonly (TPage | undefined)[];
-    /**
-     * The total number of pages. Defaults to the length of `pages`, and is
-     * required when `resolvePage` provides pages that `pages` omits.
-     */
-    pageCount?: number;
-    /**
-     * Resolves the metadata of a page the reader is approaching. The viewer
-     * asks only for pages within `pageResolveOverscan` of the current one, and
-     * forgets a page once it leaves that window so that a page returned to
-     * later is resolved again with a fresh URL.
-     */
-    resolvePage?: PageResolver<TPage>;
-    /** How many pages on either side of the current one are resolved ahead. */
-    pageResolveOverscan?: number;
-    /** Called when `resolvePage` rejects for a page. */
-    onPageResolveError?: (error: PageResolveError) => void;
-    /**
-     * Called once the current page comes within `endReachedThreshold` pages of
-     * the end, so that a longer list can be appended. It is called again only
-     * after the page count changes.
-     */
-    onEndReached?: () => void;
-    /** How close to the last page `onEndReached` is called. Defaults to 2. */
-    endReachedThreshold?: number;
-    plugins?: readonly ViewerPlugin[];
-    /**
-     * The controlled zero-based page index. When omitted, the viewer manages
-     * its own index, starting from `initialIndex`.
-     */
-    currentIndex?: number;
-    initialIndex?: number;
-    /** Called when navigation requests a different zero-based page index. */
-    onIndexChange?: (index: number) => void;
-    initialViewMode?: ViewMode;
-    /** The initial page sizing mode. Defaults to fit-to-height. */
-    initialPageFitMode?: PageFitMode;
-    initialReadingDirection?: ReadingDirection;
-    spreadStartIndex?: number;
-  }>;
+  PropsWithChildren<ViewerPageListProps<TPage> & ViewerOptionsProps<TPage>>;
 
 const ViewerContext = createContext<ViewerContextValue | null>(null);
 const EMPTY_PAGES: readonly never[] = [];

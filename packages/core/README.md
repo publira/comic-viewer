@@ -132,11 +132,11 @@ Pass the whole `pages` array when the list is short and its URLs are stable. For
 </ComicViewer.Root>
 ```
 
-`pageCount` is the length of the document rather than the number of pages resolved so far, so navigation, the progress track, and the page status count every page from the start and the reader can jump anywhere immediately.
+`pageCount` is the length of the document rather than the number of pages resolved so far, so navigation, the progress track, and the page status count every page from the start and the reader can jump anywhere immediately. A viewer needs `pages`, `pageCount`, or both: one given nothing but a resolver would have no idea how many pages to resolve, and its props type rejects that pair rather than leaving it to hold an empty document. A component that passes a page list on to the viewer can take the same pair as `ViewerPageListProps` and hand it straight through.
 
 The viewer resolves the pages within `pageResolveOverscan` of the current index, four on either side by default, which keeps the metadata of the next spread ready before the reader turns to it. Each request receives an `AbortSignal` that aborts as soon as its page leaves that window.
 
-Metadata is forgotten once its page leaves the window, so a page returned to much later is resolved again instead of reused, and a signed URL that has expired in the meantime is reissued rather than failing to load. Widen `pageResolveOverscan` to keep more of it, at the cost of asking for pages the reader may never reach.
+Metadata is forgotten once its page leaves the window, so a page returned to much later is resolved again instead of reused, and a signed URL that has expired in the meantime is reissued rather than failing to load. Widen `pageResolveOverscan` to keep more of it, at the cost of asking for pages the reader may never reach. A page the viewport is still rendering, which reaches a spread beyond the current one while a page turn runs, keeps its metadata however narrow the window is, so a small `pageResolveOverscan` cannot turn the spread a page turn is leaving behind into placeholders.
 
 A resolver that returns `undefined` leaves the page unresolved, and one that rejects reports the failure through `onPageResolveError`. Neither is asked again until the page leaves the resolve window and enters it again, so a failing page cannot become a request loop.
 

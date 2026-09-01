@@ -33,6 +33,16 @@ export interface PageResolveError {
  */
 export const DEFAULT_PAGE_RESOLVE_OVERSCAN = 4;
 
+/**
+ * How far from the current index a resolved page is retained however narrow
+ * the resolve window is. The rail renders the spread before and the spread
+ * after the displayed one, and the displayed spread trails the current index
+ * by a whole spread while a page turn runs, which reaches five pages ahead of
+ * it. Retaining that much keeps a page the rail is still rendering from losing
+ * its metadata mid-transition.
+ */
+const RAIL_RETENTION_DISTANCE = 5;
+
 const EMPTY_PAGES: readonly never[] = [];
 
 interface UsePageSourceOptions<TPage extends ViewerPage> {
@@ -94,30 +104,43 @@ export const usePageSource = <TPage extends ViewerPage>({
       return;
     }
 
-    const resolveWindow = new Set<number>();
-    for (
-      let index = Math.max(0, currentIndex - overscan);
-      index <= Math.min(pageCount - 1, currentIndex + overscan);
-      index += 1
-    ) {
-      resolveWindow.add(index);
-    }
+    const pageWindow = (distance: number): Set<number> => {
+      const indices = new Set<number>();
+
+      for (
+        let index = Math.max(0, currentIndex - distance);
+        index <= Math.min(pageCount - 1, currentIndex + distance);
+        index += 1
+      ) {
+        indices.add(index);
+      }
+
+      return indices;
+    };
+    const resolveWindow = pageWindow(overscan);
+    // A page the rail still renders keeps its metadata even once it falls
+    // outside the resolve window, so a narrow window cannot turn the spread a
+    // page turn is leaving behind into pending placeholders.
+    const retainedWindow =
+      overscan >= RAIL_RETENTION_DISTANCE
+        ? resolveWindow
+        : pageWindow(RAIL_RETENTION_DISTANCE);
 
     for (const [index, controller] of pageRequestsRef.current) {
-      if (!resolveWindow.has(index)) {
+      if (!retainedWindow.has(index)) {
         controller.abort();
         pageRequestsRef.current.delete(index);
       }
     }
 
     for (const index of settledIndicesRef.current) {
-      if (!resolveWindow.has(index)) {
+      if (!retainedWindow.has(index)) {
         settledIndicesRef.current.delete(index);
       }
     }
 
     const expiredIndices = [...resolvedPagesRef.current.keys()].filter(
-      (index) => !resolveWindow.has(index)
+      (index) => !retainedWindow.has(index)
     );
     if (expiredIndices.length > 0) {
       // oxlint-disable-next-line react/set-state-in-effect -- A page leaving the window must forget its metadata so it resolves again with a fresh URL.

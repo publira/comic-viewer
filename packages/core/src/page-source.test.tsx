@@ -13,12 +13,14 @@ const makePage = (index: number, token = "token"): ViewerPage => ({
   title: `Page ${index + 1}`,
 });
 
-const makeWrapper = (props: Partial<ViewerProviderProps>) =>
+// A viewer needs a page list or a page count, so the options a test varies
+// are given together with one of them.
+const makeWrapper = (props: ViewerProviderProps) =>
   function Wrapper({ children }: { children: ReactNode }) {
     return <ViewerProvider {...props}>{children}</ViewerProvider>;
   };
 
-const renderViewerContext = (props: Partial<ViewerProviderProps>) =>
+const renderViewerContext = (props: ViewerProviderProps) =>
   renderHook(() => useViewerContext(), { wrapper: makeWrapper(props) });
 
 /** The page indices asked for, in the order the viewer asked for them. */
@@ -97,6 +99,48 @@ describe("lazy page metadata", () => {
     });
 
     expect(result.current.pages[0]?.src).not.toBe(firstSource);
+  });
+
+  it("keeps the metadata of a page the rail still renders", async () => {
+    const resolvePage = vi.fn<PageResolver>((index) => makePage(index));
+    const { result } = renderViewerContext({
+      pageCount: 20,
+      pageResolveOverscan: 0,
+      resolvePage,
+    });
+
+    await waitFor(() => {
+      expect(result.current.pages[0]).toBeDefined();
+    });
+
+    act(() => {
+      result.current.goTo(3);
+    });
+    await waitFor(() => {
+      expect(result.current.pages[3]).toBeDefined();
+    });
+
+    // The rail renders the spread a page turn leaves behind, so a page that
+    // close keeps its metadata however narrow the resolve window is.
+    expect(result.current.pages[0]).toBeDefined();
+
+    act(() => {
+      result.current.goTo(9);
+    });
+    await waitFor(() => {
+      expect(result.current.pages[9]).toBeDefined();
+    });
+
+    expect(result.current.pages[0]).toBeUndefined();
+  });
+
+  it("requires a page list or a page count", () => {
+    // @ts-expect-error -- A viewer given a resolver alone would hold no pages.
+    const resolverOnlyProps: ViewerProviderProps = {
+      resolvePage: () => {},
+    };
+
+    expect(resolverOnlyProps.pages).toBeUndefined();
   });
 
   it("aborts the request of a page that leaves the window", async () => {
@@ -234,7 +278,7 @@ describe("onEndReached", () => {
 
   it("is not called for an empty viewer", () => {
     const onEndReached = vi.fn<() => void>();
-    renderViewerContext({ onEndReached });
+    renderViewerContext({ onEndReached, pages: [] });
 
     expect(onEndReached).not.toHaveBeenCalled();
   });

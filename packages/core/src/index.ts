@@ -4,7 +4,9 @@ export {
   type ReadingDirection,
   type PageFitMode,
   type ViewerContextValue,
+  type ViewerOptionsProps,
   type ViewerPage,
+  type ViewerPageListProps,
   type ViewerProviderProps,
   type ViewMode,
 } from "./viewer-context";

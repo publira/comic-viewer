@@ -4,7 +4,7 @@ import * as ComicViewer from "@publira/comic-viewer";
 import type {
   PageResolver,
   ReadingDirection,
-  ViewerPage,
+  ViewerPageListProps,
   ViewerPlugin,
 } from "@publira/comic-viewer";
 
@@ -110,18 +110,17 @@ const pluginsForMode: Readonly<Record<ReaderMode, readonly ViewerPlugin[]>> = {
   watermark: [watermarkPlugin],
 };
 
-interface TailwindReaderProps {
+// The reader is given a page list, a page count, or both, exactly as the
+// viewer root is, and hands that pair straight through to it.
+type TailwindReaderProps = ViewerPageListProps & {
   initialReadingDirection?: ReadingDirection;
   mode?: ReaderMode;
   /** Called as the reader comes within two pages of the last one. */
   onEndReached?: () => void;
-  /** The length of the document, when it is longer than `pages`. */
-  pageCount?: number;
-  pages?: readonly ViewerPage[];
   /** Resolves the metadata of a page the reader is approaching. */
   resolvePage?: PageResolver;
   spreadStartIndex?: number;
-}
+};
 
 /** Fills the place of a page whose metadata is still being resolved. */
 const renderPendingPage = () => (
@@ -163,15 +162,13 @@ export const TailwindReader = ({
   initialReadingDirection,
   mode = "basic",
   onEndReached,
-  pageCount,
-  pages,
   resolvePage,
   spreadStartIndex,
+  ...pageListProps
 }: TailwindReaderProps) => (
   <ComicViewer.Root
+    {...pageListProps}
     onEndReached={onEndReached}
-    pageCount={pageCount}
-    pages={pages}
     resolvePage={resolvePage}
     plugins={pluginsForMode[mode]}
     initialReadingDirection={initialReadingDirection}
