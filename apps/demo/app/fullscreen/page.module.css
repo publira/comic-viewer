@@ -1,0 +1,92 @@
+.main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  gap: 20px;
+}
+
+.viewer {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--demo-double-page-aspect-ratio);
+  overflow: hidden;
+  border: 1px solid var(--demo-viewer-border);
+  border-radius: 8px;
+  background-color: var(--demo-viewer-background);
+}
+
+/* The screen decides the size of a fullscreen element, so the page-shaped box
+   the reader sits in the rest of the time is dropped while it fills the
+   screen. */
+.viewer:fullscreen {
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+.viewerContent {
+  height: 100%;
+}
+
+.fullscreenButton {
+  position: absolute;
+  z-index: 11;
+  inset-block-start: 0.75rem;
+  inset-inline-end: 0.75rem;
+  padding: 0.45rem 0.85rem;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in oklab, #000000 60%, transparent);
+  color: var(--demo-viewer-foreground);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fullscreenButton:hover:not(:disabled) {
+  background: color-mix(in oklab, #000000 80%, transparent);
+}
+
+.fullscreenButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.description {
+  padding: 0.25rem 0;
+}
+
+.description h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.description p {
+  color: var(--demo-description-foreground);
+  line-height: 1.5;
+}
+
+.description p + p {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .viewer {
+    aspect-ratio: var(--demo-single-page-aspect-ratio);
+    border-radius: 4px;
+  }
+
+  .description h2 {
+    font-size: 1.3rem;
+  }
+}
