@@ -1,15 +1,20 @@
 {
   "name": "Publira Comic Viewer",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:5.1.2-24-trixie@sha256:4c09888a2acdaf619daa79d2e811329536450a1045be9243fe03d4b02c81e91e",
+  "image": "ghcr.io/publira/base-images/publira-dev:2026.08.30-11@sha256:beff4d709ddda7905bc6e37dc7bc65e5969fafece05b4a7003ed7766806c4b19",
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1.1.1": {
-      "version": "2.88.1"
-    }
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {}
   },
+  "mounts": [
+    "source=comic-viewer-claude-${devcontainerId},target=/home/vscode/.claude,type=volume",
+    "source=comic-viewer-codex-${devcontainerId},target=/home/vscode/.codex,type=volume",
+    "source=comic-viewer-gemini-${devcontainerId},target=/home/vscode/.gemini,type=volume",
+    "source=comic-viewer-gh-${devcontainerId},target=/home/vscode/.config/gh,type=volume",
+    "source=comic-viewer-grok-${devcontainerId},target=/home/vscode/.grok,type=volume"
+  ],
   "customizations": {
     "vscode": {
       "extensions": ["oxc.oxc-vscode"]
     }
   },
-  "postCreateCommand": "pnpm install"
+  "postCreateCommand": ".devcontainer/post-create.sh"
 }
