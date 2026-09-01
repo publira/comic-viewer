@@ -117,6 +117,28 @@
   max-height: none;
 }
 
+.pcv-page-pending {
+  background: #19191f;
+  animation: pcv-page-pending-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pcv-page-pending-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pcv-page-pending {
+    animation: none;
+  }
+}
+
 .pcv-page-canvas[data-placeholder] {
   filter: brightness(0.72) saturate(0.62);
 }

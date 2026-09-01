@@ -17,10 +17,17 @@ export { Viewport, type ViewportProps } from "./viewport";
 export {
   PageCanvas,
   ViewportPage,
+  ViewportPendingPage,
   usePageLoadState,
   type PageCanvasProps,
   type ViewportPageProps,
+  type ViewportPendingPageProps,
 } from "./viewport-page";
+export type {
+  PageResolveContext,
+  PageResolveError,
+  PageResolver,
+} from "./page-source";
 export type {
   PageLoadError,
   PageLoadStage,

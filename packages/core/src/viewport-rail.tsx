@@ -1,4 +1,4 @@
-import { cloneElement } from "react";
+import { cloneElement, Fragment } from "react";
 import type {
   CSSProperties,
   ReactNode,
@@ -10,7 +10,7 @@ import type { PageImage, PageLoadEntry } from "./use-viewport-images";
 import { getPageSide } from "./use-viewport-layout";
 import type { PageSide, PageTurnDirection } from "./use-viewport-layout";
 import type { ViewerPage } from "./viewer-context";
-import { ViewportPageInstance } from "./viewport-page";
+import { ViewportPageInstance, ViewportPendingPage } from "./viewport-page";
 import type { ViewportChildren } from "./viewport-page";
 import { ViewportPageSet, ViewportTrack } from "./viewport-template";
 import type {
@@ -37,10 +37,11 @@ interface ViewportRailProps<TPage extends ViewerPage> {
   pageImages: ReadonlyMap<string, PageImage>;
   pageLoadStates: ReadonlyMap<string, PageLoadEntry<TPage>>;
   pageTemplate: ViewportChildren<TPage> | undefined;
-  pages: readonly TPage[];
+  pages: readonly (TPage | undefined)[];
   railSpreadIndices: readonly (number | undefined)[];
   readingDirection: "rtl" | "ltr";
   renderPage: ((page: TPage, index: number) => ReactNode) | undefined;
+  renderPendingPage: ((index: number) => ReactNode) | undefined;
   retryPage: (index: number) => void;
   slideDirection: PageTurnDirection | undefined;
   spreadStartIndex: number;
@@ -64,6 +65,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
   railSpreadIndices,
   readingDirection,
   renderPage,
+  renderPendingPage,
   retryPage,
   slideDirection,
   spreadStartIndex,
@@ -108,31 +110,39 @@ export const ViewportRail = <TPage extends ViewerPage>({
         ? null
         : pageIndices.map((index) => {
             const page = pages[index];
+            const side = getSide(index);
+            let pageInstance: ReactNode;
+
             if (page === undefined) {
-              return null;
+              // The page keeps its place in the spread while its metadata is
+              // still being resolved.
+              pageInstance =
+                renderPendingPage === undefined ? (
+                  <ViewportPendingPage data-page-side={side} />
+                ) : (
+                  renderPendingPage(index)
+                );
+            } else {
+              const imageKey = getPageImageKey(index, page);
+              const loadState = pageLoadStates.get(imageKey);
+              pageInstance = (
+                <ViewportPageInstance
+                  error={loadState?.error}
+                  image={pageImages.get(imageKey)}
+                  index={index}
+                  page={page}
+                  renderPage={renderPage}
+                  retryPage={retryPage}
+                  side={side}
+                  status={loadState?.status ?? "idle"}
+                >
+                  {pageTemplate}
+                </ViewportPageInstance>
+              );
             }
 
-            const imageKey = getPageImageKey(index, page);
-            const loadState = pageLoadStates.get(imageKey);
-            const side = getSide(index);
-            const pageInstance = (
-              <ViewportPageInstance
-                key={index}
-                error={loadState?.error}
-                image={pageImages.get(imageKey)}
-                index={index}
-                page={page}
-                renderPage={renderPage}
-                retryPage={retryPage}
-                side={side}
-                status={loadState?.status ?? "idle"}
-              >
-                {pageTemplate}
-              </ViewportPageInstance>
-            );
-
             if (pageSlotTemplate === undefined) {
-              return pageInstance;
+              return <Fragment key={index}>{pageInstance}</Fragment>;
             }
 
             // oxlint-disable-next-line react/no-clone-element -- The page slot is a public layout template instantiated for each visible page.
@@ -140,6 +150,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
               pageSlotTemplate,
               {
                 "data-page-side": side,
+                "data-page-status": page === undefined ? "pending" : undefined,
                 "data-view-mode": viewMode,
                 key: index,
               },

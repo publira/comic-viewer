@@ -152,6 +152,30 @@ See the [package README](packages/core/README.md#page-loading-state-and-errors) 
 </ComicViewer.PageNavigation>
 ```
 
+## Lazy Page Metadata
+
+The `pages` array can be resolved as the reader advances rather than provided upfront, which suits long documents, expiring signed URLs, and lists that grow between chapters. Give the viewer the length of the document as `pageCount` and a `resolvePage` function, and it asks for the metadata of a page as the reader approaches it.
+
+```tsx
+<ComicViewer.Root
+  pageCount={200}
+  resolvePage={async (index, { signal }) => {
+    const response = await fetch(`/api/pages/${index}`, { signal });
+    return (await response.json()) as ViewerPage;
+  }}
+>
+  <ComicViewer.Viewport />
+  <ComicViewer.Toolbar />
+  <ComicViewer.PageNavigation />
+</ComicViewer.Root>
+```
+
+Navigation and progress count every page from the start, so the reader can jump anywhere immediately. A page still being resolved keeps its place in the spread as `ViewportPendingPage`, or as the skeleton given to `Viewport` through `renderPendingPage`. Metadata is forgotten once its page leaves the resolve window, so a page returned to later is resolved again with a fresh URL.
+
+For a list whose length is not known upfront, keep passing `pages` and append to it from `onEndReached`, which the viewer calls as the reader comes within `endReachedThreshold` pages of the end.
+
+See the [package README](packages/core/README.md#lazy-page-metadata) for the full model.
+
 ## Page Navigation
 
 `ComicViewer.PageNavigation` provides accessible previous-page and next-page controls, while `ComicViewer.Toolbar` holds the reading progress. They are siblings, and they share one visibility state: a click or tap away from the page-turn edges reveals both, and a second one hides them again, as does a two-second pause. The countdown is suspended while a pointer rests on the controls or focus sits inside them, so they cannot vanish mid-interaction. `Toolbar` also lays out along the reading direction, so progress fills leftward in `rtl`.

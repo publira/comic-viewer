@@ -18,9 +18,15 @@ export const ComicViewer = <TPage extends ViewerPage>({
   children,
   className,
   currentIndex,
+  endReachedThreshold,
+  onEndReached,
   onIndexChange,
+  onPageResolveError,
+  pageCount,
+  pageResolveOverscan,
   pages,
   plugins,
+  resolvePage,
   initialIndex = 0,
   initialViewMode = "double",
   initialPageFitMode,
@@ -29,6 +35,12 @@ export const ComicViewer = <TPage extends ViewerPage>({
 }: ComicViewerProps<TPage>) => (
   <ViewerProvider
     pages={pages}
+    pageCount={pageCount}
+    resolvePage={resolvePage}
+    pageResolveOverscan={pageResolveOverscan}
+    onPageResolveError={onPageResolveError}
+    onEndReached={onEndReached}
+    endReachedThreshold={endReachedThreshold}
     plugins={plugins}
     currentIndex={currentIndex}
     initialIndex={initialIndex}

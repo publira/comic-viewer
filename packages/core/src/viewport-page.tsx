@@ -145,6 +145,30 @@ export const PageCanvas = ({ className, ...props }: PageCanvasProps) => {
   );
 };
 
+export type ViewportPendingPageProps = Omit<
+  ComponentPropsWithoutRef<"div">,
+  "aria-busy" | "data-page-status"
+> & {
+  "data-page-side"?: PageSide;
+};
+
+/**
+ * Stands in for a page whose metadata is still being resolved, so the spread
+ * keeps its shape while the viewer waits. Pass `renderPendingPage` to Viewport
+ * to render a skeleton of your own instead.
+ */
+export const ViewportPendingPage = ({
+  className,
+  ...props
+}: ViewportPendingPageProps) => (
+  <div
+    {...props}
+    aria-busy="true"
+    className={composeClassName("pcv-page pcv-page-pending", className)}
+    data-page-status="pending"
+  />
+);
+
 export type ViewportPageProps = Omit<
   ComponentPropsWithoutRef<"div">,
   "data-page-side"

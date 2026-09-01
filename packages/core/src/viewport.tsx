@@ -26,6 +26,11 @@ export interface ViewportProps<TPage extends ViewerPage> {
    */
   onPageLoadError?: (error: PageLoadError<TPage>) => void;
   renderPage?: (page: TPage, index: number) => ReactNode;
+  /**
+   * Renders the placeholder for a page inside the viewport whose metadata is
+   * still being resolved by `resolvePage`. Defaults to ViewportPendingPage.
+   */
+  renderPendingPage?: (index: number) => ReactNode;
   className?: string;
   doublePageThreshold?: number;
 }
@@ -35,6 +40,7 @@ export const Viewport = <TPage extends ViewerPage>({
   children,
   onPageLoadError,
   renderPage,
+  renderPendingPage,
   className,
   doublePageThreshold,
 }: ViewportProps<TPage>) => {
@@ -43,6 +49,7 @@ export const Viewport = <TPage extends ViewerPage>({
     layoutTemplate === undefined ? children : layoutTemplate.pageTemplate;
   const containerRef = useRef<HTMLDivElement>(null);
   const {
+    pageCount,
     pages,
     plugins,
     currentIndex,
@@ -77,6 +84,7 @@ export const Viewport = <TPage extends ViewerPage>({
   } = usePageTurn({
     currentIndex,
     onPageLoadError,
+    pageCount,
     pages,
     plugins,
     readingDirection,
@@ -99,7 +107,7 @@ export const Viewport = <TPage extends ViewerPage>({
     goToNext,
     goToPrev,
     isTransitioning,
-    pageCount: pages.length,
+    pageCount,
     pageFitMode,
     readingDirection,
     setDragOffset,
@@ -143,6 +151,7 @@ export const Viewport = <TPage extends ViewerPage>({
         railSpreadIndices={railSpreadIndices}
         readingDirection={readingDirection}
         renderPage={renderPage}
+        renderPendingPage={renderPendingPage}
         retryPage={retryPage}
         slideDirection={slideDirection}
         spreadStartIndex={spreadStartIndex}

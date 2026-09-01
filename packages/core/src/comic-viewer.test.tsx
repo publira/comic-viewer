@@ -1,7 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ComicViewer } from "./comic-viewer";
+import { PageStatus } from "./page-navigation";
+import type { PageResolver } from "./page-source";
 import { definePlugin } from "./plugin";
 import { Toolbar } from "./toolbar";
 import { useViewerContext } from "./viewer-context";
@@ -28,6 +30,29 @@ const PluginCount = () => {
 describe(ComicViewer, () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
+  });
+
+  it("resolves the pages of a lazily loaded document", async () => {
+    const resolvePage = vi.fn<PageResolver<TestPage>>((index) => ({
+      id: `p${index + 1}`,
+      src: `page${index + 1}.png`,
+      title: `Page ${index + 1}`,
+    }));
+    render(
+      <ComicViewer<TestPage> pageCount={40} resolvePage={resolvePage}>
+        <PageStatus />
+      </ComicViewer>
+    );
+
+    expect(screen.getByRole("status")).toHaveTextContent("Pages 1-2 of 40");
+
+    await waitFor(() => {
+      expect(resolvePage).toHaveBeenCalledTimes(5);
+    });
+
+    expect(resolvePage.mock.calls.map(([index]) => index)).toStrictEqual([
+      0, 1, 2, 3, 4,
+    ]);
   });
 
   it("renders a div with the pcv-root class", () => {

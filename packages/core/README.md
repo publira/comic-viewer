@@ -114,6 +114,60 @@ Use `spreadStartIndex` to leave leading pages unpaired before double-page spread
 </ComicViewer.Root>
 ```
 
+## Lazy page metadata
+
+Pass the whole `pages` array when the list is short and its URLs are stable. For a long document, for URLs that expire, or for a list that grows as the reader advances, give the viewer a `pageCount` and a `resolvePage` function instead: it then asks for the metadata of a page only as the reader approaches it.
+
+```tsx
+<ComicViewer.Root
+  pageCount={200}
+  resolvePage={async (index, { signal }) => {
+    const response = await fetch(`/api/pages/${index}`, { signal });
+    return (await response.json()) as ViewerPage;
+  }}
+>
+  <ComicViewer.Viewport />
+  <ComicViewer.Toolbar />
+  <ComicViewer.PageNavigation />
+</ComicViewer.Root>
+```
+
+`pageCount` is the length of the document rather than the number of pages resolved so far, so navigation, the progress track, and the page status count every page from the start and the reader can jump anywhere immediately.
+
+The viewer resolves the pages within `pageResolveOverscan` of the current index, four on either side by default, which keeps the metadata of the next spread ready before the reader turns to it. Each request receives an `AbortSignal` that aborts as soon as its page leaves that window.
+
+Metadata is forgotten once its page leaves the window, so a page returned to much later is resolved again instead of reused, and a signed URL that has expired in the meantime is reissued rather than failing to load. Widen `pageResolveOverscan` to keep more of it, at the cost of asking for pages the reader may never reach.
+
+A resolver that returns `undefined` leaves the page unresolved, and one that rejects reports the failure through `onPageResolveError`. Neither is asked again until the page leaves the resolve window and enters it again, so a failing page cannot become a request loop.
+
+`pages` and `resolvePage` work together: an entry given in `pages` is used as it is, and the resolver is asked only for the indices it leaves out, which is enough to serve the first pages from the document that rendered the viewer and resolve the rest.
+
+Through `useViewerContext()`, `pages` holds one entry per page of the document, `undefined` while that page is unresolved, and `pageCount` gives the total.
+
+### Pending pages
+
+A page whose metadata is still being resolved keeps its place in the spread. `Viewport` renders `ViewportPendingPage` for it, which carries the `pcv-page-pending` class, `data-page-status="pending"`, and `aria-busy`. Pass `renderPendingPage` to render a skeleton of your own instead.
+
+```tsx
+<ComicViewer.Viewport
+  renderPendingPage={(index) => <PageSkeleton pageNumber={index + 1} />}
+/>
+```
+
+### Growing the page list
+
+When the length of the document is not known upfront, such as when the next chapter is loaded as the reader reaches it, keep passing `pages` and append to it from `onEndReached`. The viewer calls it once the current page comes within `endReachedThreshold` pages of the end, two by default, and calls it again only after the page count has changed, so a consumer with nothing left to append is never asked in a loop.
+
+```tsx
+<ComicViewer.Root
+  endReachedThreshold={3}
+  onEndReached={loadNextChapter}
+  pages={pages}
+>
+  <ComicViewer.Viewport />
+</ComicViewer.Root>
+```
+
 ## Tailwind CSS
 
 To style the viewer with Tailwind CSS, do not import `core.css`; apply the layout utilities through `className` instead. The root and viewport need an explicit size, flex layout, and hidden overflow.

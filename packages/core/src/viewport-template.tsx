@@ -48,6 +48,8 @@ export const ViewportPageSet = ({
 
 export interface ViewportPageSlotProps extends ComponentPropsWithoutRef<"div"> {
   "data-page-side"?: PageSide;
+  /** Present while the page held by the slot is still being resolved. */
+  "data-page-status"?: "pending";
   "data-view-mode"?: "single" | "double";
 }
 
