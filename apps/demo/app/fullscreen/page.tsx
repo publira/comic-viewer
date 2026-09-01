@@ -5,39 +5,62 @@ import { FullscreenComicViewer } from "./_components/fullscreen-comic-viewer";
 import styles from "./page.module.css";
 
 const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
+
+const subscribeToFullscreenChange = (onFullscreenChange) => {
+  document.addEventListener("fullscreenchange", onFullscreenChange);
+
+  return () => {
+    document.removeEventListener("fullscreenchange", onFullscreenChange);
+  };
+};
+
+// Whether the API exists never changes, so there is nothing to listen to.
+const subscribeToNothing = () => () => undefined;
+
+const isFullscreenEnabled = () => document.fullscreenEnabled;
+
+// Rendering happens on the server, where there is no Fullscreen API to ask.
+const getServerSnapshot = () => false;
 
 const useFullscreen = (targetRef) => {
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    const syncFullscreenState = () => {
-      setIsFullscreen(document.fullscreenElement === targetRef.current);
-    };
-
-    syncFullscreenState();
-    document.addEventListener("fullscreenchange", syncFullscreenState);
-
-    return () => {
-      document.removeEventListener("fullscreenchange", syncFullscreenState);
-    };
-  }, [targetRef]);
+  // Reading the state back from the document, rather than from the return of
+  // the request, keeps the control in step however fullscreen was left.
+  const isFullscreen = useSyncExternalStore(
+    subscribeToFullscreenChange,
+    () =>
+      targetRef.current !== null &&
+      document.fullscreenElement === targetRef.current,
+    getServerSnapshot
+  );
+  const isSupported = useSyncExternalStore(
+    subscribeToNothing,
+    isFullscreenEnabled,
+    getServerSnapshot
+  );
 
   const toggleFullscreen = useCallback(async () => {
+    const target = targetRef.current;
+
+    if (target === null) {
+      return;
+    }
+
     if (document.fullscreenElement === null) {
-      await targetRef.current?.requestFullscreen();
+      await target.requestFullscreen();
       return;
     }
 
     await document.exitFullscreen();
   }, [targetRef]);
 
-  return { isFullscreen, toggleFullscreen };
+  return { isFullscreen, isSupported, toggleFullscreen };
 };
 
 export const Reader = ({ pages }) => {
   const containerRef = useRef(null);
-  const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
+  const { isFullscreen, isSupported, toggleFullscreen } =
+    useFullscreen(containerRef);
 
   // The container is the element handed to the screen, so the control goes
   // inside it and stays reachable once the reader fills the display.
@@ -48,7 +71,11 @@ export const Reader = ({ pages }) => {
         <ComicViewer.Toolbar />
         <ComicViewer.PageNavigation />
       </ComicViewer.Root>
-      <button onClick={() => void toggleFullscreen()} type="button">
+      <button
+        disabled={!isSupported}
+        onClick={() => void toggleFullscreen()}
+        type="button"
+      >
         {isFullscreen ? "Exit full screen" : "Enter full screen"}
       </button>
     </div>

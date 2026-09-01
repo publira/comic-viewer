@@ -4,68 +4,14 @@ import { useCallback, useSyncExternalStore } from "react";
 import type { RefObject } from "react";
 
 /**
- * The Fullscreen API as Safari exposed it before 16.4. Every current browser
- * implements the standard names, so the prefixed ones are only reached for when
- * their standard counterpart is missing.
- */
-interface WebKitFullscreenDocument {
-  webkitExitFullscreen?: () => void;
-  webkitFullscreenElement?: Element | null;
-  webkitFullscreenEnabled?: boolean;
-}
-
-interface WebKitFullscreenElement {
-  webkitRequestFullscreen?: () => void;
-}
-
-type FullscreenDocument = Document & WebKitFullscreenDocument;
-type FullscreenElement = HTMLElement & WebKitFullscreenElement;
-
-const getFullscreenDocument = (): FullscreenDocument => document;
-
-const getFullscreenElement = (): Element | null => {
-  const target = getFullscreenDocument();
-
-  return target.fullscreenElement ?? target.webkitFullscreenElement ?? null;
-};
-
-const isFullscreenEnabled = (): boolean => {
-  const target = getFullscreenDocument();
-
-  return target.fullscreenEnabled || target.webkitFullscreenEnabled === true;
-};
-
-const requestFullscreen = async (element: FullscreenElement): Promise<void> => {
-  if (typeof element.requestFullscreen === "function") {
-    await element.requestFullscreen();
-    return;
-  }
-
-  element.webkitRequestFullscreen?.();
-};
-
-const exitFullscreen = async (): Promise<void> => {
-  const target = getFullscreenDocument();
-
-  if (typeof target.exitFullscreen === "function") {
-    await target.exitFullscreen();
-    return;
-  }
-
-  target.webkitExitFullscreen?.();
-};
-
-/**
  * The document reports every change, including the ones the page did not ask
  * for, such as leaving fullscreen through Escape or the browser's own control.
  */
 const subscribeToFullscreenChange = (onFullscreenChange: () => void) => {
   document.addEventListener("fullscreenchange", onFullscreenChange);
-  document.addEventListener("webkitfullscreenchange", onFullscreenChange);
 
   return () => {
     document.removeEventListener("fullscreenchange", onFullscreenChange);
-    document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
   };
 };
 
@@ -73,6 +19,8 @@ const subscribeToFullscreenChange = (onFullscreenChange: () => void) => {
 const subscribeToNothing = () => () => {
   // The value is fixed for the lifetime of the document.
 };
+
+const isFullscreenEnabled = () => document.fullscreenEnabled;
 
 /** Rendering happens on the server, where there is no Fullscreen API to ask. */
 const getServerSnapshot = () => false;
@@ -94,6 +42,10 @@ interface Fullscreen {
  * The state is read back from the document rather than from the return of the
  * request, which keeps a control in step with what is on screen however
  * fullscreen was left.
+ *
+ * Only the standard names are used. The prefixed WebKit ones would matter for
+ * Safari before 16.4, which is older than the CSS these demos are already
+ * written in, such as `light-dark()`, so a fallback could never be reached.
  */
 export const useFullscreen = (
   targetRef: RefObject<HTMLElement | null>
@@ -102,7 +54,7 @@ export const useFullscreen = (
     subscribeToFullscreenChange,
     () =>
       targetRef.current !== null &&
-      getFullscreenElement() === targetRef.current,
+      document.fullscreenElement === targetRef.current,
     getServerSnapshot
   );
   // Until the browser has hydrated the markup there is no API to ask, so a
@@ -120,12 +72,12 @@ export const useFullscreen = (
       return;
     }
 
-    if (getFullscreenElement() === null) {
-      await requestFullscreen(target);
+    if (document.fullscreenElement === null) {
+      await target.requestFullscreen();
       return;
     }
 
-    await exitFullscreen();
+    await document.exitFullscreen();
   }, [targetRef]);
 
   return { isFullscreen, isSupported, toggleFullscreen };

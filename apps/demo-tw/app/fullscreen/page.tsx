@@ -2,39 +2,64 @@ import { basicSamplePages } from "../_components/sample-pages";
 import { SourceCodePanel } from "../_components/source-code-panel";
 import { FullscreenReader } from "./_components/fullscreen-reader";
 
-const sourceCode = `import { useCallback, useEffect, useRef, useState } from "react";
+const sourceCode = `import { useCallback, useRef, useSyncExternalStore } from "react";
+
+import { Reader } from "./reader";
+
+const subscribeToFullscreenChange = (onFullscreenChange) => {
+  document.addEventListener("fullscreenchange", onFullscreenChange);
+
+  return () => {
+    document.removeEventListener("fullscreenchange", onFullscreenChange);
+  };
+};
+
+// Whether the API exists never changes, so there is nothing to listen to.
+const subscribeToNothing = () => () => undefined;
+
+const isFullscreenEnabled = () => document.fullscreenEnabled;
+
+// Rendering happens on the server, where there is no Fullscreen API to ask.
+const getServerSnapshot = () => false;
 
 const useFullscreen = (targetRef) => {
-  const [isFullscreen, setIsFullscreen] = useState(false);
-
-  useEffect(() => {
-    const syncFullscreenState = () => {
-      setIsFullscreen(document.fullscreenElement === targetRef.current);
-    };
-
-    syncFullscreenState();
-    document.addEventListener("fullscreenchange", syncFullscreenState);
-
-    return () => {
-      document.removeEventListener("fullscreenchange", syncFullscreenState);
-    };
-  }, [targetRef]);
+  // Reading the state back from the document, rather than from the return of
+  // the request, keeps the control in step however fullscreen was left.
+  const isFullscreen = useSyncExternalStore(
+    subscribeToFullscreenChange,
+    () =>
+      targetRef.current !== null &&
+      document.fullscreenElement === targetRef.current,
+    getServerSnapshot
+  );
+  const isSupported = useSyncExternalStore(
+    subscribeToNothing,
+    isFullscreenEnabled,
+    getServerSnapshot
+  );
 
   const toggleFullscreen = useCallback(async () => {
+    const target = targetRef.current;
+
+    if (target === null) {
+      return;
+    }
+
     if (document.fullscreenElement === null) {
-      await targetRef.current?.requestFullscreen();
+      await target.requestFullscreen();
       return;
     }
 
     await document.exitFullscreen();
   }, [targetRef]);
 
-  return { isFullscreen, toggleFullscreen };
+  return { isFullscreen, isSupported, toggleFullscreen };
 };
 
 export const FullscreenReader = ({ pages }) => {
   const containerRef = useRef(null);
-  const { isFullscreen, toggleFullscreen } = useFullscreen(containerRef);
+  const { isFullscreen, isSupported, toggleFullscreen } =
+    useFullscreen(containerRef);
 
   // The container is the element handed to the screen, so the control goes
   // inside it and stays reachable once the reader fills the display.
@@ -46,6 +71,7 @@ export const FullscreenReader = ({ pages }) => {
       <Reader pages={pages} />
       <button
         className="absolute end-3 top-3 z-20 rounded-full bg-black/60 px-3.5 py-1.5"
+        disabled={!isSupported}
         onClick={() => void toggleFullscreen()}
         type="button"
       >
