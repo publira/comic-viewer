@@ -41,10 +41,16 @@ const getProgress = (documentId) => {
   }
 
   // Storage holds whatever an earlier version of an application wrote, so a
-  // value that is not a page index is dropped.
+  // value that is not a page index is dropped. An empty entry would read as
+  // zero, which is a page rather than nothing.
   const index = Number(storedIndex);
   const progress =
-    storedIndex !== null && Number.isInteger(index) && index >= 0 ? index : null;
+    storedIndex !== null &&
+    storedIndex.trim() !== "" &&
+    Number.isInteger(index) &&
+    index >= 0
+      ? index
+      : null;
 
   sessionProgress.set(documentId, progress);
 
