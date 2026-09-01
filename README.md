@@ -170,7 +170,7 @@ The `pages` array can be resolved as the reader advances rather than provided up
 </ComicViewer.Root>
 ```
 
-A viewer needs `pages`, `pageCount`, or both, so one given nothing but a resolver cannot silently hold an empty document. Navigation and progress count every page from the start, so the reader can jump anywhere immediately. A page still being resolved keeps its place in the spread as `ViewportPendingPage`, or as the skeleton given to `Viewport` through `renderPendingPage`. Metadata is forgotten once its page leaves the resolve window, so a page returned to later is resolved again with a fresh URL.
+A viewer needs `pages`, `pageCount`, or both, so one given nothing but a resolver cannot silently hold an empty document. Navigation and progress count every page from the start, so the reader can jump anywhere immediately. A page still being resolved keeps its place in the spread as `ViewportPendingPage`, or as the skeleton given to `Viewport` through `renderPendingPage`. `pageResolveOverscan` decides how far ahead of the reader metadata is asked for, while a resolved page keeps its metadata until it is further from the current index than both that window and the reach of the viewport, so a page returned to much later is resolved again with a fresh URL.
 
 For a list whose length is not known upfront, keep passing `pages` and append to it from `onEndReached`, which the viewer calls as the reader comes within `endReachedThreshold` pages of the end.
 

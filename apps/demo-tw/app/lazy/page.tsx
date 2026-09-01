@@ -63,11 +63,12 @@ const LazyPage = () => (
           Only the pages within <code>pageResolveOverscan</code> of the current
           one are asked for, four on either side by default, which is why the
           request count starts at five rather than at the length of the
-          document. A request for a page the reader turns away from is aborted
-          through the <code>AbortSignal</code> it was given, and the metadata of
-          a page that falls outside that window is forgotten, so a page returned
-          to much later is resolved again and a signed URL that has expired in
-          the meantime is reissued.
+          document. A request for a page the reader leaves far behind is aborted
+          through the <code>AbortSignal</code> it was given, and its metadata is
+          forgotten once the page is further away than both that window and the
+          pages the viewport can still render, so a page returned to much later
+          is resolved again and a signed URL that has expired in the meantime is
+          reissued.
         </p>
         <p className="mt-2 text-slate-600 dark:text-slate-300">
           The document also grows as it is read. It starts as the first chapter

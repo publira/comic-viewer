@@ -92,11 +92,17 @@ export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
   /**
    * Resolves the metadata of a page the reader is approaching. The viewer
    * asks only for pages within `pageResolveOverscan` of the current one, and
-   * forgets a page once it leaves that window so that a page returned to
-   * later is resolved again with a fresh URL.
+   * forgets a page once it is further away than both that window and the
+   * pages the viewport can render, so a page returned to much later is
+   * resolved again with a fresh URL.
    */
   resolvePage?: PageResolver<TPage>;
-  /** How many pages on either side of the current one are resolved ahead. */
+  /**
+   * How many pages on either side of the current one are asked for ahead of
+   * the reader. It decides which pages are requested, not how long a resolved
+   * page keeps its metadata: a page the viewport can still render keeps it
+   * however narrow this window is.
+   */
   pageResolveOverscan?: number;
   /** Called when `resolvePage` rejects for a page. */
   onPageResolveError?: (error: PageResolveError) => void;

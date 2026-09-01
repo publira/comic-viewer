@@ -59,9 +59,11 @@ interface UsePageSourceOptions<TPage extends ViewerPage> {
  * demand, into a list of `pageCount` entries where an unresolved page reads as
  * `undefined`.
  *
- * Only the pages within `overscan` of the current index are kept resolved:
- * metadata that leaves the window is dropped so that a page returned to later
- * is resolved again, which is what keeps expiring URLs usable.
+ * Only the pages within `overscan` of the current index are asked for. A
+ * resolved page keeps its metadata while it stays within that window or within
+ * the reach of the rail, whichever is further, and loses it beyond that, so a
+ * page returned to later is resolved again, which is what keeps expiring URLs
+ * usable.
  */
 export const usePageSource = <TPage extends ViewerPage>({
   currentIndex,
