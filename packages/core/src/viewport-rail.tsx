@@ -9,7 +9,9 @@ import { getPageImageKey } from "./use-viewport-images";
 import type { PageImage, PageLoadEntry } from "./use-viewport-images";
 import { getPageSide } from "./use-viewport-layout";
 import type { PageSide, PageTurnDirection } from "./use-viewport-layout";
+import { getPageSlot } from "./viewer-context";
 import type { ViewerPage } from "./viewer-context";
+import { ViewerSlotProvider } from "./viewer-slots";
 import { ViewportPageInstance, ViewportPendingPage } from "./viewport-page";
 import type { ViewportChildren } from "./viewport-page";
 import { ViewportPageSet, ViewportTrack } from "./viewport-template";
@@ -30,10 +32,12 @@ interface ViewportRailProps<TPage extends ViewerPage> {
   activePan: { x: number; y: number };
   activeZoom: { scale: number };
   dragOffset: number;
+  endPage: ReactNode;
   getPageIndices: (spreadIndex: number) => number[];
   isDragging: boolean;
   layoutTemplate: ViewportLayoutTemplate<TPage> | undefined;
   onTransitionEnd: (event: ReactTransitionEvent<HTMLDivElement>) => void;
+  pageCount: number;
   pageImages: ReadonlyMap<string, PageImage>;
   pageLoadStates: ReadonlyMap<string, PageLoadEntry<TPage>>;
   pageTemplate: ViewportChildren<TPage> | undefined;
@@ -45,6 +49,7 @@ interface ViewportRailProps<TPage extends ViewerPage> {
   retryPage: (index: number) => void;
   slideDirection: PageTurnDirection | undefined;
   spreadStartIndex: number;
+  startPage: ReactNode;
   transitionState: "idle" | "waiting" | "prepared" | "active";
   viewMode: "single" | "double";
 }
@@ -54,10 +59,12 @@ export const ViewportRail = <TPage extends ViewerPage>({
   activePan,
   activeZoom,
   dragOffset,
+  endPage,
   getPageIndices,
   isDragging,
   layoutTemplate,
   onTransitionEnd,
+  pageCount,
   pageImages,
   pageLoadStates,
   pageTemplate,
@@ -69,6 +76,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
   retryPage,
   slideDirection,
   spreadStartIndex,
+  startPage,
   transitionState,
   viewMode,
 }: ViewportRailProps<TPage>) => {
@@ -111,9 +119,21 @@ export const ViewportRail = <TPage extends ViewerPage>({
         : pageIndices.map((index) => {
             const page = pages[index];
             const side = getSide(index);
+            const pageSlot = getPageSlot(index, pageCount, {
+              endPage,
+              startPage,
+            });
             let pageInstance: ReactNode;
 
-            if (page === undefined) {
+            if (pageSlot !== undefined) {
+              // A slot page renders content of its own, so the rail only
+              // places it in the spread.
+              pageInstance = (
+                <ViewerSlotProvider side={side} slot={pageSlot}>
+                  {pageSlot === "start" ? startPage : endPage}
+                </ViewerSlotProvider>
+              );
+            } else if (page === undefined) {
               // The page keeps its place in the spread while its metadata is
               // still being resolved.
               pageInstance =
@@ -150,7 +170,11 @@ export const ViewportRail = <TPage extends ViewerPage>({
               pageSlotTemplate,
               {
                 "data-page-side": side,
-                "data-page-status": page === undefined ? "pending" : undefined,
+                "data-page-slot": pageSlot,
+                "data-page-status":
+                  pageSlot === undefined && page === undefined
+                    ? "pending"
+                    : undefined,
                 "data-view-mode": viewMode,
                 key: index,
               },

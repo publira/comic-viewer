@@ -67,7 +67,8 @@ interface UseViewportGesturesOptions {
   goToNext: () => void;
   goToPrev: () => void;
   isTransitioning: boolean;
-  pageCount: number;
+  maxIndex: number;
+  minIndex: number;
   pageFitMode: PageFitMode;
   readingDirection: "rtl" | "ltr";
   setDragOffset: (offset: number) => void;
@@ -91,7 +92,8 @@ export const useViewportGestures = ({
   goToNext,
   goToPrev,
   isTransitioning,
-  pageCount,
+  maxIndex,
+  minIndex,
   pageFitMode,
   readingDirection,
   setDragOffset,
@@ -178,8 +180,13 @@ export const useViewportGestures = ({
   }, [containerRef, goByHorizontalDirection]);
 
   const beginTouch = useCallback(
-    (touches: TouchInput): void => {
-      if (isTransitioning) {
+    (touches: TouchInput, target: EventTarget | null): void => {
+      // A control inside a page, such as a link on a slot page, keeps the
+      // touch to itself instead of dragging the rail out from under it.
+      if (
+        isTransitioning ||
+        isInteractiveTarget(target, containerRef.current)
+      ) {
         return;
       }
 
@@ -208,7 +215,14 @@ export const useViewportGestures = ({
       };
       setIsDragging(usesPageRail);
     },
-    [beginPan, beginPinch, isPannable, isTransitioning, usesPageRail]
+    [
+      beginPan,
+      beginPinch,
+      containerRef,
+      isPannable,
+      isTransitioning,
+      usesPageRail,
+    ]
   );
 
   const moveTouch = useCallback(
@@ -295,7 +309,8 @@ export const useViewportGestures = ({
       const targetIndex = getSwipeTargetIndex(
         direction,
         displayedIndex,
-        pageCount,
+        minIndex,
+        maxIndex,
         readingDirection,
         spreadStartIndex,
         viewMode
@@ -317,7 +332,8 @@ export const useViewportGestures = ({
       goByHorizontalDirection,
       isPinching,
       isTouchPanning,
-      pageCount,
+      maxIndex,
+      minIndex,
       readingDirection,
       registerTap,
       setDragOffset,
@@ -347,6 +363,12 @@ export const useViewportGestures = ({
   const handleViewportClick = (event: MouseEvent<HTMLDivElement>): void => {
     if (didPanRef.current) {
       didPanRef.current = false;
+      return;
+    }
+
+    // A link or a button inside a page, such as the ones a slot page holds,
+    // takes the click instead of turning the page or revealing the controls.
+    if (isInteractiveTarget(event.target, event.currentTarget)) {
       return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
@@ -437,7 +459,7 @@ export const useViewportGestures = ({
     },
     onTouchStart: (event) => {
       event.stopPropagation();
-      beginTouch(event.touches);
+      beginTouch(event.touches, event.target);
     },
   };
 

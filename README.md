@@ -11,6 +11,7 @@ It provides robust core functionalities like memory-efficient virtualization, re
 - **Pluggable Data Pipeline:** Easily inject custom logic for data fetching, decryption (e.g., WASM/DRM), and analytics via the `plugins` API.
 - **Virtualization & Memory Management:** Safely handles large volumes of high-resolution images or canvases without crashing mobile browsers.
 - **Gesture & Keyboard Support:** Built-in support for swipe, click, and keyboard navigation.
+- **Pages Around the Document:** Insert a notice, a cover card, or a next-chapter link before the first page or after the last one without disturbing the page numbering.
 
 ## Installation
 
@@ -64,6 +65,28 @@ function App() {
 ```
 
 `initialReadingDirection` defaults to `"rtl"` for right-to-left manga reading. Set it to `"ltr"` for left-to-right comics.
+
+## Start and End Pages
+
+`ComicViewer.StartPage` and `ComicViewer.EndPage` insert content of your own at the two ends of the reading sequence, such as a notice before the chapter or a link to the one that follows it. Write them among the children of `ComicViewer.Root`, wherever you find them easiest to read; the viewer takes them out of the tree and shows them in the viewport.
+
+```tsx
+<ComicViewer.Root pages={pages}>
+  <ComicViewer.StartPage>
+    <CoverNotice />
+  </ComicViewer.StartPage>
+
+  <ComicViewer.Viewport />
+
+  <ComicViewer.EndPage>
+    <NextChapterCard />
+  </ComicViewer.EndPage>
+</ComicViewer.Root>
+```
+
+The reader turns to them exactly as it turns to a page, and in double-page mode they take a half of the spread like any other page. Neither is counted in `pageCount` or in the zero-based index mapping of `pages`, so the numbering the reader sees stays the numbering of the document: a viewer holding a start page opens on it at index `-1`, and its end page takes the index `pageCount`. Links, buttons, and other controls inside them keep their own clicks and swipes rather than turning the page.
+
+See the [package README](packages/core/README.md#start-and-end-pages) for the reading order, the page status, and the styling hooks they carry.
 
 ## Styling with Tailwind CSS
 

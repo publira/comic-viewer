@@ -3,7 +3,7 @@ import type { ComponentPropsWithoutRef, ReactElement } from "react";
 
 import { composeClassName } from "./class-names";
 import type { PageSide, PageTurnDirection } from "./use-viewport-layout";
-import type { ViewerPage } from "./viewer-context";
+import type { ViewerPage, ViewerSlot } from "./viewer-context";
 import type { ViewportChildren } from "./viewport-page";
 
 export interface ViewportTrackProps extends ComponentPropsWithoutRef<"div"> {
@@ -48,6 +48,8 @@ export const ViewportPageSet = ({
 
 export interface ViewportPageSlotProps extends ComponentPropsWithoutRef<"div"> {
   "data-page-side"?: PageSide;
+  /** The end of the reading sequence an extra page held by the slot sits at. */
+  "data-page-slot"?: ViewerSlot;
   /** Present while the page held by the slot is still being resolved. */
   "data-page-status"?: "pending";
   "data-view-mode"?: "single" | "double";

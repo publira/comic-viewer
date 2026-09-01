@@ -7,13 +7,15 @@ import {
   useRef,
   useState,
 } from "react";
-import type { PropsWithChildren } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 
 import { DEFAULT_PAGE_RESOLVE_OVERSCAN, usePageSource } from "./page-source";
 import type { PageResolveError, PageResolver } from "./page-source";
 import type { ViewerPlugin } from "./plugin";
 
 export type ViewMode = "single" | "double";
+/** One of the two ends of the reading sequence an extra page is inserted at. */
+export type ViewerSlot = "start" | "end";
 export type ReadingDirection = "rtl" | "ltr";
 /** Controls how a page is sized inside the viewport. */
 export type PageFitMode = "width" | "height" | "actual";
@@ -36,6 +38,21 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   pages: readonly (TPage | undefined)[];
   /** The total number of pages, including the ones not resolved yet. */
   pageCount: number;
+  /**
+   * The lowest index navigation reaches. It is `START_PAGE_INDEX` while the
+   * viewer holds a start page, and `0` otherwise.
+   */
+  minIndex: number;
+  /**
+   * The highest index navigation reaches. It is `pageCount` while the viewer
+   * holds an end page, and `pageCount - 1` otherwise, so an index outside the
+   * page list belongs to a slot page rather than to `pages`.
+   */
+  maxIndex: number;
+  /** The extra page shown before the first page, if the viewer was given one. */
+  startPage?: ReactNode;
+  /** The extra page shown after the last page, if the viewer was given one. */
+  endPage?: ReactNode;
   plugins: readonly ViewerPlugin[];
   currentIndex: number;
   viewMode: ViewMode;
@@ -127,7 +144,28 @@ export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
   /** The initial page sizing mode. Defaults to fit-to-height. */
   initialPageFitMode?: PageFitMode;
   initialReadingDirection?: ReadingDirection;
+  /**
+   * The page every double-page spread is counted from. Every page before it is
+   * shown on its own. The lowest value it takes is `START_PAGE_INDEX`, which a
+   * viewer holding a start page accepts to pair that page with the first page
+   * of the document.
+   */
   spreadStartIndex?: number;
+  /**
+   * An extra page shown before the first page, such as a notice or a cover
+   * card. Compose it with StartPage, or pass StartPage as a child of
+   * ComicViewer, which hands it to the provider. It is left out of `pageCount`
+   * and of the index mapping of `pages`, and takes `START_PAGE_INDEX` as its
+   * index instead.
+   */
+  startPage?: ReactNode;
+  /**
+   * An extra page shown after the last page, such as a link to the next
+   * chapter. Compose it with EndPage, or pass EndPage as a child of
+   * ComicViewer. It is left out of `pageCount` and of the index mapping of
+   * `pages`, and takes `pageCount` as its index instead.
+   */
+  endPage?: ReactNode;
 }
 
 export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
@@ -137,6 +175,8 @@ const ViewerContext = createContext<ViewerContextValue | null>(null);
 const EMPTY_PAGES: readonly never[] = [];
 const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
 const CONTROLS_HIDE_DELAY_MS = 2000;
+/** The index the extra page shown before the first page occupies. */
+export const START_PAGE_INDEX = -1;
 const DEFAULT_END_REACHED_THRESHOLD = 2;
 
 const clamp = (value: number, min: number, max: number): number => {
@@ -147,15 +187,42 @@ const clamp = (value: number, min: number, max: number): number => {
   return Math.min(max, Math.max(min, Math.trunc(value)));
 };
 
+/** The extra pages a viewer holds at the ends of its reading sequence. */
+export interface ViewerSlotPages {
+  endPage?: ReactNode;
+  startPage?: ReactNode;
+}
+
+/**
+ * Returns the slot a navigable index belongs to, or `undefined` for an index
+ * that addresses a page of the document. An index outside the page list
+ * belongs to a slot only while the viewer holds the page that fills it.
+ */
+export const getPageSlot = (
+  index: number,
+  pageCount: number,
+  { endPage, startPage }: ViewerSlotPages
+): ViewerSlot | undefined => {
+  if (index < 0) {
+    return startPage === undefined ? undefined : "start";
+  }
+
+  if (index < pageCount) {
+    return undefined;
+  }
+
+  return endPage === undefined ? undefined : "end";
+};
+
 export const getVisiblePageCount = (
   viewMode: ViewMode,
   currentIndex: number,
-  pageCount: number,
+  maxIndex: number,
   spreadStartIndex: number
 ): number =>
   viewMode === "double" &&
   currentIndex >= spreadStartIndex &&
-  currentIndex + 1 < pageCount
+  currentIndex < maxIndex
     ? 2
     : 1;
 
@@ -170,26 +237,38 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   plugins = EMPTY_PLUGINS,
   children,
   currentIndex: controlledIndex,
-  initialIndex = 0,
+  initialIndex,
   onIndexChange,
   initialViewMode = "single",
   initialPageFitMode = "height",
   initialReadingDirection = "rtl",
   spreadStartIndex = 0,
+  startPage,
+  endPage,
 }: ViewerProviderProps<TPage>) => {
   const totalPageCount = clamp(
     pageCount ?? pages.length,
     0,
     Number.MAX_SAFE_INTEGER
   );
-  const maxIndex = Math.max(0, totalPageCount - 1);
-  const clampedSpreadStartIndex = clamp(spreadStartIndex, 0, totalPageCount);
+  // A slot page sits outside the page list, so it takes the index next to the
+  // end of the list it belongs to rather than one of its own.
+  const minIndex = startPage === undefined ? 0 : START_PAGE_INDEX;
+  const maxIndex = Math.max(
+    minIndex,
+    totalPageCount - (endPage === undefined ? 1 : 0)
+  );
+  const clampedSpreadStartIndex = clamp(
+    spreadStartIndex,
+    minIndex,
+    totalPageCount
+  );
   const [uncontrolledIndex, setUncontrolledIndex] = useState(() =>
-    clamp(initialIndex, 0, maxIndex)
+    clamp(initialIndex ?? minIndex, minIndex, maxIndex)
   );
   const clampedCurrentIndex = clamp(
     controlledIndex ?? uncontrolledIndex,
-    0,
+    minIndex,
     maxIndex
   );
   const sourcePages = usePageSource({
@@ -236,7 +315,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
 
   const goTo = useCallback(
     (index: number) => {
-      const nextIndex = clamp(index, 0, maxIndex);
+      const nextIndex = clamp(index, minIndex, maxIndex);
       if (nextIndex === clampedCurrentIndex) {
         return;
       }
@@ -246,7 +325,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       }
       onIndexChange?.(nextIndex);
     },
-    [clampedCurrentIndex, controlledIndex, maxIndex, onIndexChange]
+    [clampedCurrentIndex, controlledIndex, maxIndex, minIndex, onIndexChange]
   );
 
   const goToNext = useCallback(() => {
@@ -255,19 +334,13 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       getVisiblePageCount(
         viewMode,
         clampedCurrentIndex,
-        totalPageCount,
+        maxIndex,
         clampedSpreadStartIndex
       );
-    if (nextIndex < totalPageCount) {
+    if (nextIndex <= maxIndex) {
       goTo(nextIndex);
     }
-  }, [
-    clampedCurrentIndex,
-    clampedSpreadStartIndex,
-    goTo,
-    totalPageCount,
-    viewMode,
-  ]);
+  }, [clampedCurrentIndex, clampedSpreadStartIndex, goTo, maxIndex, viewMode]);
 
   const goToPrev = useCallback(() => {
     goTo(
@@ -309,10 +382,13 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     () => ({
       areControlsVisible,
       currentIndex: clampedCurrentIndex,
+      endPage,
       goTo,
       goToNext,
       goToPrev,
       holdControls,
+      maxIndex,
+      minIndex,
       pageCount: totalPageCount,
       pageFitMode,
       pages: sourcePages,
@@ -322,12 +398,17 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       setReadingDirection,
       setViewMode,
       spreadStartIndex: clampedSpreadStartIndex,
+      startPage,
       toggleControls,
       viewMode,
     }),
     [
       areControlsVisible,
+      endPage,
+      maxIndex,
+      minIndex,
       sourcePages,
+      startPage,
       totalPageCount,
       plugins,
       clampedCurrentIndex,
