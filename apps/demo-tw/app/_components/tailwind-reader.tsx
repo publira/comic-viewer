@@ -2,6 +2,7 @@
 
 import * as ComicViewer from "@publira/comic-viewer";
 import type {
+  PageResolver,
   ReadingDirection,
   ViewerPage,
   ViewerPlugin,
@@ -112,9 +113,20 @@ const pluginsForMode: Readonly<Record<ReaderMode, readonly ViewerPlugin[]>> = {
 interface TailwindReaderProps {
   initialReadingDirection?: ReadingDirection;
   mode?: ReaderMode;
-  pages: readonly ViewerPage[];
+  /** Called as the reader comes within two pages of the last one. */
+  onEndReached?: () => void;
+  /** The length of the document, when it is longer than `pages`. */
+  pageCount?: number;
+  pages?: readonly ViewerPage[];
+  /** Resolves the metadata of a page the reader is approaching. */
+  resolvePage?: PageResolver;
   spreadStartIndex?: number;
 }
+
+/** Fills the place of a page whose metadata is still being resolved. */
+const renderPendingPage = () => (
+  <ComicViewer.ViewportPendingPage className="h-full w-full animate-pulse bg-slate-900" />
+);
 
 const NavigationIcon = ({ path }: { path: string }) => (
   <svg
@@ -150,17 +162,26 @@ const NavigationControls = () => {
 export const TailwindReader = ({
   initialReadingDirection,
   mode = "basic",
+  onEndReached,
+  pageCount,
   pages,
+  resolvePage,
   spreadStartIndex,
 }: TailwindReaderProps) => (
   <ComicViewer.Root
+    onEndReached={onEndReached}
+    pageCount={pageCount}
     pages={pages}
+    resolvePage={resolvePage}
     plugins={pluginsForMode[mode]}
     initialReadingDirection={initialReadingDirection}
     spreadStartIndex={spreadStartIndex}
     className="relative flex h-full min-h-0 w-full min-w-0 overflow-hidden rounded-xl bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/30"
   >
-    <ComicViewer.Viewport className="group/viewport relative flex min-h-0 min-w-0 flex-1 touch-pan-y overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing">
+    <ComicViewer.Viewport
+      renderPendingPage={renderPendingPage}
+      className="group/viewport relative flex min-h-0 min-w-0 flex-1 touch-pan-y overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing"
+    >
       <ComicViewer.ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset)))] data-[dragging]:transition-none data-[transition-state=active]:transition-transform data-[transition-state=active]:duration-[260ms] data-[transition-state=active]:ease-out data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]">
         <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 data-[page-side=left]:justify-start data-[page-side=right]:justify-end data-[rail-slot=current]:[transform:translate(var(--pcv-pan-x,0)_var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))]">
           <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:max-w-1/2 data-[view-mode=double]:basis-1/2">
