@@ -1,4 +1,5 @@
 export {
+  START_PAGE_INDEX,
   ViewerProvider,
   useViewerContext,
   type ReadingDirection,
@@ -8,8 +9,10 @@ export {
   type ViewerPage,
   type ViewerPageListProps,
   type ViewerProviderProps,
+  type ViewerSlot,
   type ViewMode,
 } from "./viewer-context";
+export { EndPage, StartPage, type ViewerSlotPageProps } from "./viewer-slots";
 export {
   ComicViewer,
   ComicViewer as Root,
@@ -56,6 +59,7 @@ export {
   type PageProgressProps,
   type PageProgressTrackProps,
   type PageStatusProps,
+  type PageStatusValue,
 } from "./page-navigation";
 export { useViewMode } from "./use-view-mode";
 export {

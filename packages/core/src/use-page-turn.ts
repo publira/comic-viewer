@@ -14,11 +14,11 @@ import { getPageImageKey, useViewportImages } from "./use-viewport-images";
 import {
   getNextSpreadIndex,
   getPageTurnDirection,
-  getPreviousSpreadIndex,
   getVisibleIndices,
   useViewportLayout,
 } from "./use-viewport-layout";
 import type { PageTurnDirection } from "./use-viewport-layout";
+import { getPreviousSpreadIndex } from "./viewer-context";
 import type { ViewerPage, ViewMode } from "./viewer-context";
 
 const PAGE_TURN_FALLBACK_DURATION_MS = 320;
@@ -33,6 +33,8 @@ interface PageTurnTransition {
 
 interface UsePageTurnOptions<TPage extends ViewerPage> {
   currentIndex: number;
+  maxIndex: number;
+  minIndex: number;
   onPageLoadError?: (error: PageLoadError<TPage>) => void;
   pageCount: number;
   pages: readonly (TPage | undefined)[];
@@ -51,6 +53,8 @@ interface UsePageTurnOptions<TPage extends ViewerPage> {
  */
 export const usePageTurn = <TPage extends ViewerPage>({
   currentIndex,
+  maxIndex,
+  minIndex,
   onPageLoadError,
   pageCount,
   pages,
@@ -73,7 +77,8 @@ export const usePageTurn = <TPage extends ViewerPage>({
     railSpreadIndices,
   } = useViewportLayout({
     displayedIndex,
-    pageCount,
+    maxIndex,
+    minIndex,
     readingDirection,
     spreadStartIndex,
     transitionToIndex: pageTurnTransition?.toIndex,
@@ -96,10 +101,16 @@ export const usePageTurn = <TPage extends ViewerPage>({
     pageTurnTransition !== null &&
     getVisibleIndices(
       pageTurnTransition.toIndex,
-      pageCount,
+      maxIndex,
       spreadStartIndex,
       viewMode
     ).every((index) => {
+      // An index outside the page list belongs to a slot page, which holds
+      // content of its own and never waits for the image cache.
+      if (index < 0 || index >= pageCount) {
+        return true;
+      }
+
       const page = pages[index];
       return page !== undefined && pageImages.has(getPageImageKey(index, page));
     });
@@ -111,12 +122,13 @@ export const usePageTurn = <TPage extends ViewerPage>({
 
     const previousIndex = getPreviousSpreadIndex(
       displayedIndex,
+      minIndex,
       spreadStartIndex,
       viewMode
     );
     const nextIndex = getNextSpreadIndex(
       displayedIndex,
-      pageCount,
+      maxIndex,
       spreadStartIndex,
       viewMode
     );
@@ -151,7 +163,8 @@ export const usePageTurn = <TPage extends ViewerPage>({
   }, [
     currentIndex,
     displayedIndex,
-    pageCount,
+    maxIndex,
+    minIndex,
     pageTurnTransition,
     readingDirection,
     spreadStartIndex,

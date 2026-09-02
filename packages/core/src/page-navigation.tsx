@@ -9,7 +9,12 @@ import type {
 
 import { composeClassName } from "./class-names";
 import { useControlsHold } from "./use-controls-hold";
-import { getVisiblePageCount, useViewerContext } from "./viewer-context";
+import {
+  getPageSlot,
+  getVisiblePageCount,
+  useViewerContext,
+} from "./viewer-context";
+import type { ViewerSlot } from "./viewer-context";
 
 interface PageProgressState {
   ariaLabel: string;
@@ -38,8 +43,8 @@ export const PreviousPageButton = ({
   onClick,
   ...props
 }: PageNavigationButtonProps) => {
-  const { currentIndex, goToPrev } = useViewerContext();
-  const isDisabled = disabled || currentIndex === 0;
+  const { currentIndex, goToPrev, minIndex } = useViewerContext();
+  const isDisabled = disabled || currentIndex <= minIndex;
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
@@ -72,18 +77,13 @@ export const NextPageButton = ({
   onClick,
   ...props
 }: PageNavigationButtonProps) => {
-  const { currentIndex, goToNext, pageCount, spreadStartIndex, viewMode } =
+  const { currentIndex, goToNext, maxIndex, spreadStartIndex, viewMode } =
     useViewerContext();
   const isDisabled =
     disabled ||
     currentIndex +
-      getVisiblePageCount(
-        viewMode,
-        currentIndex,
-        pageCount,
-        spreadStartIndex
-      ) >=
-      pageCount;
+      getVisiblePageCount(viewMode, currentIndex, maxIndex, spreadStartIndex) >
+      maxIndex;
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
@@ -110,9 +110,16 @@ export const NextPageButton = ({
 
 export interface PageStatusValue {
   currentIndex: number;
+  /**
+   * The one-based number of the first page on screen, or `0` while none of
+   * the pages of the document is visible.
+   */
   firstPage: number;
+  /** The one-based number of the last page on screen, or `0` as `firstPage`. */
   lastPage: number;
   pageCount: number;
+  /** The slot of the extra page on screen, if one of them is showing. */
+  slot?: ViewerSlot;
   viewMode: "single" | "double";
 }
 
@@ -121,22 +128,43 @@ export interface PageStatusProps {
   format?: (value: PageStatusValue) => ReactNode;
 }
 
+const getSlotLabel = (slot: ViewerSlot): string =>
+  slot === "start" ? "Start page" : "End page";
+
 /** Announces the current visible page or spread. */
 export const PageStatus = ({ className, format }: PageStatusProps) => {
-  const { currentIndex, pageCount, spreadStartIndex, viewMode } =
-    useViewerContext();
-  const firstPage = pageCount === 0 ? 0 : currentIndex + 1;
-  const lastPage = Math.min(
+  const {
+    currentIndex,
+    endPage,
+    maxIndex,
+    pageCount,
+    spreadStartIndex,
+    startPage,
+    viewMode,
+  } = useViewerContext();
+  const lastIndex =
     currentIndex +
-      getVisiblePageCount(viewMode, currentIndex, pageCount, spreadStartIndex),
-    pageCount
-  );
+    getVisiblePageCount(viewMode, currentIndex, maxIndex, spreadStartIndex) -
+    1;
+  // A slot page is counted neither in the page numbers nor in the total, so
+  // the reader keeps the numbering of the document itself.
+  const slotPages = { endPage, startPage };
+  const slot =
+    getPageSlot(currentIndex, pageCount, slotPages) ??
+    getPageSlot(lastIndex, pageCount, slotPages);
+  const firstVisiblePage = Math.max(currentIndex, 0) + 1;
+  const lastVisiblePage = Math.min(lastIndex + 1, pageCount);
+  const hasVisiblePages = pageCount > 0 && firstVisiblePage <= lastVisiblePage;
+  const firstPage = hasVisiblePages ? firstVisiblePage : 0;
+  const lastPage = hasVisiblePages ? lastVisiblePage : 0;
   let defaultLabel = "No pages";
-  if (pageCount > 0) {
+  if (hasVisiblePages) {
     defaultLabel =
       firstPage === lastPage
         ? `Page ${firstPage} of ${pageCount}`
         : `Pages ${firstPage}-${lastPage} of ${pageCount}`;
+  } else if (slot !== undefined) {
+    defaultLabel = getSlotLabel(slot);
   }
   const label =
     format?.({
@@ -144,6 +172,7 @@ export const PageStatus = ({ className, format }: PageStatusProps) => {
       firstPage,
       lastPage,
       pageCount,
+      slot,
       viewMode,
     }) ?? defaultLabel;
 
@@ -199,15 +228,20 @@ export const PageProgressTrack = ({
   ...props
 }: PageProgressTrackProps) => {
   const pageProgress = useContext(PageProgressContext);
-  const { currentIndex, pageCount, spreadStartIndex, viewMode } =
+  const { currentIndex, maxIndex, pageCount, spreadStartIndex, viewMode } =
     useViewerContext();
   const visiblePageCount = getVisiblePageCount(
     viewMode,
     currentIndex,
-    pageCount,
+    maxIndex,
     spreadStartIndex
   );
-  const currentPage = Math.min(currentIndex + visiblePageCount, pageCount);
+  // A slot page leaves the progress where the pages next to it put it, since
+  // it is not one of the pages being counted.
+  const currentPage = Math.min(
+    Math.max(currentIndex + visiblePageCount, 0),
+    pageCount
+  );
 
   return (
     <progress

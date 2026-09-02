@@ -117,6 +117,14 @@
   max-height: none;
 }
 
+/* An extra page carries content of its own rather than a decoded image, so it
+   takes the whole half of the spread it is given and scrolls content that
+   outgrows it instead of overflowing the viewport. */
+.pcv-page-slot {
+  box-sizing: border-box;
+  overflow: auto;
+}
+
 .pcv-page-pending {
   background: #19191f;
   animation: pcv-page-pending-pulse 1.4s ease-in-out infinite;

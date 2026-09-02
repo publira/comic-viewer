@@ -49,6 +49,9 @@ export const Viewport = <TPage extends ViewerPage>({
     layoutTemplate === undefined ? children : layoutTemplate.pageTemplate;
   const containerRef = useRef<HTMLDivElement>(null);
   const {
+    endPage,
+    maxIndex,
+    minIndex,
     pageCount,
     pages,
     plugins,
@@ -56,6 +59,7 @@ export const Viewport = <TPage extends ViewerPage>({
     pageFitMode,
     readingDirection,
     spreadStartIndex,
+    startPage,
     goToNext,
     goToPrev,
     setPageFitMode,
@@ -83,6 +87,8 @@ export const Viewport = <TPage extends ViewerPage>({
     transitionState,
   } = usePageTurn({
     currentIndex,
+    maxIndex,
+    minIndex,
     onPageLoadError,
     pageCount,
     pages,
@@ -107,7 +113,8 @@ export const Viewport = <TPage extends ViewerPage>({
     goToNext,
     goToPrev,
     isTransitioning,
-    pageCount,
+    maxIndex,
+    minIndex,
     pageFitMode,
     readingDirection,
     setDragOffset,
@@ -140,10 +147,12 @@ export const Viewport = <TPage extends ViewerPage>({
         activePan={activePan}
         activeZoom={activeZoom}
         dragOffset={dragOffset}
+        endPage={endPage}
         getPageIndices={orderedIndicesFor}
         isDragging={isDragging}
         layoutTemplate={layoutTemplate}
         onTransitionEnd={onTransitionEnd}
+        pageCount={pageCount}
         pageImages={pageImages}
         pageLoadStates={pageLoadStates}
         pageTemplate={pageTemplate}
@@ -155,6 +164,7 @@ export const Viewport = <TPage extends ViewerPage>({
         retryPage={retryPage}
         slideDirection={slideDirection}
         spreadStartIndex={spreadStartIndex}
+        startPage={startPage}
         transitionState={transitionState}
         viewMode={viewMode}
       />

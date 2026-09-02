@@ -114,6 +114,73 @@ Use `spreadStartIndex` to leave leading pages unpaired before double-page spread
 </ComicViewer.Root>
 ```
 
+## Start and end pages
+
+`StartPage` and `EndPage` hold content of your own at the two ends of the reading sequence: a notice before the chapter, a cover card, a link to the chapter that follows. Write them among the children of the viewer root, wherever they read best; the root takes them out of the tree and hands them to the viewport.
+
+```tsx
+<ComicViewer.Root pages={pages}>
+  <ComicViewer.StartPage>
+    <CoverNotice />
+  </ComicViewer.StartPage>
+
+  <ComicViewer.Viewport />
+
+  <ComicViewer.EndPage>
+    <NextChapterCard />
+  </ComicViewer.EndPage>
+
+  <ComicViewer.Toolbar />
+  <ComicViewer.PageNavigation />
+</ComicViewer.Root>
+```
+
+A viewer composed from `ViewerProvider` finds them among its own children in the same way, and so does a reader component of your own that passes its children on to the viewer root.
+
+```tsx
+<ComicViewer.ViewerProvider pages={pages}>
+  <ComicViewer.StartPage>
+    <CoverNotice />
+  </ComicViewer.StartPage>
+
+  <ComicViewer.Viewport />
+</ComicViewer.ViewerProvider>
+```
+
+### Reading order and page numbering
+
+The reader turns to an extra page exactly as it turns to a page of the document, through the navigation buttons, the keyboard, an edge click, or a swipe. Neither of them is counted in `pageCount` or in the zero-based index mapping of `pages`, so the numbering a reader sees stays the numbering of the document. They take the indexes next to the list instead: the start page is `START_PAGE_INDEX`, which is `-1`, and the end page is `pageCount`. A viewer holding a start page opens on it; pass `initialIndex={0}` to open on the first page of the document instead. A controlled `currentIndex` reaches them through those same indexes, and `onIndexChange` reports them.
+
+`PageStatus` names an extra page shown on its own — `Start page` or `End page` — rather than giving it a number, and reads `Page 7 of 7` while one shares a spread with a page. Its `format` function receives the same `slot` the viewer is showing, as `"start"`, `"end"`, or `undefined`, so a reader can label them in its own words:
+
+```tsx
+<ComicViewer.PageStatus
+  format={({ firstPage, lastPage, pageCount, slot }) => {
+    if (slot === "start") {
+      return "Notice";
+    }
+
+    return slot === "end"
+      ? "Next chapter"
+      : `${firstPage}-${lastPage} / ${pageCount}`;
+  }}
+/>
+```
+
+### Spreads and styling
+
+In double-page mode an extra page takes a half of the spread like any other page, following the same parity as the pages around it. With the default `spreadStartIndex={0}` the start page comes before the first spread and is shown on its own, and the end page pairs with the last page whenever the document holds an odd number of pages and leaves it without a facing page. Pass `spreadStartIndex={-1}` to count the spreads from the start page itself, which pairs it with the first page of the document.
+
+Each of them renders one element carrying `pcv-page` and `pcv-page-slot`, with `data-page-slot="start"` or `data-page-slot="end"`, and the `data-page-side` a page in its position would take. Both take a `className` and the rest of the props of a `div`, and a custom `ViewportPageSlot` layout receives the same `data-page-slot` so a stylesheet can tell an extra page from a page of the document.
+
+```tsx
+<ComicViewer.EndPage className="chapter-end">
+  <NextChapterCard />
+</ComicViewer.EndPage>
+```
+
+Links, buttons, form controls, and other interactive elements inside them keep their own clicks and touches: the viewport leaves a gesture that starts on a control alone instead of reading it as an edge click or a swipe.
+
 ## Lazy page metadata
 
 Pass the whole `pages` array when the list is short and its URLs are stable. For a long document, for URLs that expire, or for a list that grows as the reader advances, give the viewer a `pageCount` and a `resolvePage` function instead: it then asks for the metadata of a page only as the reader approaches it.

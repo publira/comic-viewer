@@ -4,6 +4,8 @@ import type { Locator, Page } from "@playwright/test";
 const viewport = ".pcv-viewport";
 const viewportTrack = ".pcv-viewport-track";
 const currentPageSet = '.pcv-viewport-page-set[data-rail-slot="current"]';
+const startSlotPage = '.pcv-page-slot[data-page-slot="start"]';
+const endSlotPage = '.pcv-page-slot[data-page-slot="end"]';
 
 test("renders the basic reader and navigates through a double-page spread", async ({
   page,
@@ -470,4 +472,80 @@ test("appends the next chapter as the reader reaches the end of the loaded pages
   await expect(
     page.locator(`${currentPageSet} canvas[aria-label="Page 5"]`)
   ).toHaveAttribute("data-page-status", "loaded");
+});
+
+test("opens on the start page without counting it as a page", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/slots");
+
+  await expect(
+    page.getByRole("heading", { name: "Pages around the chapter" })
+  ).toBeVisible();
+  await expect(
+    page.locator(`${currentPageSet} ${startSlotPage}`)
+  ).toBeVisible();
+  // The extra page is turned to like any other, yet the numbering the reader
+  // sees stays the numbering of the document.
+  await expect(page.locator(".pcv-page-status")).toHaveText("Start page");
+  await expect(page.locator(currentPageSet)).toHaveAttribute(
+    "data-page-count",
+    "1"
+  );
+
+  await turnToNextScreen(page, "Pages 1-2 of 7");
+  await expect(page.locator(`${currentPageSet} ${startSlotPage}`)).toHaveCount(
+    0
+  );
+});
+
+test("pairs the end page with the last page of an odd chapter", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/slots");
+
+  await turnThroughScreens(page, [
+    "Pages 1-2 of 7",
+    "Pages 3-4 of 7",
+    "Pages 5-6 of 7",
+    "Page 7 of 7",
+  ]);
+
+  // The last page has no facing page of its own, so the end page takes the
+  // half of the spread next to it without being counted in the status.
+  await expect(page.locator(currentPageSet)).toHaveAttribute(
+    "data-page-count",
+    "2"
+  );
+  await expect(page.locator(`${currentPageSet} ${endSlotPage}`)).toBeVisible();
+  await expect(page.locator(`${currentPageSet} canvas`)).toHaveAttribute(
+    "aria-label",
+    "Page 7"
+  );
+});
+
+test("leaves a control on a slot page out of the page-turn edge", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 600 });
+  await page.goto("/slots");
+
+  await expect(page.locator(viewport)).toHaveAttribute(
+    "data-view-mode",
+    "single"
+  );
+  await expect(page.locator(".pcv-page-status")).toHaveText("Start page");
+
+  const startPage = page.locator(`${currentPageSet} ${startSlotPage}`);
+
+  // The disclosure starts inside the edge of the viewport that turns the page,
+  // so the click reaches it only while a control keeps the gesture to itself.
+  await startPage
+    .getByText("Why am I seeing this?")
+    .click({ position: { x: 4, y: 4 } });
+
+  await expect(startPage.getByText("Early access comes with")).toBeVisible();
+  await expect(page.locator(".pcv-page-status")).toHaveText("Start page");
 });

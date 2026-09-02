@@ -7,6 +7,7 @@ import type {
   ViewerPageListProps,
   ViewerPlugin,
 } from "@publira/comic-viewer";
+import type { PropsWithChildren } from "react";
 
 const encryptionKey = new Uint8Array([
   45, 128, 94, 16, 201, 73, 5, 164, 220, 39, 177, 8, 93, 251, 14, 66, 57, 186,
@@ -111,8 +112,9 @@ const pluginsForMode: Readonly<Record<ReaderMode, readonly ViewerPlugin[]>> = {
 };
 
 // The reader is given a page list, a page count, or both, exactly as the
-// viewer root is, and hands that pair straight through to it.
-type TailwindReaderProps = ViewerPageListProps & {
+// viewer root is, and hands that pair straight through to it. A StartPage or
+// an EndPage is composed into it as a child, as it is into the viewer root.
+type TailwindReaderProps = PropsWithChildren<ViewerPageListProps> & {
   /** The controlled zero-based page index, for a host that owns the position. */
   currentIndex?: number;
   initialReadingDirection?: ReadingDirection;
@@ -163,6 +165,7 @@ const NavigationControls = () => {
 
 /** Renders the viewer entirely with Tailwind utilities and public primitives. */
 export const TailwindReader = ({
+  children,
   currentIndex,
   initialReadingDirection,
   mode = "basic",
@@ -183,6 +186,7 @@ export const TailwindReader = ({
     spreadStartIndex={spreadStartIndex}
     className="relative flex h-full min-h-0 w-full min-w-0 overflow-hidden rounded-xl bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/30"
   >
+    {children}
     <ComicViewer.Viewport
       renderPendingPage={renderPendingPage}
       className="group/viewport relative flex min-h-0 min-w-0 flex-1 touch-pan-y overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing"
