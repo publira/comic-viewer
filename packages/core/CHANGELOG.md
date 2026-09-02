@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.6.1...comic-viewer-v0.7.0) (2026-09-02)
+
+
+### Features
+
+* **core:** add StartPage and EndPage for content around the document ([#176](https://github.com/publira/comic-viewer/issues/176)) ([a9f3f0d](https://github.com/publira/comic-viewer/commit/a9f3f0d54b3bb6c0fb7f6de43549f3cb7a5a5fe5))
+* **core:** resolve page metadata on demand ([#172](https://github.com/publira/comic-viewer/issues/172)) ([3039ff9](https://github.com/publira/comic-viewer/commit/3039ff903471425d0415ed4bcad94a74f831165a))
+
 ## [0.6.1](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.6.0...comic-viewer-v0.6.1) (2026-08-24)
 
 
