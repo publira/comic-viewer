@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 
-import { getVisiblePageCount } from "./viewer-context";
+import { getPreviousSpreadIndex, getVisiblePageCount } from "./viewer-context";
 import type { ViewMode } from "./viewer-context";
 
 export type PageTurnDirection = "left" | "right";
@@ -60,23 +60,6 @@ export const getNextSpreadIndex = (
     currentIndex +
     getVisiblePageCount(viewMode, currentIndex, maxIndex, spreadStartIndex);
   return nextIndex <= maxIndex ? nextIndex : undefined;
-};
-
-export const getPreviousSpreadIndex = (
-  currentIndex: number,
-  minIndex: number,
-  spreadStartIndex: number,
-  viewMode: ViewMode
-): number | undefined => {
-  if (currentIndex <= minIndex) {
-    return undefined;
-  }
-
-  return Math.max(
-    minIndex,
-    currentIndex -
-      (viewMode === "double" && currentIndex > spreadStartIndex ? 2 : 1)
-  );
 };
 
 export const getSwipeTargetIndex = (

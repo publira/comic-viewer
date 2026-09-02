@@ -54,7 +54,7 @@ const useViewerSlot = (
 
   if (context === null || context.slot !== slot) {
     throw new Error(
-      `${componentName} must be given to the viewer as its ${slot} page, either as a child of ComicViewer or as the ${slot}Page of ViewerProvider.`
+      `${componentName} must be written among the children of the viewer, which shows it at the ${slot} of the reading sequence.`
     );
   }
 
@@ -126,12 +126,22 @@ export const extractViewerSlotPages = (
       return true;
     }
 
+    // A slot holds one page, so a second one would take the place of the
+    // first and leave it nowhere to be seen.
     if (child.type === StartPage) {
+      if (slotPages.startPage !== undefined) {
+        throw new Error("A viewer takes only one StartPage.");
+      }
+
       slotPages.startPage = child;
       return false;
     }
 
     if (child.type === EndPage) {
+      if (slotPages.endPage !== undefined) {
+        throw new Error("A viewer takes only one EndPage.");
+      }
+
       slotPages.endPage = child;
       return false;
     }

@@ -200,6 +200,30 @@ export const getPageSlot = (
   return endPage === undefined ? undefined : "end";
 };
 
+/**
+ * Returns the index the viewer steps back to, or `undefined` on the first
+ * index it holds. A double-page step lands on the page that starts the
+ * previous spread, and stops at `spreadStartIndex` rather than stepping over
+ * it, so an index the spreads are not counted from still passes through the
+ * pages before them one at a time.
+ */
+export const getPreviousSpreadIndex = (
+  currentIndex: number,
+  minIndex: number,
+  spreadStartIndex: number,
+  viewMode: ViewMode
+): number | undefined => {
+  if (currentIndex <= minIndex) {
+    return undefined;
+  }
+
+  if (viewMode === "double" && currentIndex > spreadStartIndex) {
+    return Math.max(spreadStartIndex, currentIndex - 2);
+  }
+
+  return currentIndex - 1;
+};
+
 export const getVisiblePageCount = (
   viewMode: ViewMode,
   currentIndex: number,
@@ -335,13 +359,16 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   }, [clampedCurrentIndex, clampedSpreadStartIndex, goTo, maxIndex, viewMode]);
 
   const goToPrev = useCallback(() => {
-    goTo(
-      clampedCurrentIndex -
-        (viewMode === "double" && clampedCurrentIndex > clampedSpreadStartIndex
-          ? 2
-          : 1)
+    const previousIndex = getPreviousSpreadIndex(
+      clampedCurrentIndex,
+      minIndex,
+      clampedSpreadStartIndex,
+      viewMode
     );
-  }, [clampedCurrentIndex, clampedSpreadStartIndex, goTo, viewMode]);
+    if (previousIndex !== undefined) {
+      goTo(previousIndex);
+    }
+  }, [clampedCurrentIndex, clampedSpreadStartIndex, goTo, minIndex, viewMode]);
 
   // A page count that has already been reported is not reported again, so a
   // consumer that has nothing more to append is not asked in a loop.

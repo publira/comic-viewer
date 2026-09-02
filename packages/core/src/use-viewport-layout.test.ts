@@ -4,10 +4,10 @@ import {
   getNextSpreadIndex,
   getPageSide,
   getPageTurnDirection,
-  getPreviousSpreadIndex,
   getSwipeTargetIndex,
   getVisibleIndices,
 } from "./use-viewport-layout";
+import { getPreviousSpreadIndex } from "./viewer-context";
 
 describe(getPageTurnDirection, () => {
   it("maps forward and backward turns to opposite physical directions", () => {
@@ -109,6 +109,13 @@ describe(getPreviousSpreadIndex, () => {
 
   it("returns undefined on the start page itself", () => {
     expect(getPreviousSpreadIndex(-1, -1, 0, "double")).toBeUndefined();
+  });
+
+  it("stops at the page the spreads are counted from", () => {
+    // An index the spreads are not counted from must not step over the page
+    // that starts them, which a start page below it would otherwise absorb.
+    expect(getPreviousSpreadIndex(1, -1, 0, "double")).toBe(0);
+    expect(getPreviousSpreadIndex(1, 0, 0, "double")).toBe(0);
   });
 });
 

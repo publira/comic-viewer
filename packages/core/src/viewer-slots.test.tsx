@@ -276,9 +276,31 @@ describe("viewer slot pages", () => {
     expect(viewport).not.toHaveAttribute("data-dragging");
   });
 
+  it("steps back onto the first page from an index the spreads skip", () => {
+    // The reader sits between two spreads, so stepping back has to reach the
+    // page the spreads are counted from rather than the start page below it.
+    renderSlotViewer({ initialIndex: 1, initialViewMode: "double" });
+
+    fireEvent.keyDown(window, { key: "ArrowRight" });
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+  });
+
   it("throws when a slot page is rendered outside the viewer", () => {
     expect(() => {
       render(<StartPage>Cover notice</StartPage>);
-    }).toThrow("StartPage must be given to the viewer as its start page");
+    }).toThrow("StartPage must be written among the children of the viewer");
+  });
+
+  it("throws when a second page is given to the same slot", () => {
+    expect(() => {
+      render(
+        <ViewerProvider pages={pages} initialViewMode="single">
+          <StartPage>Cover notice</StartPage>
+          <StartPage>Another notice</StartPage>
+          <PageStatus />
+        </ViewerProvider>
+      );
+    }).toThrow("A viewer takes only one StartPage.");
   });
 });

@@ -14,11 +14,11 @@ import { getPageImageKey, useViewportImages } from "./use-viewport-images";
 import {
   getNextSpreadIndex,
   getPageTurnDirection,
-  getPreviousSpreadIndex,
   getVisibleIndices,
   useViewportLayout,
 } from "./use-viewport-layout";
 import type { PageTurnDirection } from "./use-viewport-layout";
+import { getPreviousSpreadIndex } from "./viewer-context";
 import type { ViewerPage, ViewMode } from "./viewer-context";
 
 const PAGE_TURN_FALLBACK_DURATION_MS = 320;
