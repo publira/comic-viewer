@@ -12,6 +12,7 @@ import type { PropsWithChildren, ReactNode } from "react";
 import { DEFAULT_PAGE_RESOLVE_OVERSCAN, usePageSource } from "./page-source";
 import type { PageResolveError, PageResolver } from "./page-source";
 import type { ViewerPlugin } from "./plugin";
+import { extractViewerSlotPages } from "./viewer-slots";
 
 export type ViewMode = "single" | "double";
 /** One of the two ends of the reading sequence an extra page is inserted at. */
@@ -49,9 +50,9 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
    * page list belongs to a slot page rather than to `pages`.
    */
   maxIndex: number;
-  /** The extra page shown before the first page, if the viewer was given one. */
+  /** The StartPage found among the viewer children, if it was given one. */
   startPage?: ReactNode;
-  /** The extra page shown after the last page, if the viewer was given one. */
+  /** The EndPage found among the viewer children, if it was given one. */
   endPage?: ReactNode;
   plugins: readonly ViewerPlugin[];
   currentIndex: number;
@@ -151,21 +152,6 @@ export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
    * of the document.
    */
   spreadStartIndex?: number;
-  /**
-   * An extra page shown before the first page, such as a notice or a cover
-   * card. Compose it with StartPage, or pass StartPage as a child of
-   * ComicViewer, which hands it to the provider. It is left out of `pageCount`
-   * and of the index mapping of `pages`, and takes `START_PAGE_INDEX` as its
-   * index instead.
-   */
-  startPage?: ReactNode;
-  /**
-   * An extra page shown after the last page, such as a link to the next
-   * chapter. Compose it with EndPage, or pass EndPage as a child of
-   * ComicViewer. It is left out of `pageCount` and of the index mapping of
-   * `pages`, and takes `pageCount` as its index instead.
-   */
-  endPage?: ReactNode;
 }
 
 export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
@@ -243,9 +229,15 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   initialPageFitMode = "height",
   initialReadingDirection = "rtl",
   spreadStartIndex = 0,
-  startPage,
-  endPage,
 }: ViewerProviderProps<TPage>) => {
+  // A StartPage or an EndPage written among the children belongs to the
+  // viewport rather than to the place it stands in, so it is taken out of the
+  // tree here and rendered from the context instead.
+  const {
+    children: viewerChildren,
+    endPage,
+    startPage,
+  } = extractViewerSlotPages(children);
   const totalPageCount = clamp(
     pageCount ?? pages.length,
     0,
@@ -425,7 +417,9 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   );
 
   return (
-    <ViewerContext.Provider value={value}>{children}</ViewerContext.Provider>
+    <ViewerContext.Provider value={value}>
+      {viewerChildren}
+    </ViewerContext.Provider>
   );
 };
 

@@ -14,32 +14,33 @@ export type ComicViewerProps<TPage extends ViewerPage> =
  * `ComicViewer.Viewport`, `ComicViewer.PageNavigation`, etc.) so bundlers can
  * tree-shake subcomponents that a consumer never renders.
  *
- * A StartPage or an EndPage written among its children is taken out of the
- * tree and handed to the viewport, which shows it at that end of the reading
- * sequence.
+ * A StartPage or an EndPage written among its children is shown at that end of
+ * the reading sequence rather than where it stands.
  */
 export const ComicViewer = <TPage extends ViewerPage>({
   children,
   className,
   initialViewMode = "double",
   initialReadingDirection = "rtl",
-  startPage,
-  endPage,
   ...viewerProps
 }: ComicViewerProps<TPage>) => {
-  const slotPages = extractViewerSlotPages(children);
+  // The root element holds the reader itself, so the slot pages are lifted out
+  // of it and left among the children the provider reads them from.
+  const {
+    children: content,
+    endPage,
+    startPage,
+  } = extractViewerSlotPages(children);
 
   return (
     <ViewerProvider
       {...viewerProps}
-      endPage={endPage ?? slotPages.endPage}
       initialViewMode={initialViewMode}
       initialReadingDirection={initialReadingDirection}
-      startPage={startPage ?? slotPages.startPage}
     >
-      <div className={composeClassName("pcv-root", className)}>
-        {slotPages.children}
-      </div>
+      {startPage}
+      {endPage}
+      <div className={composeClassName("pcv-root", className)}>{content}</div>
     </ViewerProvider>
   );
 };

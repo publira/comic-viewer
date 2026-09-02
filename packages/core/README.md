@@ -135,17 +135,14 @@ Use `spreadStartIndex` to leave leading pages unpaired before double-page spread
 </ComicViewer.Root>
 ```
 
-A viewer composed from `ViewerProvider` instead takes the same two components through its `startPage` and `endPage` props, which is also how a component that only forwards props passes them on.
+A viewer composed from `ViewerProvider` finds them among its own children in the same way, and so does a reader component of your own that passes its children on to the viewer root.
 
 ```tsx
-<ComicViewer.ViewerProvider
-  pages={pages}
-  startPage={
-    <ComicViewer.StartPage>
-      <CoverNotice />
-    </ComicViewer.StartPage>
-  }
->
+<ComicViewer.ViewerProvider pages={pages}>
+  <ComicViewer.StartPage>
+    <CoverNotice />
+  </ComicViewer.StartPage>
+
   <ComicViewer.Viewport />
 </ComicViewer.ViewerProvider>
 ```

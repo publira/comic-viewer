@@ -68,7 +68,7 @@ function App() {
 
 ## Start and End Pages
 
-`ComicViewer.StartPage` and `ComicViewer.EndPage` insert content of your own at the two ends of the reading sequence, such as a notice before the chapter or a link to the one that follows it. Write them among the children of `ComicViewer.Root`, wherever you find them easiest to read; the viewer takes them out of the tree and shows them in the viewport.
+`ComicViewer.StartPage` and `ComicViewer.EndPage` insert content of your own at the two ends of the reading sequence, such as a notice before the chapter or a link to the one that follows it. Compose them as children of `ComicViewer.Root`, wherever you find them easiest to read; the viewer takes them out of the tree and shows them in the viewport.
 
 ```tsx
 <ComicViewer.Root pages={pages}>

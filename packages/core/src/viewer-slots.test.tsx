@@ -36,12 +36,12 @@ const renderSlotViewer = ({
   render(
     <ViewerProvider
       pages={documentPages}
-      endPage={endPage ? <EndPage>Next chapter</EndPage> : undefined}
       initialIndex={initialIndex}
       initialViewMode={initialViewMode}
-      startPage={startPage ? <StartPage>Cover notice</StartPage> : undefined}
     >
+      {startPage ? <StartPage>Cover notice</StartPage> : null}
       <Viewport<TestPage> renderPage={renderPage} />
+      {endPage ? <EndPage>Next chapter</EndPage> : null}
       <PageStatus />
       <CurrentIndexIndicator />
     </ViewerProvider>
@@ -131,11 +131,8 @@ describe("viewer slot pages", () => {
 
   it("reports the slot to a page status format function", () => {
     render(
-      <ViewerProvider
-        pages={pages}
-        initialViewMode="single"
-        startPage={<StartPage>Cover notice</StartPage>}
-      >
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <StartPage>Cover notice</StartPage>
         <PageStatus
           format={({ pageCount, slot }) =>
             slot === undefined ? `${pageCount} pages` : `slot: ${slot}`
@@ -149,11 +146,8 @@ describe("viewer slot pages", () => {
 
   it("leaves the reading progress empty on the start page", () => {
     render(
-      <ViewerProvider
-        pages={pages}
-        initialViewMode="single"
-        startPage={<StartPage>Cover notice</StartPage>}
-      >
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <StartPage>Cover notice</StartPage>
         <PageProgressTrack aria-label="Reading progress" />
       </ViewerProvider>
     );
@@ -196,8 +190,8 @@ describe("viewer slot pages", () => {
         pages={pages}
         initialViewMode="double"
         spreadStartIndex={-1}
-        startPage={<StartPage>Cover notice</StartPage>}
       >
+        <StartPage>Cover notice</StartPage>
         <Viewport<TestPage> renderPage={renderPage} />
       </ViewerProvider>
     );
@@ -210,7 +204,7 @@ describe("viewer slot pages", () => {
     expect(screen.getByTestId("p1")).toBeInTheDocument();
   });
 
-  it("takes the slot pages written as children of the viewer root", () => {
+  it("takes the slot pages written among the children of the viewer", () => {
     render(
       <ComicViewer pages={pages} initialViewMode="single">
         <StartPage className="notice">Cover notice</StartPage>
@@ -231,17 +225,12 @@ describe("viewer slot pages", () => {
   it("lets a control on a slot page take its own click", () => {
     const onClick = vi.fn<() => void>();
     const { container } = render(
-      <ViewerProvider
-        pages={pages}
-        initialViewMode="single"
-        startPage={
-          <StartPage>
-            <button data-testid="read-on" onClick={onClick} type="button">
-              Read on
-            </button>
-          </StartPage>
-        }
-      >
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <StartPage>
+          <button data-testid="read-on" onClick={onClick} type="button">
+            Read on
+          </button>
+        </StartPage>
         <Viewport<TestPage> renderPage={renderPage} />
         <CurrentIndexIndicator />
       </ViewerProvider>
@@ -262,17 +251,12 @@ describe("viewer slot pages", () => {
 
   it("leaves a swipe that starts on a control on the slot page alone", () => {
     const { container } = render(
-      <ViewerProvider
-        pages={pages}
-        initialViewMode="single"
-        startPage={
-          <StartPage>
-            <a data-testid="next-chapter" href="https://example.com/next">
-              Next chapter
-            </a>
-          </StartPage>
-        }
-      >
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <StartPage>
+          <a data-testid="next-chapter" href="https://example.com/next">
+            Next chapter
+          </a>
+        </StartPage>
         <Viewport<TestPage> renderPage={renderPage} />
         <CurrentIndexIndicator />
       </ViewerProvider>
