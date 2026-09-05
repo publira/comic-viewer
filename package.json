@@ -14,8 +14,8 @@
     "fix": "ultracite fix ."
   },
   "devDependencies": {
-    "oxfmt": "0.65.0",
-    "oxlint": "1.80.0",
+    "oxfmt": "0.66.0",
+    "oxlint": "1.81.0",
     "turbo": "2.10.12",
     "typescript": "6.0.3",
     "ultracite": "7.10.7"
