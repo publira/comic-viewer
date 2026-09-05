@@ -20,5 +20,5 @@
     "typescript": "6.0.3",
     "ultracite": "7.10.7"
   },
-  "packageManager": "pnpm@11.25.0"
+  "packageManager": "pnpm@12.3.0"
 }
