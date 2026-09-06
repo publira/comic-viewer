@@ -27,7 +27,7 @@ const LeftToRightPage = () => (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <section
         aria-label="Comic reader"
-        className="aspect-[8/5] min-h-96 w-full overflow-hidden rounded-xl"
+        className="aspect-[4/5] min-h-96 w-full overflow-hidden rounded-xl md:aspect-[8/5]"
       >
         <TailwindReader
           initialReadingDirection="ltr"

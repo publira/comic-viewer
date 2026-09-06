@@ -28,7 +28,7 @@ export const LazyReader = ({ pages }: LazyReaderProps) => {
     <>
       <section
         aria-label="Comic reader"
-        className="aspect-[8/5] min-h-96 w-full"
+        className="aspect-[4/5] min-h-96 w-full md:aspect-[8/5]"
       >
         <TailwindReader
           onEndReached={loadNextChapter}

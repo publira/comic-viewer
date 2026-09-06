@@ -86,7 +86,7 @@ const FullscreenPage = () => (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
       <section
         aria-label="Comic reader"
-        className="aspect-[8/5] min-h-96 w-full"
+        className="aspect-[4/5] min-h-96 w-full md:aspect-[8/5]"
       >
         <FullscreenReader pages={basicSamplePages} />
       </section>
