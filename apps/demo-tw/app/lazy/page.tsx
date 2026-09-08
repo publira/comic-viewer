@@ -1,3 +1,4 @@
+import { readerClassNames } from "../_components/reader-class-names";
 import { basicSamplePages } from "../_components/sample-pages";
 import { SourceCodePanel } from "../_components/source-code-panel";
 import { LazyReader } from "./_components/lazy-reader";
@@ -5,15 +6,18 @@ import { LazyReader } from "./_components/lazy-reader";
 const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 import { useCallback, useState } from "react";
 
+import { Reader } from "./reader";
+
 const CHAPTER_LENGTH = 7;
 
-// A page whose metadata is still being resolved keeps its place in the
-// spread, styled with utilities like every other part of this reader.
+// A page whose metadata is still being resolved keeps its place in the spread,
+// styled with utilities like every other part of this reader. The reader hands
+// this straight to its Viewport as renderPendingPage.
 const renderPendingPage = () => (
-  <ComicViewer.ViewportPendingPage className="h-full w-full animate-pulse bg-slate-900" />
+  <ComicViewer.ViewportPendingPage className="${readerClassNames.viewportPendingPage}" />
 );
 
-export const Reader = () => {
+export const LazyReader = () => {
   const [pageCount, setPageCount] = useState(CHAPTER_LENGTH);
 
   const resolvePage = useCallback(async (index, { signal }) => {
@@ -29,16 +33,12 @@ export const Reader = () => {
   }, []);
 
   return (
-    <ComicViewer.Root
+    <Reader
       onEndReached={loadNextChapter}
       pageCount={pageCount}
+      renderPendingPage={renderPendingPage}
       resolvePage={resolvePage}
-      className="relative flex h-full w-full overflow-hidden rounded-xl bg-slate-950"
-    >
-      <ComicViewer.Viewport renderPendingPage={renderPendingPage} />
-      <ComicViewer.Toolbar />
-      <ComicViewer.PageNavigation />
-    </ComicViewer.Root>
+    />
   );
 };`;
 

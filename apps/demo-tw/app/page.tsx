@@ -1,26 +1,7 @@
+import { readerSourceCode } from "./_components/reader-source";
 import { basicSamplePages } from "./_components/sample-pages";
 import { SourceCodePanel } from "./_components/source-code-panel";
 import { TailwindReader } from "./_components/tailwind-reader";
-
-const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
-
-export const Reader = ({ pages }) => (
-  <ComicViewer.Root pages={pages}>
-    <ComicViewer.Viewport>
-      <ComicViewer.ViewportTrack>
-        <ComicViewer.ViewportPageSet>
-          <ComicViewer.ViewportPageSlot>
-            <ComicViewer.ViewportPage>
-              <ComicViewer.PageCanvas />
-            </ComicViewer.ViewportPage>
-          </ComicViewer.ViewportPageSlot>
-        </ComicViewer.ViewportPageSet>
-      </ComicViewer.ViewportTrack>
-    </ComicViewer.Viewport>
-    <ComicViewer.Toolbar />
-    <ComicViewer.PageNavigation />
-  </ComicViewer.Root>
-);`;
 
 const Home = () => (
   <main className="min-h-screen bg-slate-100 px-5 py-10 text-slate-950 sm:px-8 dark:bg-slate-950 dark:text-slate-100">
@@ -37,10 +18,14 @@ const Home = () => (
           Each page uses a normal image URL. This maintained styling reference
           composes the public viewer primitives with Tailwind utilities and
           deliberately does not import{" "}
-          <code>@publira/comic-viewer/core.css</code>.
+          <code>@publira/comic-viewer/core.css</code>. Nothing here is
+          decoration: the rail turns pages because of <code>w-[300%]</code> and
+          the <code>translateX(…)</code> transforms, and the toolbar and the
+          navigation hide through <code>aria-hidden:opacity-0</code>, so the
+          reader below is the whole styling the other demos build on.
         </p>
       </section>
-      <SourceCodePanel code={sourceCode} />
+      <SourceCodePanel code={readerSourceCode} />
     </div>
   </main>
 );

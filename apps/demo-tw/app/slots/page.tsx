@@ -1,5 +1,6 @@
 import { basicSamplePages } from "../_components/sample-pages";
 import { SourceCodePanel } from "../_components/source-code-panel";
+import { slotClassNames } from "./_components/slot-class-names";
 import { SlotReader } from "./_components/slot-reader";
 
 // The odd total leaves the last page without a facing page, so the end page
@@ -8,21 +9,32 @@ const slotSamplePages = basicSamplePages.slice(0, 7);
 
 const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 
-export const Reader = ({ pages }) => (
-  <ComicViewer.Root pages={pages}>
-    <ComicViewer.StartPage className="flex h-full w-full items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
-      <CoverNotice />
+import { Reader } from "./reader";
+
+// A slot page carries the same data-page-side attribute as a page, so the same
+// variants keep it on the half of the spread it belongs to.
+const slotPageClassName =
+  "${slotClassNames.slotPage}";
+
+const slotCardClassName =
+  "${slotClassNames.slotCard}";
+
+// The reader hands its children to the viewer root, so a start or an end page
+// is composed into it exactly as it is into ComicViewer.Root.
+export const SlotReader = ({ pages }) => (
+  <Reader pages={pages}>
+    <ComicViewer.StartPage className={slotPageClassName}>
+      <div className={slotCardClassName}>
+        <CoverNotice />
+      </div>
     </ComicViewer.StartPage>
 
-    <ComicViewer.Viewport>{/* ... */}</ComicViewer.Viewport>
-
-    <ComicViewer.EndPage className="flex h-full w-full items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
-      <NextChapterCard />
+    <ComicViewer.EndPage className={slotPageClassName}>
+      <div className={slotCardClassName}>
+        <NextChapterCard />
+      </div>
     </ComicViewer.EndPage>
-
-    <ComicViewer.Toolbar />
-    <ComicViewer.PageNavigation />
-  </ComicViewer.Root>
+  </Reader>
 );`;
 
 const SlotsPage = () => (

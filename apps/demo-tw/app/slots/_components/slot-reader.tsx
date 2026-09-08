@@ -5,12 +5,7 @@ import type { ViewerPage } from "@publira/comic-viewer";
 import Link from "next/link";
 
 import { TailwindReader } from "../../_components/tailwind-reader";
-
-const slotPageClassName =
-  "flex h-full w-full items-center justify-center overflow-auto data-[page-side=left]:justify-end data-[page-side=right]:justify-start";
-
-const slotCardClassName =
-  "flex max-w-sm flex-col gap-3 rounded-lg border border-slate-100/25 bg-black/45 p-6 text-sm leading-6";
+import { slotClassNames } from "./slot-class-names";
 
 interface SlotReaderProps {
   pages: readonly ViewerPage[];
@@ -19,8 +14,8 @@ interface SlotReaderProps {
 /** Renders a reader that opens on a notice and closes on a chapter link. */
 export const SlotReader = ({ pages }: SlotReaderProps) => (
   <TailwindReader pages={pages}>
-    <ComicViewer.StartPage className={slotPageClassName}>
-      <div className={slotCardClassName}>
+    <ComicViewer.StartPage className={slotClassNames.slotPage}>
+      <div className={slotClassNames.slotCard}>
         <h3 className="text-base font-semibold">Before you read</h3>
         <p>
           This chapter is published a week ahead of its free release. Please
@@ -37,8 +32,8 @@ export const SlotReader = ({ pages }: SlotReaderProps) => (
       </div>
     </ComicViewer.StartPage>
 
-    <ComicViewer.EndPage className={slotPageClassName}>
-      <div className={slotCardClassName}>
+    <ComicViewer.EndPage className={slotClassNames.slotPage}>
+      <div className={slotClassNames.slotCard}>
         <h3 className="text-base font-semibold">Next chapter</h3>
         <p>Chapter 2 is ready to read.</p>
         <Link className="font-semibold underline" href="/">

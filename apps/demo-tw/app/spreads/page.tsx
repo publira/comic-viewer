@@ -1,3 +1,7 @@
+import {
+  pageSideUtilities,
+  readerClassNames,
+} from "../_components/reader-class-names";
 import { basicSamplePages } from "../_components/sample-pages";
 import { SourceCodePanel } from "../_components/source-code-panel";
 import { TailwindReader } from "../_components/tailwind-reader";
@@ -6,24 +10,17 @@ import { TailwindReader } from "../_components/tailwind-reader";
 // unpaired as well, so both ends of the arrangement are on screen.
 const spreadSamplePages = basicSamplePages.slice(0, 8);
 
-const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
+const sourceCode = `import { Reader } from "./reader";
 
-export const Reader = ({ pages }) => (
-  <ComicViewer.Root pages={pages} spreadStartIndex={1}>
-    <ComicViewer.Viewport>
-      <ComicViewer.ViewportTrack>
-        <ComicViewer.ViewportPageSet className="data-[page-side=left]:justify-start data-[page-side=right]:justify-end">
-          <ComicViewer.ViewportPageSlot className="data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
-            <ComicViewer.ViewportPage className="data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
-              <ComicViewer.PageCanvas />
-            </ComicViewer.ViewportPage>
-          </ComicViewer.ViewportPageSlot>
-        </ComicViewer.ViewportPageSet>
-      </ComicViewer.ViewportTrack>
-    </ComicViewer.Viewport>
-    <ComicViewer.Toolbar />
-    <ComicViewer.PageNavigation />
-  </ComicViewer.Root>
+// spreadStartIndex is the only thing this page adds. The alignment it relies
+// on is already part of the reader, which carries these variants alongside the
+// rest of its utilities:
+//
+//   ViewportPageSet   ${pageSideUtilities(readerClassNames.viewportPageSet)}
+//   ViewportPageSlot  ${pageSideUtilities(readerClassNames.viewportPageSlot)}
+//   ViewportPage      ${pageSideUtilities(readerClassNames.viewportPage)}
+export const SpreadsReader = ({ pages }) => (
+  <Reader pages={pages} spreadStartIndex={1} />
 );`;
 
 const SpreadsPage = () => (

@@ -4,10 +4,14 @@ import * as ComicViewer from "@publira/comic-viewer";
 import type {
   PageResolver,
   ReadingDirection,
+  ViewerPage,
   ViewerPageListProps,
   ViewerPlugin,
+  ViewportProps,
 } from "@publira/comic-viewer";
 import type { PropsWithChildren } from "react";
+
+import { readerClassNames } from "./reader-class-names";
 
 const encryptionKey = new Uint8Array([
   45, 128, 94, 16, 201, 73, 5, 164, 220, 39, 177, 8, 93, 251, 14, 66, 57, 186,
@@ -123,20 +127,17 @@ type TailwindReaderProps = PropsWithChildren<ViewerPageListProps> & {
   onEndReached?: () => void;
   /** Called when navigation requests a different zero-based page index. */
   onIndexChange?: (index: number) => void;
+  /** Fills the place of a page whose metadata is still being resolved. */
+  renderPendingPage?: ViewportProps<ViewerPage>["renderPendingPage"];
   /** Resolves the metadata of a page the reader is approaching. */
   resolvePage?: PageResolver;
   spreadStartIndex?: number;
 };
 
-/** Fills the place of a page whose metadata is still being resolved. */
-const renderPendingPage = () => (
-  <ComicViewer.ViewportPendingPage className="h-full w-full animate-pulse bg-slate-900" />
-);
-
 const NavigationIcon = ({ path }: { path: string }) => (
   <svg
     aria-hidden="true"
-    className="size-6 fill-none stroke-current stroke-2 [stroke-linecap:round] [stroke-linejoin:round]"
+    className={readerClassNames.navigationIcon}
     viewBox="0 0 24 24"
   >
     <path d={path} />
@@ -153,10 +154,12 @@ const NavigationControls = () => {
 
   return (
     <>
-      <ComicViewer.PreviousPageButton className="pointer-events-auto absolute start-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 p-0 text-slate-100 shadow-lg outline-offset-2 outline-slate-100 transition hover:bg-black/80 focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50">
+      <ComicViewer.PreviousPageButton
+        className={readerClassNames.previousPageButton}
+      >
         <NavigationIcon path={previousIcon} />
       </ComicViewer.PreviousPageButton>
-      <ComicViewer.NextPageButton className="pointer-events-auto absolute end-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 p-0 text-slate-100 shadow-lg outline-offset-2 outline-slate-100 transition hover:bg-black/80 focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50">
+      <ComicViewer.NextPageButton className={readerClassNames.nextPageButton}>
         <NavigationIcon path={nextIcon} />
       </ComicViewer.NextPageButton>
     </>
@@ -171,6 +174,7 @@ export const TailwindReader = ({
   mode = "basic",
   onEndReached,
   onIndexChange,
+  renderPendingPage,
   resolvePage,
   spreadStartIndex,
   ...pageListProps
@@ -184,30 +188,36 @@ export const TailwindReader = ({
     plugins={pluginsForMode[mode]}
     initialReadingDirection={initialReadingDirection}
     spreadStartIndex={spreadStartIndex}
-    className="relative flex h-full min-h-0 w-full min-w-0 overflow-hidden rounded-xl bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/30"
+    className={readerClassNames.root}
   >
     {children}
     <ComicViewer.Viewport
       renderPendingPage={renderPendingPage}
-      className="group/viewport relative flex min-h-0 min-w-0 flex-1 touch-pan-y overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing"
+      className={readerClassNames.viewport}
     >
-      <ComicViewer.ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset)))] data-[dragging]:transition-none data-[transition-state=active]:transition-transform data-[transition-state=active]:duration-[260ms] data-[transition-state=active]:ease-out data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]">
-        <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 data-[page-side=left]:justify-start data-[page-side=right]:justify-end data-[rail-slot=current]:[transform:translate(var(--pcv-pan-x,0)_var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))]">
-          <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:max-w-1/2 data-[view-mode=double]:basis-1/2">
-            <ComicViewer.ViewportPage className="flex h-full w-full min-w-0 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
-              <ComicViewer.PageCanvas className="h-full max-w-full bg-slate-900 object-contain transition-[filter] duration-150 group-data-[page-fit-mode=actual]/viewport:h-auto group-data-[page-fit-mode=actual]/viewport:w-auto group-data-[page-fit-mode=actual]/viewport:max-w-none group-data-[page-fit-mode=width]/viewport:h-auto group-data-[page-fit-mode=width]/viewport:w-full group-data-[page-fit-mode=width]/viewport:max-w-none data-[placeholder]:brightness-75 data-[placeholder]:saturate-75" />
+      <ComicViewer.ViewportTrack className={readerClassNames.viewportTrack}>
+        <ComicViewer.ViewportPageSet
+          className={readerClassNames.viewportPageSet}
+        >
+          <ComicViewer.ViewportPageSlot
+            className={readerClassNames.viewportPageSlot}
+          >
+            <ComicViewer.ViewportPage className={readerClassNames.viewportPage}>
+              <ComicViewer.PageCanvas className={readerClassNames.pageCanvas} />
             </ComicViewer.ViewportPage>
           </ComicViewer.ViewportPageSlot>
         </ComicViewer.ViewportPageSet>
       </ComicViewer.ViewportTrack>
     </ComicViewer.Viewport>
-    <ComicViewer.Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-linear-to-t from-black/80 via-black/55 to-transparent px-3 pt-8 pb-3 transition duration-150 ease-out aria-hidden:pointer-events-none aria-hidden:translate-y-2 aria-hidden:opacity-0">
-      <ComicViewer.PageProgress className="mx-auto min-w-0 shrink basis-3/5">
-        <ComicViewer.PageProgressTrack className="block h-1 w-full appearance-none overflow-hidden rounded-full border-0 bg-black/65 [&::-moz-progress-bar]:rounded-full [&::-moz-progress-bar]:bg-slate-100 [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:bg-slate-100" />
-        <ComicViewer.PageStatus className="mt-1.5 block text-center text-sm text-slate-100" />
+    <ComicViewer.Toolbar className={readerClassNames.toolbar}>
+      <ComicViewer.PageProgress className={readerClassNames.pageProgress}>
+        <ComicViewer.PageProgressTrack
+          className={readerClassNames.pageProgressTrack}
+        />
+        <ComicViewer.PageStatus className={readerClassNames.pageStatus} />
       </ComicViewer.PageProgress>
     </ComicViewer.Toolbar>
-    <ComicViewer.PageNavigation className="pointer-events-none absolute inset-0 z-10 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
+    <ComicViewer.PageNavigation className={readerClassNames.pageNavigation}>
       <NavigationControls />
     </ComicViewer.PageNavigation>
   </ComicViewer.Root>

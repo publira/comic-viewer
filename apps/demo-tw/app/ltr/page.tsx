@@ -2,24 +2,14 @@ import { basicSamplePages } from "../_components/sample-pages";
 import { SourceCodePanel } from "../_components/source-code-panel";
 import { TailwindReader } from "../_components/tailwind-reader";
 
-const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
+// "./reader" is the styled reader the front page shows in full, so the only
+// thing left for this snippet is the reading direction.
+const sourceCode = `import { Reader } from "./reader";
 
-export const Reader = ({ pages }) => (
-  <ComicViewer.Root pages={pages} initialReadingDirection="ltr">
-    <ComicViewer.Viewport>
-      <ComicViewer.ViewportTrack>
-        <ComicViewer.ViewportPageSet>
-          <ComicViewer.ViewportPageSlot>
-            <ComicViewer.ViewportPage>
-              <ComicViewer.PageCanvas />
-            </ComicViewer.ViewportPage>
-          </ComicViewer.ViewportPageSlot>
-        </ComicViewer.ViewportPageSet>
-      </ComicViewer.ViewportTrack>
-    </ComicViewer.Viewport>
-    <ComicViewer.Toolbar />
-    <ComicViewer.PageNavigation />
-  </ComicViewer.Root>
+// The buttons are placed with the logical start-3 and end-3, so they follow
+// the direction rather than needing a second set of utilities for it.
+export const LeftToRightReader = ({ pages }) => (
+  <Reader initialReadingDirection="ltr" pages={pages} />
 );`;
 
 const LeftToRightPage = () => (
