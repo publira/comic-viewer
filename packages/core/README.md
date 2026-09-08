@@ -14,6 +14,10 @@ yarn add @publira/comic-viewer
 
 `react` 19 or later is required as a peer dependency.
 
+## Versioning
+
+This project is pre-1.0 and does not yet follow strict Semantic Versioning guarantees. Within a `0.x.y` line, patch releases aim to preserve compatibility where reasonably possible. Minor `0.x` releases may include breaking API changes when they improve the library design or public API, so review the [changelog](https://github.com/publira/comic-viewer/blob/main/packages/core/CHANGELOG.md) before upgrading between minor versions.
+
 ## CSS setup
 
 Import the package stylesheet once in the client entry point or in the component that renders the viewer when you want the default layout and appearance:
