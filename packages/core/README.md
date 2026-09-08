@@ -18,15 +18,21 @@ yarn add @publira/comic-viewer
 
 This project is pre-1.0 and does not yet follow strict Semantic Versioning guarantees. Within a `0.x.y` line, patch releases aim to preserve compatibility where reasonably possible. Minor `0.x` releases may include breaking API changes when they improve the library design or public API, so review the [changelog](https://github.com/publira/comic-viewer/blob/main/packages/core/CHANGELOG.md) before upgrading between minor versions.
 
+### Planned breaking changes for `1.0.0`
+
+- The `./core.css` subpath, kept as an alias of `./default.css` throughout the `0.x` line, will be removed. Import `@publira/comic-viewer/default.css` instead.
+
 ## CSS setup
 
 Import the package stylesheet once in the client entry point or in the component that renders the viewer when you want the default layout and appearance:
 
 ```tsx
-import "@publira/comic-viewer/core.css";
+import "@publira/comic-viewer/default.css";
 ```
 
-`core.css` is optional. Omit it when you override the viewer styles through `className`, such as with Tailwind CSS, or when you provide all styles independently. In either case, give the viewer's parent an explicit size so the viewport can fill the available area. Compose the public `ViewportTrack`, `ViewportPageSet`, and `ViewportPageSlot` components to style the page-turn structure without targeting implementation classes.
+`default.css` is optional. Omit it when you override the viewer styles through `className`, such as with Tailwind CSS, or when you provide all styles independently. In either case, give the viewer's parent an explicit size so the viewport can fill the available area. Compose the public `ViewportTrack`, `ViewportPageSet`, and `ViewportPageSlot` components to style the page-turn structure without targeting implementation classes.
+
+The stylesheet was named `core.css` before it was renamed to `default.css`. `@publira/comic-viewer/core.css` still resolves to the same file for the rest of the `0.x` line, but it is deprecated and will be removed in `1.0.0`, so move existing imports to `@publira/comic-viewer/default.css`.
 
 ## Basic usage
 
@@ -35,7 +41,7 @@ Import the package namespace and compose `ComicViewer.Root` with `ComicViewer.Vi
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
-import "@publira/comic-viewer/core.css";
+import "@publira/comic-viewer/default.css";
 
 const pages: ViewerPage[] = [
   {
@@ -71,7 +77,7 @@ export function Reader() {
 
 ### Per-viewer theme
 
-When using `core.css`, each viewer root falls back to `#111111` for `--pcv-bg` and `#f3f3f3` for `--pcv-fg`. Add a class to `ComicViewer.Root` and set those properties on that same element to theme viewers independently:
+When using `default.css`, each viewer root falls back to `#111111` for `--pcv-bg` and `#f3f3f3` for `--pcv-fg`. Add a class to `ComicViewer.Root` and set those properties on that same element to theme viewers independently:
 
 ```tsx
 <ComicViewer.Root pages={pages} className="night-reader">
@@ -243,7 +249,7 @@ When the length of the document is not known upfront, such as when the next chap
 
 ## Tailwind CSS
 
-To style the viewer with Tailwind CSS, do not import `core.css`; apply the layout utilities through `className` instead. The root and viewport need an explicit size, flex layout, and hidden overflow.
+To style the viewer with Tailwind CSS, do not import `default.css`; apply the layout utilities through `className` instead. The root and viewport need an explicit size, flex layout, and hidden overflow.
 
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
@@ -276,7 +282,7 @@ import * as ComicViewer from "@publira/comic-viewer";
 </ComicViewer.Root>;
 ```
 
-None of this is decoration. The rail is three spreads wide, so `w-[300%]` and the `translateX(…)` transforms are what a page turn moves, and `--pcv-drag-offset` is what follows a finger during one; the transition is limited to `data-[transition-state=active]` so that only a settling turn animates and a drag tracks the pointer. The zoom and pan transform is limited to `data-[rail-slot=current]`, because only the spread the reader is on is zoomed, and `touch-pan-y` leaves vertical scrolling to the browser while a horizontal drag turns the page. The page fit modes are reported on `Viewport`, so `PageCanvas` reads them through the `group/viewport` variants. `Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else, so without `core.css` they would stay on screen permanently and the `aria-hidden` variant, which matches only the hidden state, is what hides them. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. [Reader control visibility](#reader-control-visibility) describes when that state changes.
+None of this is decoration. The rail is three spreads wide, so `w-[300%]` and the `translateX(…)` transforms are what a page turn moves, and `--pcv-drag-offset` is what follows a finger during one; the transition is limited to `data-[transition-state=active]` so that only a settling turn animates and a drag tracks the pointer. The zoom and pan transform is limited to `data-[rail-slot=current]`, because only the spread the reader is on is zoomed, and `touch-pan-y` leaves vertical scrolling to the browser while a horizontal drag turns the page. The page fit modes are reported on `Viewport`, so `PageCanvas` reads them through the `group/viewport` variants. `Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else, so without `default.css` they would stay on screen permanently and the `aria-hidden` variant, which matches only the hidden state, is what hides them. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. [Reader control visibility](#reader-control-visibility) describes when that state changes.
 
 In double-page mode the rail reports the half of the spread a page takes as `data-page-side="left"` or `data-page-side="right"`, on `ViewportPageSlot` and `ViewportPage`, and on `ViewportPageSet` while it holds a single page. The side follows the parity of the page's offset from `spreadStartIndex`, so an unpaired page keeps the side it would have had in a printed book: with `spreadStartIndex={1}` the cover faces the page after it instead of sharing its side. The attribute is absent in single-page mode, where a page has no facing half. Align each page against the edge of its half that faces the gutter, as the example does, so the two pages of a spread meet at the centre line instead of drifting apart on a viewport wider than the pages.
 

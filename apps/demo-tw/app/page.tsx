@@ -18,7 +18,7 @@ const Home = () => (
           Each page uses a normal image URL. This maintained styling reference
           composes the public viewer primitives with Tailwind utilities and
           deliberately does not import{" "}
-          <code>@publira/comic-viewer/core.css</code>. Nothing here is
+          <code>@publira/comic-viewer/default.css</code>. Nothing here is
           decoration: the rail turns pages because of <code>w-[300%]</code> and
           the <code>translateX(…)</code> transforms, and the toolbar and the
           navigation hide through <code>aria-hidden:opacity-0</code>, so the

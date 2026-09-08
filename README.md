@@ -4,7 +4,7 @@ A highly extensible, headless-UI inspired React comic viewer designed for modern
 
 It provides robust core functionalities like memory-efficient virtualization, responsive double-page spreads, and reading direction controls, while leaving the UI and data fetching pipeline entirely customizable.
 
-- [Standard demo](https://demo.comic-viewer.publira.dev/) — the viewer with the bundled `core.css` stylesheet.
+- [Standard demo](https://demo.comic-viewer.publira.dev/) — the viewer with the bundled `default.css` stylesheet.
 - [Tailwind CSS demo](https://demo-tw.comic-viewer.publira.dev/) — the same viewer styled through utilities on the public primitives, without the stylesheet.
 
 ## Features
@@ -28,12 +28,12 @@ pnpm add @publira/comic-viewer
 
 ## Usage
 
-Import the optional core CSS and assemble the viewer by composing `ComicViewer.Root` with the components you need.
+Import the optional default stylesheet and assemble the viewer by composing `ComicViewer.Root` with the components you need.
 
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
-import "@publira/comic-viewer/core.css";
+import "@publira/comic-viewer/default.css";
 
 const pages: ViewerPage[] = [
   {
