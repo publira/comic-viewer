@@ -10,7 +10,7 @@
   "files": [
     "dist",
     "README.md",
-    "src/core.css"
+    "src/default.css"
   ],
   "type": "module",
   "sideEffects": [
@@ -24,7 +24,8 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },
-    "./core.css": "./src/core.css"
+    "./default.css": "./src/default.css",
+    "./core.css": "./src/default.css"
   },
   "scripts": {
     "build": "tsdown",
