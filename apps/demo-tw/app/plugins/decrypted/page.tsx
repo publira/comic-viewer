@@ -4,6 +4,8 @@ import { TailwindReader } from "../../_components/tailwind-reader";
 
 const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 
+import { Reader } from "./reader";
+
 const encryptedJpegPlugin = ComicViewer.definePlugin({
   name: "encrypted-jpeg",
   customFetch: ({ signal, url }) =>
@@ -11,12 +13,10 @@ const encryptedJpegPlugin = ComicViewer.definePlugin({
   afterFetch: ({ buffer }) => decryptPage(buffer),
 });
 
-export const Reader = ({ pages }) => (
-  <ComicViewer.Root pages={pages} plugins={[encryptedJpegPlugin]}>
-    <ComicViewer.Viewport />
-    <ComicViewer.Toolbar />
-    <ComicViewer.PageNavigation />
-  </ComicViewer.Root>
+// A plugin changes how a page is fetched and transformed, never how it is
+// styled, so the reader is the one the front page shows, unchanged.
+export const DecryptedReader = ({ pages }) => (
+  <Reader pages={pages} plugins={[encryptedJpegPlugin]} />
 );`;
 
 const DecryptedPluginDemoPage = () => (

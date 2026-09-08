@@ -4,17 +4,17 @@ import { TailwindReader } from "../../_components/tailwind-reader";
 
 const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 
+import { Reader } from "./reader";
+
 const watermarkPlugin = ComicViewer.definePlugin({
   name: "text-watermark",
   afterFetch: ({ buffer }) => addWatermark(buffer),
 });
 
-export const Reader = ({ pages }) => (
-  <ComicViewer.Root pages={pages} plugins={[watermarkPlugin]}>
-    <ComicViewer.Viewport />
-    <ComicViewer.Toolbar />
-    <ComicViewer.PageNavigation />
-  </ComicViewer.Root>
+// A plugin changes how a page is fetched and transformed, never how it is
+// styled, so the reader is the one the front page shows, unchanged.
+export const WatermarkedReader = ({ pages }) => (
+  <Reader pages={pages} plugins={[watermarkPlugin]} />
 );`;
 
 const WatermarkPluginDemoPage = () => (

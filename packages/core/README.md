@@ -252,19 +252,31 @@ import * as ComicViewer from "@publira/comic-viewer";
   pages={pages}
   className="relative flex h-screen w-full min-h-0 min-w-0 overflow-hidden bg-neutral-950 text-neutral-100"
 >
-  <ComicViewer.Viewport className="relative flex min-h-0 min-w-0 flex-1 overflow-hidden">
-    <ComicViewer.ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset)))] transition-transform duration-[260ms] ease-out data-[dragging]:transition-none data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]">
-      <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 [transform:translate(var(--pcv-pan-x,0),var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))] data-[page-side=left]:justify-start data-[page-side=right]:justify-end">
+  <ComicViewer.Viewport className="group/viewport relative flex min-h-0 min-w-0 flex-1 touch-pan-y overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing">
+    <ComicViewer.ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset)))] data-[dragging]:transition-none data-[transition-state=active]:transition-transform data-[transition-state=active]:duration-[260ms] data-[transition-state=active]:ease-out data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]">
+      <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 data-[page-side=left]:justify-start data-[page-side=right]:justify-end data-[rail-slot=current]:[transform:translate(var(--pcv-pan-x,0)_var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))]">
         <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:basis-1/2 data-[view-mode=double]:max-w-1/2">
           <ComicViewer.ViewportPage className="flex h-full w-full min-w-0 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
-            <ComicViewer.PageCanvas className="h-full max-w-full object-contain" />
+            <ComicViewer.PageCanvas className="h-full max-w-full object-contain group-data-[page-fit-mode=actual]/viewport:h-auto group-data-[page-fit-mode=actual]/viewport:w-auto group-data-[page-fit-mode=actual]/viewport:max-w-none group-data-[page-fit-mode=width]/viewport:h-auto group-data-[page-fit-mode=width]/viewport:w-full group-data-[page-fit-mode=width]/viewport:max-w-none" />
           </ComicViewer.ViewportPage>
         </ComicViewer.ViewportPageSlot>
       </ComicViewer.ViewportPageSet>
     </ComicViewer.ViewportTrack>
   </ComicViewer.Viewport>
+  <ComicViewer.Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-linear-to-t from-black/80 via-black/55 to-transparent px-3 pt-8 pb-3 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
+    <ComicViewer.PageProgress className="mx-auto min-w-0 shrink basis-3/5">
+      <ComicViewer.PageProgressTrack className="block h-1 w-full appearance-none overflow-hidden rounded-full bg-black/65 [&::-moz-progress-bar]:bg-neutral-100 [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-neutral-100" />
+      <ComicViewer.PageStatus className="mt-1.5 block text-center text-sm" />
+    </ComicViewer.PageProgress>
+  </ComicViewer.Toolbar>
+  <ComicViewer.PageNavigation className="pointer-events-none absolute inset-0 z-10 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
+    <ComicViewer.PreviousPageButton className="pointer-events-auto absolute start-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
+    <ComicViewer.NextPageButton className="pointer-events-auto absolute end-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
+  </ComicViewer.PageNavigation>
 </ComicViewer.Root>;
 ```
+
+None of this is decoration. The rail is three spreads wide, so `w-[300%]` and the `translateX(…)` transforms are what a page turn moves, and `--pcv-drag-offset` is what follows a finger during one; the transition is limited to `data-[transition-state=active]` so that only a settling turn animates and a drag tracks the pointer. The zoom and pan transform is limited to `data-[rail-slot=current]`, because only the spread the reader is on is zoomed, and `touch-pan-y` leaves vertical scrolling to the browser while a horizontal drag turns the page. The page fit modes are reported on `Viewport`, so `PageCanvas` reads them through the `group/viewport` variants. `Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else, so without `core.css` they would stay on screen permanently and the `aria-hidden` variant, which matches only the hidden state, is what hides them. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. [Reader control visibility](#reader-control-visibility) describes when that state changes.
 
 In double-page mode the rail reports the half of the spread a page takes as `data-page-side="left"` or `data-page-side="right"`, on `ViewportPageSlot` and `ViewportPage`, and on `ViewportPageSet` while it holds a single page. The side follows the parity of the page's offset from `spreadStartIndex`, so an unpaired page keeps the side it would have had in a printed book: with `spreadStartIndex={1}` the cover faces the page after it instead of sharing its side. The attribute is absent in single-page mode, where a page has no facing half. Align each page against the edge of its half that faces the gutter, as the example does, so the two pages of a spread meet at the centre line instead of drifting apart on a viewport wider than the pages.
 
@@ -329,21 +341,6 @@ function Page() {
 A page's `placeholder` stays on the canvas while the full-resolution image loads and after it fails, so a retry never blanks the viewport. `PageCanvas` reflects the same state through `data-page-status`, `data-placeholder`, and `aria-busy`, which is set until the full page is drawn or the load fails.
 
 Pages rendered through `renderPage` bypass this pipeline entirely: they stay `"idle"` and never report an error, because the consumer loads their content.
-
-`Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else. Without `core.css` they would stay on screen permanently, so style both states yourself through the `aria-hidden` variant, which matches only the hidden state. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. `Toolbar` sets `dir` from the reading direction, so logical utilities such as `start-3` and the progress fill follow the reader automatically.
-
-```tsx
-<ComicViewer.Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-linear-to-t from-black/80 via-black/55 to-transparent px-3 pt-8 pb-3 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
-  <ComicViewer.PageProgress className="mx-auto min-w-0 shrink basis-3/5">
-    <ComicViewer.PageProgressTrack className="block h-1 w-full appearance-none overflow-hidden rounded-full bg-black/65 [&::-moz-progress-bar]:bg-neutral-100 [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-neutral-100" />
-    <ComicViewer.PageStatus className="mt-1.5 block text-center text-sm" />
-  </ComicViewer.PageProgress>
-</ComicViewer.Toolbar>
-<ComicViewer.PageNavigation className="pointer-events-none absolute inset-0 z-10 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
-  <ComicViewer.PreviousPageButton className="pointer-events-auto absolute start-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
-  <ComicViewer.NextPageButton className="pointer-events-auto absolute end-3 top-1/2 rounded-full bg-black/60 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50" />
-</ComicViewer.PageNavigation>
-```
 
 ## Page navigation
 
