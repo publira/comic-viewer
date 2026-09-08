@@ -1,0 +1,66 @@
+.main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  gap: 20px;
+}
+
+.viewer {
+  width: 100%;
+  aspect-ratio: var(--demo-double-page-aspect-ratio);
+  overflow: hidden;
+  border: 1px solid var(--demo-viewer-border);
+  border-radius: 8px;
+  background-color: var(--demo-viewer-background);
+}
+
+.viewerContent {
+  height: 100%;
+}
+
+/* The toggles that select one page-fit mode each are a group of their own, so
+   they sit together at the end of the bar the progress is centered in. */
+.pageFitModeGroup {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 0.25rem;
+}
+
+.description {
+  padding: 0.25rem 0;
+}
+
+.description h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.description p {
+  color: var(--demo-description-foreground);
+  line-height: 1.5;
+}
+
+.description p + p {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .viewer {
+    aspect-ratio: var(--demo-single-page-aspect-ratio);
+    border-radius: 4px;
+  }
+
+  .description h2 {
+    font-size: 1.3rem;
+  }
+}

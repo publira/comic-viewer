@@ -8,6 +8,7 @@ const navigationItems = [
   { href: "/spreads", label: "Spreads" },
   { href: "/slots", label: "Slots" },
   { href: "/ltr", label: "LTR" },
+  { href: "/controls", label: "Controls" },
   { href: "/fullscreen", label: "Fullscreen" },
   { href: "/progress", label: "Progress" },
   { href: "/lazy", label: "Lazy" },

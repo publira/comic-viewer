@@ -9,7 +9,8 @@ import type {
   ViewerPlugin,
   ViewportProps,
 } from "@publira/comic-viewer";
-import type { PropsWithChildren } from "react";
+import { Children, isValidElement } from "react";
+import type { PropsWithChildren, ReactNode } from "react";
 
 import { readerClassNames } from "./reader-class-names";
 
@@ -116,8 +117,9 @@ const pluginsForMode: Readonly<Record<ReaderMode, readonly ViewerPlugin[]>> = {
 };
 
 // The reader is given a page list, a page count, or both, exactly as the
-// viewer root is, and hands that pair straight through to it. A StartPage or
-// an EndPage is composed into it as a child, as it is into the viewer root.
+// viewer root is, and hands that pair straight through to it. A StartPage, an
+// EndPage, or a Toolbar is composed into it as a child, as it is into the
+// viewer root.
 type TailwindReaderProps = PropsWithChildren<ViewerPageListProps> & {
   /** The controlled zero-based page index, for a host that owns the position. */
   currentIndex?: number;
@@ -132,6 +134,33 @@ type TailwindReaderProps = PropsWithChildren<ViewerPageListProps> & {
   /** Resolves the metadata of a page the reader is approaching. */
   resolvePage?: PageResolver;
   spreadStartIndex?: number;
+};
+
+interface ReaderChildren {
+  /** The children left once the toolbar is taken out of the tree. */
+  children: ReactNode;
+  /** The Toolbar written among them, if the page composed one. */
+  toolbar?: ReactNode;
+}
+
+/**
+ * Splits a Toolbar written among the reader children out of the rest of the
+ * tree, so a page that wants extra controls composes a toolbar of its own
+ * instead of handing its contents to the reader through a prop.
+ */
+const extractToolbar = (children: ReactNode): ReaderChildren => {
+  let toolbar: ReactNode;
+  // oxlint-disable-next-line react/no-react-children -- Only Children enumerates the reader children without losing the keys they are rendered with.
+  const rest = Children.toArray(children).filter((child) => {
+    if (isValidElement(child) && child.type === ComicViewer.Toolbar) {
+      toolbar = child;
+      return false;
+    }
+
+    return true;
+  });
+
+  return { children: rest, toolbar };
 };
 
 const NavigationIcon = ({ path }: { path: string }) => (
@@ -178,47 +207,57 @@ export const TailwindReader = ({
   resolvePage,
   spreadStartIndex,
   ...pageListProps
-}: TailwindReaderProps) => (
-  <ComicViewer.Root
-    {...pageListProps}
-    currentIndex={currentIndex}
-    onEndReached={onEndReached}
-    onIndexChange={onIndexChange}
-    resolvePage={resolvePage}
-    plugins={pluginsForMode[mode]}
-    initialReadingDirection={initialReadingDirection}
-    spreadStartIndex={spreadStartIndex}
-    className={readerClassNames.root}
-  >
-    {children}
-    <ComicViewer.Viewport
-      renderPendingPage={renderPendingPage}
-      className={readerClassNames.viewport}
+}: TailwindReaderProps) => {
+  const { children: content, toolbar } = extractToolbar(children);
+
+  return (
+    <ComicViewer.Root
+      {...pageListProps}
+      currentIndex={currentIndex}
+      onEndReached={onEndReached}
+      onIndexChange={onIndexChange}
+      resolvePage={resolvePage}
+      plugins={pluginsForMode[mode]}
+      initialReadingDirection={initialReadingDirection}
+      spreadStartIndex={spreadStartIndex}
+      className={readerClassNames.root}
     >
-      <ComicViewer.ViewportTrack className={readerClassNames.viewportTrack}>
-        <ComicViewer.ViewportPageSet
-          className={readerClassNames.viewportPageSet}
-        >
-          <ComicViewer.ViewportPageSlot
-            className={readerClassNames.viewportPageSlot}
+      {content}
+      <ComicViewer.Viewport
+        renderPendingPage={renderPendingPage}
+        className={readerClassNames.viewport}
+      >
+        <ComicViewer.ViewportTrack className={readerClassNames.viewportTrack}>
+          <ComicViewer.ViewportPageSet
+            className={readerClassNames.viewportPageSet}
           >
-            <ComicViewer.ViewportPage className={readerClassNames.viewportPage}>
-              <ComicViewer.PageCanvas className={readerClassNames.pageCanvas} />
-            </ComicViewer.ViewportPage>
-          </ComicViewer.ViewportPageSlot>
-        </ComicViewer.ViewportPageSet>
-      </ComicViewer.ViewportTrack>
-    </ComicViewer.Viewport>
-    <ComicViewer.Toolbar className={readerClassNames.toolbar}>
-      <ComicViewer.PageProgress className={readerClassNames.pageProgress}>
-        <ComicViewer.PageProgressSlider
-          className={readerClassNames.pageProgressSlider}
-        />
-        <ComicViewer.PageStatus className={readerClassNames.pageStatus} />
-      </ComicViewer.PageProgress>
-    </ComicViewer.Toolbar>
-    <ComicViewer.PageNavigation className={readerClassNames.pageNavigation}>
-      <NavigationControls />
-    </ComicViewer.PageNavigation>
-  </ComicViewer.Root>
-);
+            <ComicViewer.ViewportPageSlot
+              className={readerClassNames.viewportPageSlot}
+            >
+              <ComicViewer.ViewportPage
+                className={readerClassNames.viewportPage}
+              >
+                <ComicViewer.PageCanvas
+                  className={readerClassNames.pageCanvas}
+                />
+              </ComicViewer.ViewportPage>
+            </ComicViewer.ViewportPageSlot>
+          </ComicViewer.ViewportPageSet>
+        </ComicViewer.ViewportTrack>
+      </ComicViewer.Viewport>
+      {toolbar ?? (
+        <ComicViewer.Toolbar className={readerClassNames.toolbar}>
+          <ComicViewer.PageProgress className={readerClassNames.pageProgress}>
+            <ComicViewer.PageProgressSlider
+              className={readerClassNames.pageProgressSlider}
+            />
+            <ComicViewer.PageStatus className={readerClassNames.pageStatus} />
+          </ComicViewer.PageProgress>
+        </ComicViewer.Toolbar>
+      )}
+      <ComicViewer.PageNavigation className={readerClassNames.pageNavigation}>
+        <NavigationControls />
+      </ComicViewer.PageNavigation>
+    </ComicViewer.Root>
+  );
+};
