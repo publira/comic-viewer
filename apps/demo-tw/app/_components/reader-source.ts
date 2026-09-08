@@ -60,7 +60,7 @@ export const Reader = ({ children, renderPendingPage, ...props }) => (
     </ComicViewer.Viewport>
     <ComicViewer.Toolbar className="${readerClassNames.toolbar}">
       <ComicViewer.PageProgress className="${readerClassNames.pageProgress}">
-        <ComicViewer.PageProgressTrack className="${readerClassNames.pageProgressTrack}" />
+        <ComicViewer.PageProgressSlider className="${readerClassNames.pageProgressSlider}" />
         <ComicViewer.PageStatus className="${readerClassNames.pageStatus}" />
       </ComicViewer.PageProgress>
     </ComicViewer.Toolbar>

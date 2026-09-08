@@ -224,6 +224,30 @@ export const getPreviousSpreadIndex = (
   return currentIndex - 1;
 };
 
+/**
+ * Returns the index the reading position lands on for `index`. A double-page
+ * spread is addressed by the page it starts from, so an index that falls on
+ * the facing page of a spread is pulled back to the page that opens it, while
+ * the pages before `spreadStartIndex` keep the index of their own.
+ */
+export const getSpreadIndex = (
+  index: number,
+  minIndex: number,
+  maxIndex: number,
+  spreadStartIndex: number,
+  viewMode: ViewMode
+): number => {
+  const clampedIndex = clamp(index, minIndex, maxIndex);
+
+  if (viewMode !== "double" || clampedIndex <= spreadStartIndex) {
+    return clampedIndex;
+  }
+
+  return (
+    spreadStartIndex + Math.floor((clampedIndex - spreadStartIndex) / 2) * 2
+  );
+};
+
 export const getVisiblePageCount = (
   viewMode: ViewMode,
   currentIndex: number,

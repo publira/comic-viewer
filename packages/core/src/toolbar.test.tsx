@@ -41,7 +41,7 @@ const getToolbar = (container: HTMLElement): HTMLElement =>
   getByClassName(container, "pcv-toolbar");
 
 describe(Toolbar, () => {
-  it("renders the reading progress by default", () => {
+  it("renders the reading progress as a slider by default", () => {
     const { container } = render(
       <ViewerProvider pages={pages} initialIndex={1}>
         <ControlsToggle />
@@ -50,13 +50,12 @@ describe(Toolbar, () => {
     );
     toggleControls();
 
-    const progress = screen.getByRole("progressbar", {
-      name: "Reading progress",
-    });
+    const slider = screen.getByRole("slider", { name: "Reading progress" });
 
-    expect(getToolbar(container)).toContainElement(progress);
-    expect(progress).toHaveAttribute("max", "3");
-    expect(progress).toHaveAttribute("value", "2");
+    expect(getToolbar(container)).toContainElement(slider);
+    expect(slider).toHaveAttribute("min", "0");
+    expect(slider).toHaveAttribute("max", "2");
+    expect(slider).toHaveValue("1");
     expect(screen.getByText("Page 2 of 3")).toBeInTheDocument();
   });
 
@@ -72,7 +71,38 @@ describe(Toolbar, () => {
     toggleControls();
 
     expect(screen.getByTestId("custom")).toBeInTheDocument();
-    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.queryByRole("slider")).toBeNull();
+  });
+
+  it("keeps its controls visible for the length of a slider drag", () => {
+    vi.useFakeTimers();
+
+    try {
+      const { container } = render(
+        <ViewerProvider pages={pages}>
+          <ControlsToggle />
+          <Toolbar />
+        </ViewerProvider>
+      );
+      const toolbar = getToolbar(container);
+
+      toggleControls();
+      fireEvent.pointerOver(toolbar);
+      fireEvent.pointerDown(screen.getByRole("slider"));
+      // A finger that drags past the edge of the toolbar leaves it, which is
+      // what used to let the controls hide and turn inert mid-drag.
+      fireEvent.pointerOut(toolbar);
+
+      act(() => vi.advanceTimersByTime(10_000));
+      expect(toolbar).toHaveAttribute("aria-hidden", "false");
+
+      fireEvent.pointerUp(window);
+
+      act(() => vi.advanceTimersByTime(2000));
+      expect(toolbar).toHaveAttribute("aria-hidden", "true");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("reveals and hides its controls together with PageNavigation", () => {
