@@ -6,6 +6,101 @@ const viewportTrack = ".pcv-viewport-track";
 const currentPageSet = '.pcv-viewport-page-set[data-rail-slot="current"]';
 const startSlotPage = '.pcv-page-slot[data-page-slot="start"]';
 const endSlotPage = '.pcv-page-slot[data-page-slot="end"]';
+const toolbar = ".pcv-toolbar";
+const progressSlider = ".pcv-page-progress-slider";
+/** The width both demos give the thumb of the reading-progress slider. */
+const SLIDER_THUMB_WIDTH = 14;
+
+/**
+ * Reveals the reader controls and leaves the pointer resting on them, which
+ * holds them open so that the rest of a test is not racing the countdown.
+ */
+const revealReaderControls = async (page: Page) => {
+  await page.locator(viewport).click();
+  await expect(page.locator(toolbar)).toHaveAttribute("aria-hidden", "false");
+
+  const toolbarBox = await page.locator(toolbar).boundingBox();
+
+  if (toolbarBox === null) {
+    throw new Error("The reader controls were not laid out.");
+  }
+
+  await page.mouse.move(
+    toolbarBox.x + toolbarBox.width / 2,
+    toolbarBox.y + toolbarBox.height / 2
+  );
+};
+
+interface SliderGeometry {
+  centreY: number;
+  isRightToLeft: boolean;
+  max: number;
+  min: number;
+  trackStart: number;
+  trackWidth: number;
+}
+
+const getSliderGeometry = async (page: Page): Promise<SliderGeometry> => {
+  const slider = page.locator(progressSlider);
+  const sliderBox = await slider.boundingBox();
+
+  if (sliderBox === null) {
+    throw new Error("The reading progress was not laid out.");
+  }
+
+  return {
+    centreY: sliderBox.y + sliderBox.height / 2,
+    isRightToLeft: (await page.locator(toolbar).getAttribute("dir")) === "rtl",
+    max: Number(await slider.getAttribute("max")),
+    min: Number(await slider.getAttribute("min")),
+    // The thumb travels between its own two halves, so the values the slider
+    // reports are spread over the track those halves leave inside its box.
+    trackStart: sliderBox.x + SLIDER_THUMB_WIDTH / 2,
+    trackWidth: sliderBox.width - SLIDER_THUMB_WIDTH,
+  };
+};
+
+/** The x coordinate the slider puts a navigable index at. */
+const getSliderX = (geometry: SliderGeometry, index: number): number => {
+  const ratio = (index - geometry.min) / (geometry.max - geometry.min);
+
+  return (
+    geometry.trackStart +
+    (geometry.isRightToLeft ? 1 - ratio : ratio) * geometry.trackWidth
+  );
+};
+
+/** Presses the thumb where it rests and drags it to an x coordinate. */
+const dragSliderThumbToX = async (
+  page: Page,
+  geometry: SliderGeometry,
+  x: number
+) => {
+  const value = Number(await page.locator(progressSlider).inputValue());
+
+  await page.mouse.move(getSliderX(geometry, value), geometry.centreY);
+  await page.mouse.down();
+  await page.mouse.move(x, geometry.centreY, { steps: 10 });
+  await page.mouse.up();
+};
+
+/** Drags the reading-progress thumb to a navigable index. */
+const dragSliderThumbTo = async (page: Page, index: number) => {
+  const geometry = await getSliderGeometry(page);
+
+  await dragSliderThumbToX(page, geometry, getSliderX(geometry, index));
+};
+
+/** Drags the reading-progress thumb to a share of the track from its left. */
+const dragSliderThumbToFraction = async (page: Page, fraction: number) => {
+  const geometry = await getSliderGeometry(page);
+
+  await dragSliderThumbToX(
+    page,
+    geometry,
+    geometry.trackStart + fraction * geometry.trackWidth
+  );
+};
 
 test("renders the basic reader and navigates through a double-page spread", async ({
   page,
@@ -548,4 +643,158 @@ test("leaves a control on a slot page out of the page-turn edge", async ({
 
   await expect(startPage.getByText("Early access comes with")).toBeVisible();
   await expect(page.locator(".pcv-page-status")).toHaveText("Start page");
+});
+
+test("scrubs to a page by dragging the reading-progress thumb", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/");
+  await revealReaderControls(page);
+
+  const geometry = await getSliderGeometry(page);
+
+  await page.mouse.move(getSliderX(geometry, 0), geometry.centreY);
+  await page.mouse.down();
+  await page.mouse.move(getSliderX(geometry, 10), geometry.centreY, {
+    steps: 10,
+  });
+
+  // The status follows the thumb, while the document waits for the drag to be
+  // released rather than turning at every index the thumb passes over.
+  await expect(page.locator(".pcv-page-status")).toHaveText(
+    "Pages 11-12 of 21"
+  );
+  await expect(
+    page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`)
+  ).toBeVisible();
+
+  await page.mouse.up();
+
+  await expect(page.locator(currentPageSet)).toHaveAttribute(
+    "data-page-count",
+    "2"
+  );
+  await expect(
+    page.locator(`${currentPageSet} canvas[aria-label="Page 11"]`)
+  ).toBeVisible();
+  await expect(
+    page.locator(`${currentPageSet} canvas[aria-label="Page 12"]`)
+  ).toBeVisible();
+  await expect(page.locator(".pcv-page-status")).toHaveText(
+    "Pages 11-12 of 21"
+  );
+});
+
+test("steps through the document with the arrow keys on the reading progress", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/ltr");
+  await revealReaderControls(page);
+  await page.locator(progressSlider).focus();
+
+  // One step of a range input is one index, which in double-page mode falls on
+  // the facing page of the spread the reader is already on, so the key moves
+  // on to the spread it was heading for.
+  await page.keyboard.press("ArrowRight");
+
+  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 21");
+  await expect(
+    page.locator(`${currentPageSet} canvas[aria-label="Page 3"]`)
+  ).toBeVisible();
+
+  await page.keyboard.press("ArrowLeft");
+
+  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 1-2 of 21");
+
+  await page.keyboard.press("End");
+
+  // The last page of an odd document has no page to face, and the slider ends
+  // on it as the page-turn controls do.
+  await expect(page.locator(".pcv-page-status")).toHaveText("Page 21 of 21");
+  await expect(page.locator(currentPageSet)).toHaveAttribute(
+    "data-page-count",
+    "1"
+  );
+});
+
+test("snaps a scrub to the page a spread starts from", async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/spreads");
+  await revealReaderControls(page);
+
+  await expect(page.locator(".pcv-page-status")).toHaveText("Page 1 of 8");
+
+  await dragSliderThumbTo(page, 4);
+
+  // The spreads of this document are counted from the second page, so index 4
+  // is the facing page of the spread that opens at index 3, and a spread is
+  // addressed by the page it starts from.
+  await expect(page.locator(progressSlider)).toHaveValue("3");
+  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 4-5 of 8");
+  await expect(page.locator(currentPageSet)).toHaveAttribute(
+    "data-page-count",
+    "2"
+  );
+});
+
+test("runs the reading progress the way the reader turns pages", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/");
+  await revealReaderControls(page);
+
+  // A quarter of the way in from the left edge is three quarters of the way
+  // through a document read from right to left.
+  await dragSliderThumbToFraction(page, 0.25);
+
+  await expect(page.locator(".pcv-page-status")).toHaveText(
+    "Pages 15-16 of 21"
+  );
+
+  await page.goto("/ltr");
+  await revealReaderControls(page);
+  await dragSliderThumbToFraction(page, 0.25);
+
+  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 5-6 of 21");
+});
+
+test("keeps the reader controls up for the length of a scrub", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/");
+  await revealReaderControls(page);
+
+  const geometry = await getSliderGeometry(page);
+
+  await page.mouse.move(getSliderX(geometry, 0), geometry.centreY);
+  await page.mouse.down();
+  // A finger that drags past the edge of the toolbar leaves it, which is what
+  // used to let the controls hide and turn inert underneath it.
+  await page.mouse.move(getSliderX(geometry, 6), geometry.centreY - 300, {
+    steps: 10,
+  });
+  await page.waitForTimeout(2500);
+
+  await expect(page.locator(toolbar)).toHaveAttribute("aria-hidden", "false");
+  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 7-8 of 21");
+
+  await page.mouse.up();
+
+  await expect(
+    page.locator(`${currentPageSet} canvas[aria-label="Page 7"]`)
+  ).toBeVisible();
+
+  // A captured pointer reports no boundary event, so the toolbar only learns
+  // that the pointer has left it once the released one moves again, and the
+  // slider holds the controls open through its focus for as long as it keeps
+  // it. The drag holds the controls on top of both, and this is what shows
+  // that its own hold ended with it rather than outlasting it.
+  await page.mouse.move(getSliderX(geometry, 6) - 20, geometry.centreY - 300);
+  await page.locator(progressSlider).blur();
+
+  await expect(page.locator(toolbar)).toHaveAttribute("aria-hidden", "true");
 });

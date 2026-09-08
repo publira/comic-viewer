@@ -271,7 +271,7 @@ import * as ComicViewer from "@publira/comic-viewer";
   </ComicViewer.Viewport>
   <ComicViewer.Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-linear-to-t from-black/80 via-black/55 to-transparent px-3 pt-8 pb-3 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">
     <ComicViewer.PageProgress className="mx-auto min-w-0 shrink basis-3/5">
-      <ComicViewer.PageProgressTrack className="block h-1 w-full appearance-none overflow-hidden rounded-full bg-black/65 [&::-moz-progress-bar]:bg-neutral-100 [&::-webkit-progress-bar]:bg-transparent [&::-webkit-progress-value]:bg-neutral-100" />
+      <ComicViewer.PageProgressSlider className="block h-3.5 w-full cursor-pointer appearance-none bg-transparent p-0 [--pcv-page-progress-fill-direction:to_right] rtl:[--pcv-page-progress-fill-direction:to_left] [&::-moz-range-thumb]:size-3.5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-neutral-100 [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-black/65 [&::-moz-range-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-neutral-100)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-black/65 [&::-webkit-slider-runnable-track]:[background-image:linear-gradient(var(--pcv-page-progress-fill-direction),var(--color-neutral-100)_var(--pcv-page-progress-fill),transparent_var(--pcv-page-progress-fill))] [&::-webkit-slider-thumb]:-mt-[0.3125rem] [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-0 [&::-webkit-slider-thumb]:bg-neutral-100" />
       <ComicViewer.PageStatus className="mt-1.5 block text-center text-sm" />
     </ComicViewer.PageProgress>
   </ComicViewer.Toolbar>
@@ -350,14 +350,14 @@ Pages rendered through `renderPage` bypass this pipeline entirely: they stay `"i
 
 ## Page navigation
 
-`ComicViewer.PageNavigation` provides accessible previous-page and next-page controls. Buttons are disabled at the first and last spread, and the control order follows the reader's direction. `ComicViewer.Toolbar` is its sibling and holds the reading progress: `PageProgressTrack` and `PageStatus`, which reports the currently visible page or range.
+`ComicViewer.PageNavigation` provides accessible previous-page and next-page controls. Buttons are disabled at the first and last spread, and the control order follows the reader's direction. `ComicViewer.Toolbar` is its sibling and holds the reading progress: `PageProgressSlider`, which scrubs to any page, and `PageStatus`, which reports the currently visible page or range.
 
-For a custom arrangement, compose `PreviousPageButton`, `NextPageButton`, `PageProgress`, `PageProgressTrack`, and `PageStatus` as children. These components render only semantic HTML and class names, leaving visual styling to the consumer.
+For a custom arrangement, compose `PreviousPageButton`, `NextPageButton`, `PageProgress`, `PageProgressSlider`, `PageProgressTrack`, and `PageStatus` as children. These components render only semantic HTML and class names, leaving visual styling to the consumer.
 
 ```tsx
 <ComicViewer.Toolbar className="reader-toolbar">
   <ComicViewer.PageProgress>
-    <ComicViewer.PageProgressTrack className="progress-bar" />
+    <ComicViewer.PageProgressSlider className="progress-slider" />
     <ComicViewer.PageStatus />
   </ComicViewer.PageProgress>
 </ComicViewer.Toolbar>
@@ -367,6 +367,25 @@ For a custom arrangement, compose `PreviousPageButton`, `NextPageButton`, `PageP
 </ComicViewer.PageNavigation>
 ```
 
+### Scrubbing to a page
+
+`PageProgressSlider` is a native `<input type="range">`, so it is operated with the arrow keys, <kbd>Home</kbd>, and <kbd>End</kbd> as well as by dragging its thumb, and it is disabled while a document holds a single reading position. It counts in the navigable indices `goTo` takes, from `minIndex` to `maxIndex`, so [a start or an end page](#start-and-end-pages) is a position on it like a page of the document is, and `aria-valuetext` names the page under the thumb rather than reading out the index. In double-page mode every value snaps to the page its spread starts from, `spreadStartIndex` included, so the slider lands on the same indices the page-turn controls do.
+
+A drag carries `PageStatus` and `PageProgressTrack` along with the thumb and turns the page on release alone, so `onIndexChange`, the page-turn transition, and page resolution run once for the page the reader settles on instead of at every index the thumb passes over. The reader controls stay held for the length of a drag, so a finger that leaves the toolbar mid-drag does not let them hide.
+
+`PageProgressTrack` remains a display-only `<progress>` element. Compose it in place of the slider for a reading progress that accepts no input, or next to it to paint the two separately:
+
+```tsx
+<ComicViewer.Toolbar>
+  <ComicViewer.PageProgress>
+    <ComicViewer.PageProgressTrack className="progress-bar" />
+    <ComicViewer.PageStatus />
+  </ComicViewer.PageProgress>
+</ComicViewer.Toolbar>
+```
+
+Without `default.css`, style the slider through `::-webkit-slider-runnable-track`, `::-moz-range-track`, `::-webkit-slider-thumb`, and `::-moz-range-thumb`. The slider sets `--pcv-page-progress-fill` to the share of the document its thumb rests at, as a percentage, for a track that paints the part behind it.
+
 ### Reader control visibility
 
 `Toolbar` and `PageNavigation` share one visibility state. Both start hidden, and a click or tap on the viewport away from the page-turn edges reveals them; a pannable page reveals them from anywhere. Another click, or a two-second pause, hides them again. Pressing <kbd>Enter</kbd> or <kbd>Space</kbd> on the focused viewport does the same from the keyboard. While hidden, both are `inert` and outside the accessibility tree, so their controls cannot be focused or read.
@@ -375,7 +394,7 @@ The countdown does not run while a pointer rests on either container or focus si
 
 Read `areControlsVisible` and call `toggleControls` from `useViewerContext` to drive the same state from your own controls, and `holdControls(true)` / `holdControls(false)` in balanced pairs to suspend and restart the countdown around your own container. `PageProgress` also takes a `visible` prop when it needs to hide independently of its container.
 
-`Toolbar` sets `dir` and `data-reading-direction` from the reader's direction, so its controls lay out along the reading direction and `PageProgressTrack` fills toward the page the reader is heading for: leftward in `rtl`, rightward in `ltr`.
+`Toolbar` sets `dir` and `data-reading-direction` from the reader's direction, so its controls lay out along the reading direction and the reading progress runs toward the page the reader is heading for: leftward in `rtl`, rightward in `ltr`. `PageProgressTrack` fills that way on its own, and `PageProgressSlider` moves its thumb that way, so a drag toward the next page follows the direction of the page turn.
 
 ## Plugins
 
