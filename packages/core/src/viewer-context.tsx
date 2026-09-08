@@ -60,6 +60,13 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   pageFitMode: PageFitMode;
   readingDirection: ReadingDirection;
   spreadStartIndex: number;
+  /**
+   * Whether the viewport is wide enough for a double-page spread, which
+   * `useViewMode` reports as it observes the viewport. It stays `true` for a
+   * reader that never runs that hook, so a control such as ViewModeToggle can
+   * disable itself rather than offer a mode the layout would drop again.
+   */
+  isDoublePageAvailable: boolean;
   /** Whether the reader controls, such as Toolbar and PageNavigation, show. */
   areControlsVisible: boolean;
   /**
@@ -75,6 +82,11 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
    */
   holdControls: (held: boolean) => void;
   setViewMode: (mode: ViewMode) => void;
+  /**
+   * Reports whether the viewport can show a double-page spread. `useViewMode`
+   * calls it, and so does a consumer that measures the viewport itself.
+   */
+  setDoublePageAvailable: (available: boolean) => void;
   setPageFitMode: (mode: PageFitMode) => void;
   setReadingDirection: (direction: ReadingDirection) => void;
   goToNext: () => void;
@@ -322,6 +334,10 @@ export const ViewerProvider = <TPage extends ViewerPage>({
 
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
 
+  // Nothing has measured the viewport yet, so a spread is taken to be within
+  // reach until a hook that watches the width says otherwise.
+  const [isDoublePageAvailable, setIsDoublePageAvailable] = useState(true);
+
   const [pageFitMode, setPageFitMode] =
     useState<PageFitMode>(initialPageFitMode);
 
@@ -430,6 +446,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       goToNext,
       goToPrev,
       holdControls,
+      isDoublePageAvailable,
       maxIndex,
       minIndex,
       pageCount: totalPageCount,
@@ -437,6 +454,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       pages: sourcePages,
       plugins,
       readingDirection,
+      setDoublePageAvailable: setIsDoublePageAvailable,
       setPageFitMode,
       setReadingDirection,
       setViewMode,
@@ -448,6 +466,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     [
       areControlsVisible,
       endPage,
+      isDoublePageAvailable,
       maxIndex,
       minIndex,
       sourcePages,

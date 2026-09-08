@@ -386,6 +386,32 @@ A drag carries `PageStatus` and `PageProgressTrack` along with the thumb and tur
 
 Without `default.css`, style the slider through `::-webkit-slider-runnable-track`, `::-moz-range-track`, `::-webkit-slider-thumb`, and `::-moz-range-thumb`. The slider sets `--pcv-page-progress-fill` to the share of the document its thumb rests at, as a percentage, for a track that paints the part behind it.
 
+### Reader setting toggles
+
+`ViewModeToggle`, `ReadingDirectionToggle`, and `PageFitModeToggle` drive the settings `useViewerContext` exposes, so a toolbar does not have to wire the setters and the pressed state by hand. Each is an independent named export that the default `Toolbar` never renders: they reach the tree only where you place them, and a reader that leaves them out pays nothing for them.
+
+Like the navigation buttons they render a semantic `<button>` with a class name and no icon, take their visual content through `children`, and accept `className`, `aria-label`, and an `onClick` that can `preventDefault` to cancel the change.
+
+```tsx
+<ComicViewer.Toolbar className="reader-toolbar">
+  <ComicViewer.ViewModeToggle>Spread</ComicViewer.ViewModeToggle>
+  <ComicViewer.ReadingDirectionToggle />
+  <div role="group" aria-label="Page fit">
+    <ComicViewer.PageFitModeToggle mode="height" />
+    <ComicViewer.PageFitModeToggle mode="width" />
+    <ComicViewer.PageFitModeToggle mode="actual" />
+  </div>
+</ComicViewer.Toolbar>
+```
+
+- `ViewModeToggle` switches between `"single"` and `"double"`, and reports the mode through both `aria-pressed` and `data-view-mode`. It disables itself while the viewport is narrower than `doublePageThreshold`, which `useViewMode` reports through `isDoublePageAvailable`, so it never offers a spread the layout would drop again.
+- `ReadingDirectionToggle` switches between `"rtl"` and `"ltr"` and reports the current direction through `data-reading-direction`. Neither direction is the pressed state of the other, so its default label names the direction instead.
+- `PageFitModeToggle` sets `"height"`, `"width"`, or `"actual"`. Given a `mode` it selects that mode and reports through `aria-pressed` whether it is the current one, which composes into a group you build yourself; given none, a single button cycles through the three. Either way the current mode is on `data-page-fit-mode`.
+
+`default.css` gives them no more than the pill the navigation buttons wear when they sit inside `Toolbar`; style them with your own classes or utilities anywhere else.
+
+Crossing the double-page threshold still sets the view mode, so a narrow viewport falls back to a single page and a wide one returns to a spread. A resize that leaves the threshold on the same side no longer overrides the mode, so a choice made through the toggle survives it.
+
 ### Reader control visibility
 
 `Toolbar` and `PageNavigation` share one visibility state. Both start hidden, and a click or tap on the viewport away from the page-turn edges reveals them; a pannable page reveals them from anywhere. Another click, or a two-second pause, hides them again. Pressing <kbd>Enter</kbd> or <kbd>Space</kbd> on the focused viewport does the same from the keyboard. While hidden, both are `inert` and outside the accessibility tree, so their controls cannot be focused or read.

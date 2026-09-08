@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useViewMode } from "./use-view-mode";
-import { ViewerProvider } from "./viewer-context";
+import { useViewerContext, ViewerProvider } from "./viewer-context";
 
 // eslint-disable-next-line eslint-plugin-promise/prefer-await-to-callbacks
 class MockResizeObserver {
@@ -109,6 +109,57 @@ describe(useViewMode, () => {
     });
 
     expect(result.current).toBe("double");
+  });
+
+  it("keeps a mode set through the context across a resize that stays wide", () => {
+    const { result } = renderHook(
+      () => {
+        const ref = useRef<HTMLDivElement>(document.createElement("div"));
+        const { setViewMode } = useViewerContext();
+
+        return { setViewMode, viewMode: useViewMode(ref, 768) };
+      },
+      { wrapper: makeWrapper() }
+    );
+
+    act(() => {
+      MockResizeObserver.trigger(1024);
+    });
+
+    act(() => {
+      result.current.setViewMode("single");
+    });
+
+    // The threshold is not crossed here, so the reader's own choice stands.
+    act(() => {
+      MockResizeObserver.trigger(1280);
+    });
+
+    expect(result.current.viewMode).toBe("single");
+  });
+
+  it("reports whether the container is wide enough for a spread", () => {
+    const { result } = renderHook(
+      () => {
+        const ref = useRef<HTMLDivElement>(document.createElement("div"));
+        useViewMode(ref, 768);
+
+        return useViewerContext().isDoublePageAvailable;
+      },
+      { wrapper: makeWrapper() }
+    );
+
+    act(() => {
+      MockResizeObserver.trigger(600);
+    });
+
+    expect(result.current).toBeFalsy();
+
+    act(() => {
+      MockResizeObserver.trigger(1024);
+    });
+
+    expect(result.current).toBeTruthy();
   });
 
   it("disconnects ResizeObserver on unmount", () => {

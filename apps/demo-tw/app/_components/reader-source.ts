@@ -8,6 +8,7 @@ import { readerClassNames } from "./reader-class-names";
  * pages show only what their topic adds and import this reader as `./reader`.
  */
 export const readerSourceCode = `import * as ComicViewer from "@publira/comic-viewer";
+import { Children, isValidElement } from "react";
 
 const NavigationIcon = ({ path }) => (
   <svg
@@ -39,33 +40,55 @@ const NavigationControls = () => {
   );
 };
 
+// A Toolbar written among the children takes the place of the default one, so
+// a page adds controls by composing a toolbar rather than through a prop.
+const extractToolbar = (children) => {
+  let toolbar;
+  const rest = Children.toArray(children).filter((child) => {
+    if (isValidElement(child) && child.type === ComicViewer.Toolbar) {
+      toolbar = child;
+      return false;
+    }
+
+    return true;
+  });
+
+  return { children: rest, toolbar };
+};
+
 // A StartPage or an EndPage is composed into the reader as a child, exactly as
 // it is into the viewer root, and every other prop is handed straight through.
-export const Reader = ({ children, renderPendingPage, ...props }) => (
-  <ComicViewer.Root {...props} className="${readerClassNames.root}">
-    {children}
-    <ComicViewer.Viewport
-      renderPendingPage={renderPendingPage}
-      className="${readerClassNames.viewport}"
-    >
-      <ComicViewer.ViewportTrack className="${readerClassNames.viewportTrack}">
-        <ComicViewer.ViewportPageSet className="${readerClassNames.viewportPageSet}">
-          <ComicViewer.ViewportPageSlot className="${readerClassNames.viewportPageSlot}">
-            <ComicViewer.ViewportPage className="${readerClassNames.viewportPage}">
-              <ComicViewer.PageCanvas className="${readerClassNames.pageCanvas}" />
-            </ComicViewer.ViewportPage>
-          </ComicViewer.ViewportPageSlot>
-        </ComicViewer.ViewportPageSet>
-      </ComicViewer.ViewportTrack>
-    </ComicViewer.Viewport>
-    <ComicViewer.Toolbar className="${readerClassNames.toolbar}">
-      <ComicViewer.PageProgress className="${readerClassNames.pageProgress}">
-        <ComicViewer.PageProgressSlider className="${readerClassNames.pageProgressSlider}" />
-        <ComicViewer.PageStatus className="${readerClassNames.pageStatus}" />
-      </ComicViewer.PageProgress>
-    </ComicViewer.Toolbar>
-    <ComicViewer.PageNavigation className="${readerClassNames.pageNavigation}">
-      <NavigationControls />
-    </ComicViewer.PageNavigation>
-  </ComicViewer.Root>
-);`;
+export const Reader = ({ children, renderPendingPage, ...props }) => {
+  const { children: content, toolbar } = extractToolbar(children);
+
+  return (
+    <ComicViewer.Root {...props} className="${readerClassNames.root}">
+      {content}
+      <ComicViewer.Viewport
+        renderPendingPage={renderPendingPage}
+        className="${readerClassNames.viewport}"
+      >
+        <ComicViewer.ViewportTrack className="${readerClassNames.viewportTrack}">
+          <ComicViewer.ViewportPageSet className="${readerClassNames.viewportPageSet}">
+            <ComicViewer.ViewportPageSlot className="${readerClassNames.viewportPageSlot}">
+              <ComicViewer.ViewportPage className="${readerClassNames.viewportPage}">
+                <ComicViewer.PageCanvas className="${readerClassNames.pageCanvas}" />
+              </ComicViewer.ViewportPage>
+            </ComicViewer.ViewportPageSlot>
+          </ComicViewer.ViewportPageSet>
+        </ComicViewer.ViewportTrack>
+      </ComicViewer.Viewport>
+      {toolbar ?? (
+        <ComicViewer.Toolbar className="${readerClassNames.toolbar}">
+          <ComicViewer.PageProgress className="${readerClassNames.pageProgress}">
+            <ComicViewer.PageProgressSlider className="${readerClassNames.pageProgressSlider}" />
+            <ComicViewer.PageStatus className="${readerClassNames.pageStatus}" />
+          </ComicViewer.PageProgress>
+        </ComicViewer.Toolbar>
+      )}
+      <ComicViewer.PageNavigation className="${readerClassNames.pageNavigation}">
+        <NavigationControls />
+      </ComicViewer.PageNavigation>
+    </ComicViewer.Root>
+  );
+};`;

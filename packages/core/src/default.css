@@ -298,6 +298,42 @@
   outline-offset: 2px;
 }
 
+/* The reader-setting toggles ship without a look of their own, so a consumer
+   that places one in the toolbar gets no more than the pill the navigation
+   buttons wear, sized for a text label. */
+.pcv-toolbar .pcv-view-mode-toggle,
+.pcv-toolbar .pcv-reading-direction-toggle,
+.pcv-toolbar .pcv-page-fit-mode-toggle {
+  flex: 0 0 auto;
+  padding: 0.25rem 0.625rem;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in oklab, #000000 60%, transparent);
+  color: var(--pcv-fg, #f3f3f3);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+
+.pcv-toolbar .pcv-view-mode-toggle[aria-pressed="true"],
+.pcv-toolbar .pcv-page-fit-mode-toggle[aria-pressed="true"] {
+  background: color-mix(in oklab, var(--pcv-fg, #f3f3f3) 22%, transparent);
+}
+
+.pcv-toolbar .pcv-view-mode-toggle:disabled,
+.pcv-toolbar .pcv-reading-direction-toggle:disabled,
+.pcv-toolbar .pcv-page-fit-mode-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.pcv-toolbar .pcv-view-mode-toggle:focus-visible,
+.pcv-toolbar .pcv-reading-direction-toggle:focus-visible,
+.pcv-toolbar .pcv-page-fit-mode-toggle:focus-visible {
+  outline: 2px solid var(--pcv-fg, #f3f3f3);
+  outline-offset: 2px;
+}
+
 /* The auto inline margins split the leftover toolbar width evenly, so the
    progress keeps its size and stays centered as other controls join it. */
 .pcv-page-progress {

@@ -621,6 +621,100 @@ test("pairs the end page with the last page of an odd chapter", async ({
   );
 });
 
+/**
+ * Returns a control of the toggle demo, tapping the page first while the
+ * reader controls are still hidden. A hidden control is out of the
+ * accessibility tree, so the role locator resolves to nothing until then.
+ * The pointer is left resting on the toolbar, which holds the controls open
+ * for the rest of the test instead of letting the countdown hide them
+ * between one assertion and the next.
+ */
+const revealReaderControl = async (page: Page, name: string) => {
+  const control = page.getByRole("button", { name });
+
+  if (!(await control.isVisible())) {
+    await page.locator(viewport).click();
+  }
+
+  await expect(control).toBeVisible();
+  // A disabled button reports no pointer events of its own, so the hold comes
+  // from resting the pointer on the toolbar that holds it.
+  await page.locator(".pcv-toolbar").hover();
+
+  return control;
+};
+
+test("switches the view mode from the toolbar toggle", async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/controls");
+
+  const viewModeToggle = await revealReaderControl(page, "Double-page view");
+
+  await expect(viewModeToggle).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 1-2 of 21");
+
+  await viewModeToggle.click();
+
+  await expect(viewModeToggle).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator(viewport)).toHaveAttribute(
+    "data-view-mode",
+    "single"
+  );
+  await expect(page.locator(".pcv-page-status")).toHaveText("Page 1 of 21");
+});
+
+test("disables the view-mode toggle on a viewport too narrow for a spread", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 600 });
+  await page.goto("/controls");
+
+  await expect(page.locator(viewport)).toHaveAttribute(
+    "data-view-mode",
+    "single"
+  );
+  await expect(
+    await revealReaderControl(page, "Double-page view")
+  ).toBeDisabled();
+});
+
+test("switches the reading direction and the page fit from the toolbar", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/controls");
+
+  const directionToggle = await revealReaderControl(
+    page,
+    "Reading direction: Right to left"
+  );
+  await directionToggle.click();
+
+  await expect(page.locator(viewport)).toHaveAttribute(
+    "data-reading-direction",
+    "ltr"
+  );
+  // The toggle names the direction it is on, so it answers to the other name
+  // once the reader has turned around.
+  await expect(
+    page.getByRole("button", { name: "Reading direction: Left to right" })
+  ).toHaveAttribute("data-reading-direction", "ltr");
+
+  const fitToHeight = await revealReaderControl(page, "Fit to height");
+  const fitToWidth = await revealReaderControl(page, "Fit to width");
+
+  await expect(fitToHeight).toHaveAttribute("aria-pressed", "true");
+
+  await fitToWidth.click();
+
+  await expect(fitToWidth).toHaveAttribute("aria-pressed", "true");
+  await expect(fitToHeight).toHaveAttribute("aria-pressed", "false");
+  await expect(page.locator(viewport)).toHaveAttribute(
+    "data-page-fit-mode",
+    "width"
+  );
+});
+
 test("leaves a control on a slot page out of the page-turn edge", async ({
   page,
 }) => {

@@ -12,6 +12,7 @@ export const readerClassNames = {
     "pointer-events-auto absolute end-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 p-0 text-slate-100 shadow-lg outline-offset-2 outline-slate-100 transition hover:bg-black/80 focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50",
   pageCanvas:
     "h-full max-w-full bg-slate-900 object-contain transition-[filter] duration-150 group-data-[page-fit-mode=actual]/viewport:h-auto group-data-[page-fit-mode=actual]/viewport:w-auto group-data-[page-fit-mode=actual]/viewport:max-w-none group-data-[page-fit-mode=width]/viewport:h-auto group-data-[page-fit-mode=width]/viewport:w-full group-data-[page-fit-mode=width]/viewport:max-w-none data-[placeholder]:brightness-75 data-[placeholder]:saturate-75",
+  pageFitModeGroup: "flex shrink-0 items-center gap-1",
   pageNavigation:
     "pointer-events-none absolute inset-0 z-10 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0",
   pageProgress: "mx-auto min-w-0 shrink basis-3/5",
@@ -25,6 +26,13 @@ export const readerClassNames = {
   previousPageButton:
     "pointer-events-auto absolute start-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full bg-black/60 p-0 text-slate-100 shadow-lg outline-offset-2 outline-slate-100 transition hover:bg-black/80 focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50",
   root: "relative flex h-full min-h-0 w-full min-w-0 overflow-hidden rounded-xl bg-slate-950 text-slate-100 shadow-2xl shadow-slate-950/30",
+  /**
+   * The reader-setting toggles carry no look of their own, so the demo dresses
+   * them as the pill the navigation buttons wear and lets `aria-pressed` mark
+   * the mode the reader is on.
+   */
+  settingToggle:
+    "shrink-0 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-slate-100 outline-offset-2 outline-slate-100 transition hover:bg-black/80 focus-visible:outline-2 disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:bg-slate-100/25",
   toolbar:
     "absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-linear-to-t from-black/80 via-black/55 to-transparent px-3 pt-8 pb-3 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0",
   viewport:

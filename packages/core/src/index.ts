@@ -63,6 +63,14 @@ export {
   type PageStatusProps,
   type PageStatusValue,
 } from "./page-navigation";
+export {
+  PageFitModeToggle,
+  ReadingDirectionToggle,
+  ViewModeToggle,
+  type PageFitModeToggleProps,
+  type ReadingDirectionToggleProps,
+  type ViewModeToggleProps,
+} from "./reader-settings";
 export { useViewMode } from "./use-view-mode";
 export {
   definePlugin,
