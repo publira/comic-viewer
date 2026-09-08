@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.63.0",
     "@publira/comic-viewer-demo": "workspace:*",
     "@publira/comic-viewer-tailwind-demo": "workspace:*",
     "@types/node": "24.13.3",
