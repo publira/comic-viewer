@@ -52,6 +52,10 @@ export interface ViewportPageSlotProps extends ComponentPropsWithoutRef<"div"> {
   "data-page-slot"?: ViewerSlot;
   /** Present while the page held by the slot is still being resolved. */
   "data-page-status"?: "pending";
+  /** The one-based position an extra page takes among the pages of its slot. */
+  "data-slot-page"?: number;
+  /** How many pages the slot an extra page belongs to holds. */
+  "data-slot-page-count"?: number;
   "data-view-mode"?: "single" | "double";
 }
 

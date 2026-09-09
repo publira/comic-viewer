@@ -16,23 +16,48 @@ import { Reader } from "./reader";
 const slotPageClassName =
   "${slotClassNames.slotPage}";
 
+// The sheet gives the extra page the shape and the colour of a page, and the
+// card floats at the centre of it.
+const slotSheetClassName =
+  "${slotClassNames.slotSheet}";
+
 const slotCardClassName =
   "${slotClassNames.slotCard}";
 
+const SlotSheet = ({ children }) => (
+  <div className={slotSheetClassName}>
+    <div className={slotCardClassName}>{children}</div>
+  </div>
+);
+
 // The reader hands its children to the viewer root, so a start or an end page
-// is composed into it exactly as it is into ComicViewer.Root.
+// is composed into it exactly as it is into ComicViewer.Root, and each end
+// takes as many of them as it is written with. Counting the spreads from the
+// first start page pairs the two of them.
 export const SlotReader = ({ pages }) => (
-  <Reader pages={pages}>
+  <Reader pages={pages} spreadStartIndex={-2}>
     <ComicViewer.StartPage className={slotPageClassName}>
-      <div className={slotCardClassName}>
+      <SlotSheet>
         <CoverNotice />
-      </div>
+      </SlotSheet>
+    </ComicViewer.StartPage>
+
+    <ComicViewer.StartPage className={slotPageClassName}>
+      <SlotSheet>
+        <ChapterTitleCard />
+      </SlotSheet>
     </ComicViewer.StartPage>
 
     <ComicViewer.EndPage className={slotPageClassName}>
-      <div className={slotCardClassName}>
+      <SlotSheet>
         <NextChapterCard />
-      </div>
+      </SlotSheet>
+    </ComicViewer.EndPage>
+
+    <ComicViewer.EndPage className={slotPageClassName}>
+      <SlotSheet>
+        <SeriesRecommendations />
+      </SlotSheet>
     </ComicViewer.EndPage>
   </Reader>
 );`;
@@ -50,11 +75,17 @@ const SlotsPage = () => (
         <h2 className="font-semibold">Pages around the chapter</h2>
         <p className="mt-2 text-slate-600 dark:text-slate-300">
           <code>StartPage</code> and <code>EndPage</code> put content of your
-          own at the two ends of the reading sequence, and neither of them is
-          counted as a page: the progress still reads{" "}
-          <code>Pages 1-2 of 7</code> on the first spread. They carry the same{" "}
-          <code>data-page-side</code> attribute as a page, so the same variants
-          keep them on the half of the spread they belong to.
+          own at the two ends of the reading sequence, as many of them at each
+          end as you write, and none of them is counted as a page: the progress
+          reads <code>Pages 1-2 of 7</code> on the first spread of the chapter.
+          This reader counts the spreads from the first start page with{" "}
+          <code>spreadStartIndex=&#123;-2&#125;</code>, so the two opening pages
+          face each other. They carry the same <code>data-page-side</code>{" "}
+          attribute as a page, so the same variants keep them on the half of the
+          spread they belong to, and a <code>data-slot-page</code> attribute of
+          their own for the place each of them takes in its slot. Each one is
+          laid out as a sheet the shape of a page, with its card floating at the
+          centre.
         </p>
       </section>
       <SourceCodePanel code={sourceCode} />
