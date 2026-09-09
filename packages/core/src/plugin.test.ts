@@ -1,7 +1,31 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { definePlugin, runDataPipeline, runPageChangeHooks } from "./plugin";
+import type { DecodedPageImage } from "./page-image";
+import {
+  definePlugin,
+  runDataPipeline,
+  runDecodePipeline,
+  runPageChangeHooks,
+} from "./plugin";
 import type { ViewerPage } from "./viewer-context";
+
+const decodedPage: ViewerPage = {
+  id: "page-1",
+  src: "page.jpg",
+  title: "Page 1",
+};
+
+/** A decoded image that records whether the pipeline released it. */
+const createDecodedImage = (name: string): DecodedPageImage =>
+  ({
+    close: vi.fn<() => void>(),
+    height: 2,
+    name,
+    width: 1,
+  }) as unknown as ImageBitmap;
+
+const releaseOf = (image: DecodedPageImage): (() => void) =>
+  (image as ImageBitmap).close;
 
 describe("plugin pipeline", () => {
   it("defines plugins without changing their hook implementations", () => {
@@ -121,6 +145,99 @@ describe("plugin pipeline", () => {
     expect(fetchMock).toHaveBeenCalledWith("page.jpg", {
       signal: abortController.signal,
     });
+  });
+
+  it("runs decode hooks in order and passes each image to the next hook", async () => {
+    const events: string[] = [];
+    const decodedImage = createDecodedImage("decoded");
+    const watermarkedImage = createDecodedImage("watermarked");
+    const abortController = new AbortController();
+
+    const result = await runDecodePipeline(
+      {
+        image: decodedImage,
+        page: decodedPage,
+        signal: abortController.signal,
+        url: "page.jpg",
+      },
+      [
+        definePlugin({
+          afterDecode: ({ image, page, signal, url }) => {
+            events.push(
+              `watermark:${url}:${page.id}:${String(signal === abortController.signal)}:${String(image === decodedImage)}`
+            );
+            return watermarkedImage;
+          },
+          name: "watermark",
+        }),
+        definePlugin({
+          afterDecode: ({ image }) => {
+            events.push(`measure:${String(image === watermarkedImage)}`);
+          },
+          name: "measure",
+        }),
+      ]
+    );
+
+    expect(result).toBe(watermarkedImage);
+    expect(events).toStrictEqual([
+      "watermark:page.jpg:page-1:true:true",
+      "measure:true",
+    ]);
+    // The viewer owns the decoded image, so the replaced one is released here
+    // rather than left to the garbage collector.
+    expect(releaseOf(decodedImage)).toHaveBeenCalledOnce();
+    expect(releaseOf(watermarkedImage)).not.toHaveBeenCalled();
+  });
+
+  it("keeps the decoded image when no hook returns one", async () => {
+    const decodedImage = createDecodedImage("decoded");
+    const inspect = vi.fn<() => void>();
+
+    await expect(
+      runDecodePipeline(
+        {
+          image: decodedImage,
+          page: decodedPage,
+          signal: new AbortController().signal,
+          url: "page.jpg",
+        },
+        [definePlugin({ afterDecode: inspect, name: "inspect" })]
+      )
+    ).resolves.toBe(decodedImage);
+    expect(inspect).toHaveBeenCalledOnce();
+    expect(releaseOf(decodedImage)).not.toHaveBeenCalled();
+  });
+
+  it("reports a failing decode hook with the image-transform stage", async () => {
+    const decodedImage = createDecodedImage("decoded");
+    const followingHook = vi.fn<() => void>();
+
+    await expect(
+      runDecodePipeline(
+        {
+          image: decodedImage,
+          page: decodedPage,
+          signal: new AbortController().signal,
+          url: "page.jpg",
+        },
+        [
+          definePlugin({
+            afterDecode: () => {
+              throw new Error("canvas unavailable");
+            },
+            name: "failing-watermark",
+          }),
+          definePlugin({ afterDecode: followingHook, name: "measure" }),
+        ]
+      )
+    ).rejects.toMatchObject({
+      cause: new Error("canvas unavailable"),
+      stage: "image-transform",
+    });
+    expect(followingHook).not.toHaveBeenCalled();
+    // A failed pipeline leaves no image for the caller to release.
+    expect(releaseOf(decodedImage)).toHaveBeenCalledOnce();
   });
 
   it("runs page-change hooks sequentially", async () => {

@@ -60,6 +60,11 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   /** The EndPage children of the viewer, in the order they are written. */
   endPages: readonly ReactNode[];
   plugins: readonly ViewerPlugin[];
+  /**
+   * How many spreads beyond the ones the viewport can render have their
+   * images fetched and decoded ahead of the reader in each direction.
+   */
+  imagePreloadSpreads: number;
   currentIndex: number;
   viewMode: ViewMode;
   pageFitMode: PageFitMode;
@@ -153,6 +158,15 @@ export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
    * however narrow this window is.
    */
   pageResolveOverscan?: number;
+  /**
+   * How many spreads beyond the ones the viewport can render have their
+   * images fetched and decoded ahead of the reader in each direction.
+   * Defaults to `0`, which loads nothing the viewport cannot show. A
+   * preloaded image is kept until it leaves this wider window, and its load
+   * is queued behind the spreads on screen, so preloading never delays the
+   * page the reader is waiting for.
+   */
+  imagePreloadSpreads?: number;
   /** Called when `resolvePage` rejects for a page. */
   onPageResolveError?: (error: PageResolveError) => void;
   /**
@@ -252,6 +266,7 @@ const CONTROLS_HIDE_DELAY_MS = 2000;
  */
 export const START_PAGE_INDEX = -1;
 const DEFAULT_END_REACHED_THRESHOLD = 2;
+const DEFAULT_IMAGE_PRELOAD_SPREADS = 0;
 
 const clamp = (value: number, min: number, max: number): number => {
   if (!Number.isFinite(value)) {
@@ -394,6 +409,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   pageCount,
   resolvePage,
   pageResolveOverscan = DEFAULT_PAGE_RESOLVE_OVERSCAN,
+  imagePreloadSpreads = DEFAULT_IMAGE_PRELOAD_SPREADS,
   onPageResolveError,
   onEndReached,
   endReachedThreshold = DEFAULT_END_REACHED_THRESHOLD,
@@ -448,6 +464,12 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     pages,
     resolvePage,
   });
+
+  const clampedImagePreloadSpreads = clamp(
+    imagePreloadSpreads,
+    0,
+    Number.MAX_SAFE_INTEGER
+  );
 
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
 
@@ -578,6 +600,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       goToNext,
       goToPrev,
       holdControls,
+      imagePreloadSpreads: clampedImagePreloadSpreads,
       isDoublePageAvailable,
       maxIndex,
       minIndex,
@@ -599,6 +622,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     }),
     [
       areControlsVisible,
+      clampedImagePreloadSpreads,
       endPages,
       isDoublePageAvailable,
       maxIndex,
