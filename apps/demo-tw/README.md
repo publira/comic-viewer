@@ -4,6 +4,8 @@ This maintained demo application is a styling reference for using `@publira/comi
 
 The reader composes the public `ViewportTrack`, `ViewportPageSet`, `ViewportPageSlot`, `ViewportPage`, `ViewportPendingPage`, and `PageCanvas` primitives so that its page rail, responsive spreads, page-fit modes, and reader controls are styled with Tailwind utilities rather than implementation selectors.
 
+It is deployed at [demo-tw.comic-viewer.publira.dev](https://demo-tw.comic-viewer.publira.dev/). The [standard demo](https://demo.comic-viewer.publira.dev/) shows the same viewer with the bundled stylesheet instead.
+
 ## Run locally
 
 From the repository root:

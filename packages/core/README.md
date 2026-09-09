@@ -2,6 +2,11 @@
 
 A composable React viewer for comics and manga. It provides a virtualized viewport, responsive single- and double-page modes, and plugin hooks for custom page-fetching and transformation pipelines.
 
+## Demos
+
+- [Standard demo](https://demo.comic-viewer.publira.dev/) — the viewer with the bundled `default.css` stylesheet.
+- [Tailwind CSS demo](https://demo-tw.comic-viewer.publira.dev/) — the same viewer styled through utilities on the public primitives, without the stylesheet.
+
 ## Installation
 
 ```bash
@@ -276,6 +281,8 @@ When the length of the document is not known upfront, such as when the next chap
 ## Tailwind CSS
 
 To style the viewer with Tailwind CSS, do not import `default.css`; apply the layout utilities through `className` instead. The root and viewport need an explicit size, flex layout, and hidden overflow.
+
+The [Tailwind CSS demo](https://demo-tw.comic-viewer.publira.dev/) is the maintained reference for this setup: it is built from the same primitives as the snippets below, and its source lives in [`apps/demo-tw`](https://github.com/publira/comic-viewer/tree/main/apps/demo-tw).
 
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
