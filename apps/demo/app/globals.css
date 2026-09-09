@@ -151,18 +151,37 @@ code {
 }
 
 .demo-navigation-menu {
+  --demo-navigation-menu-gap: 0.25rem;
+
   position: absolute;
   z-index: 30;
   top: 100%;
   left: 0;
   min-width: 12rem;
-  margin-top: 0.25rem;
+  margin-top: var(--demo-navigation-menu-gap);
   padding: 0.35rem;
   border: 1px solid var(--demo-border);
   border-radius: 0.5rem;
   background: var(--demo-panel-background);
   box-shadow: 0 12px 28px rgb(0 0 0 / 18%);
   list-style: none;
+}
+
+/*
+ * The menu stands clear of the tab it opens from, and the gap that leaves
+ * belongs to neither of them: a pointer travelling down to the menu would
+ * leave the group there and close what it was on its way to. This strip fills
+ * the gap so that it answers for the menu, and shows nothing while it does.
+ * It reaches back over the menu's own top border and no further, because
+ * anything taller would cover the bottom edge of the tab and eat its clicks.
+ */
+.demo-navigation-menu::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: calc(var(--demo-navigation-menu-gap) + 1px);
 }
 
 .demo-navigation-menu a {

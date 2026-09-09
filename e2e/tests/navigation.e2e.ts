@@ -55,6 +55,41 @@ test("opens a navigation group from a click on its trigger", async ({
   await expect(page).toHaveURL(/\/features\/spreads$/u);
 });
 
+test("keeps a hovered navigation group open as the pointer reaches its menu", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const trigger = getNavigationTrigger(page, "Features");
+  const spreadsLink = page.getByRole("link", { name: "Spreads" });
+
+  await trigger.hover();
+
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+  const triggerBox = await trigger.boundingBox();
+  const linkBox = await spreadsLink.boundingBox();
+
+  if (triggerBox === null || linkBox === null) {
+    throw new Error("The navigation menu was not laid out.");
+  }
+
+  // The pointer travels down from the trigger into the menu. A strip between
+  // the two belonging to neither would be where the pointer left the group,
+  // closing the menu it was on its way to.
+  for (
+    let y = triggerBox.y + triggerBox.height - 1;
+    y < linkBox.y + linkBox.height / 2;
+    y += 2
+  ) {
+    // oxlint-disable-next-line no-await-in-loop -- The pointer moves one step at a time, the way it crosses the gap.
+    await page.mouse.move(linkBox.x + linkBox.width / 2, y);
+  }
+
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expect(spreadsLink).toBeVisible();
+});
+
 test("dismisses an open navigation group from the keyboard", async ({
   page,
 }) => {

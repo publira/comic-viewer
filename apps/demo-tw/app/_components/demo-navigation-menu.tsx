@@ -9,8 +9,14 @@ import type { DemoRoute } from "./demo-routes";
 const triggerClassName =
   "flex items-center gap-1.5 rounded-t-lg border border-b-0 border-transparent px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 aria-[current]:border-slate-300 aria-[current]:bg-slate-100 aria-[current]:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:aria-[current]:border-slate-700 dark:aria-[current]:bg-slate-800 dark:aria-[current]:text-white";
 
+// The menu stands clear of the tab it opens from, and the gap that leaves
+// belongs to neither of them: a pointer travelling down to the menu would leave
+// the group there and close what it was on its way to. The `before` strip fills
+// the gap so that it answers for the menu, and shows nothing while it does. It
+// reaches back over the menu's own top border and no further, because anything
+// taller would cover the bottom edge of the tab and eat its clicks.
 const menuClassName =
-  "absolute top-full left-0 z-30 mt-1 flex min-w-48 flex-col gap-0.5 rounded-lg border border-slate-300 bg-white p-1.5 shadow-lg dark:border-slate-700 dark:bg-slate-900";
+  "absolute top-full left-0 z-30 mt-1 flex min-w-48 flex-col gap-0.5 rounded-lg border border-slate-300 bg-white p-1.5 shadow-lg before:absolute before:inset-x-0 before:bottom-full before:h-[calc(0.25rem+1px)] before:content-[''] dark:border-slate-700 dark:bg-slate-900";
 
 const menuLinkClassName =
   "block rounded-md px-3 py-2 text-sm font-semibold whitespace-nowrap text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 aria-[current=page]:bg-slate-100 aria-[current=page]:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:aria-[current=page]:bg-slate-800 dark:aria-[current=page]:text-white";
