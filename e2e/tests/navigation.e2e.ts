@@ -131,6 +131,43 @@ test("closes an open navigation group on a click outside it", async ({
   await expect(trigger).toHaveAttribute("aria-expanded", "false");
 });
 
+/** How far the page reaches past the edge of the viewport, in pixels. */
+const getHorizontalOverflow = (page: Page) =>
+  page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth
+  );
+
+test("fits the navigation on a phone without pushing the page sideways", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 720, width: 390 });
+  await page.goto("/features/spreads");
+
+  await expect(page.getByRole("link", { name: "Basic" })).toBeVisible();
+  await expect.poll(() => getHorizontalOverflow(page)).toBe(0);
+
+  // The last entry is the one whose menu would hang off the right edge, so it
+  // is the one that has to stay inside the viewport.
+  await getNavigationTrigger(page, "Plugins").click();
+
+  await expect(page.getByRole("link", { name: "Watermark" })).toBeVisible();
+  await expect.poll(() => getHorizontalOverflow(page)).toBe(0);
+
+  const menuBox = await page.locator("nav ul[id]:not([hidden])").boundingBox();
+  const viewportWidth = await page.evaluate(
+    () => document.documentElement.clientWidth
+  );
+
+  if (menuBox === null) {
+    throw new Error("The navigation menu was not laid out.");
+  }
+
+  expect(menuBox.x).toBeGreaterThanOrEqual(0);
+  expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(viewportWidth);
+});
+
 test("marks the group the page on screen belongs to", async ({ page }) => {
   await page.goto("/recipes/progress");
 
