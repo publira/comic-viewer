@@ -2,6 +2,20 @@
 
 This workspace contains browser-level tests for Comic Viewer through both the standard demo and the Tailwind CSS styling-reference demo.
 
+## Layout
+
+The specs mirror the route groups of the demos, so a demo and its coverage are named alike:
+
+| File | Covers |
+| --- | --- |
+| `tests/basic.e2e.ts` | The reader on `/`. |
+| `tests/features/*.e2e.ts` | One file per `/features/...` demo, plus `reading-progress.e2e.ts` for the page-progress slider the toolbar carries everywhere. |
+| `tests/recipes/*.e2e.ts` | One file per `/recipes/...` demo. |
+| `tests/plugins.e2e.ts` | Both `/plugins/...` demos. |
+| `tests/navigation.e2e.ts` | The grouped navigation menus, the link across to the counterpart demo, and the redirects from the old flat paths. |
+
+Selectors and page helpers shared between specs live in `helpers/` and are imported through the `#helpers/*` subpath, so a spec reads the same however deeply it is nested.
+
 ## Run Locally
 
 Install Chromium once, then run the suite from the repository root:

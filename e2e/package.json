@@ -4,6 +4,9 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
+  "imports": {
+    "#helpers/*": "./helpers/*.ts"
+  },
   "scripts": {
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit"
