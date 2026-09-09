@@ -87,6 +87,20 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.pageFitMode).toBe("width");
   });
 
+  it("rests the zoom scale at 1 and keeps it there through resetZoom", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper(),
+    });
+
+    expect(result.current.zoomScale).toBe(1);
+
+    act(() => {
+      result.current.resetZoom();
+    });
+
+    expect(result.current.zoomScale).toBe(1);
+  });
+
   it("clamps initialIndex to the valid range", () => {
     const { result } = renderHook(() => useViewerContext(), {
       wrapper: makeWrapper({ initialIndex: 100 }),

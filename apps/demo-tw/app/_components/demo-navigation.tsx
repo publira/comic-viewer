@@ -11,6 +11,7 @@ const navigationItems = [
   { href: "/slots", label: "Slots" },
   { href: "/ltr", label: "LTR" },
   { href: "/controls", label: "Controls" },
+  { href: "/zoom", label: "Zoom" },
   { href: "/fullscreen", label: "Fullscreen" },
   { href: "/progress", label: "Progress" },
   { href: "/lazy", label: "Lazy" },

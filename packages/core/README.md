@@ -101,6 +101,22 @@ When using `default.css`, each viewer root falls back to `#111111` for `--pcv-bg
 
 Pages initially fit their height. Pinch with two fingers to zoom and move the page; once zoomed, drag with one pointer to pan. A single-finger double tap resets the page to fit-to-width. These gestures take priority over page navigation, so they cannot accidentally turn the page.
 
+The viewer ships no zoom UI of its own, but it reports the scale so that you can build one. `useViewerContext()` carries a read-only `zoomScale`, which is `1` while the spread rests at the size its fit mode gives it, and `resetZoom()`, which returns the spread to that resting position by clearing both the scale and the pan offset. The scale belongs to the spread rather than to the reader, so turning the page or changing the fit mode returns it to `1` on its own. Zooming in and out programmatically is left to the gestures.
+
+```tsx
+import * as ComicViewer from "@publira/comic-viewer";
+
+const ZoomStatus = () => {
+  const { resetZoom, zoomScale } = ComicViewer.useViewerContext();
+
+  return (
+    <button disabled={zoomScale === 1} onClick={resetZoom} type="button">
+      {Math.round(zoomScale * 100)}%
+    </button>
+  );
+};
+```
+
 ### Controlled navigation
 
 By default, the viewer manages its page index internally. Set `initialIndex` to choose its starting page. To synchronize the index with a router, persisted state, or another control, pass `currentIndex` and update it from `onIndexChange`. Both values are zero-based. The callback is called only when navigation changes the index, including navigation through buttons, keyboard input, viewport edge clicks, swipes, and `useViewerContext().goTo()`.
