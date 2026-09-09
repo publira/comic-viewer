@@ -916,3 +916,30 @@ test("keeps the reader controls up for the length of a scrub", async ({
 
   await expect(page.locator(toolbar)).toHaveAttribute("aria-hidden", "true");
 });
+
+/** The demo each project's header links across to, keyed by project name. */
+const counterpartDemos = {
+  "default-css": {
+    heading: "Comic Viewer Tailwind CSS Demo",
+    link: "Tailwind CSS demo",
+  },
+  "tailwind-css": {
+    heading: "Comic Viewer Demo",
+    link: "Default stylesheet demo",
+  },
+} as const;
+
+test("crosses over to the same page of the counterpart demo", async ({
+  page,
+}, testInfo) => {
+  const counterpart =
+    counterpartDemos[testInfo.project.name as keyof typeof counterpartDemos];
+
+  await page.goto("/spreads");
+  await page.getByRole("link", { name: counterpart.link }).click();
+
+  await expect(page).toHaveURL(/\/spreads$/u);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    counterpart.heading
+  );
+});

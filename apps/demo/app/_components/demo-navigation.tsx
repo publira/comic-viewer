@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { CounterpartDemoLink } from "./counterpart-demo-link";
+
 const navigationItems = [
   { href: "/", label: "Basic" },
   { href: "/spreads", label: "Spreads" },
@@ -22,7 +24,10 @@ export const DemoNavigation = () => {
 
   return (
     <header className="demo-header">
-      <h1 className="demo-title">Comic Viewer Demo</h1>
+      <div className="demo-header-bar">
+        <h1 className="demo-title">Comic Viewer Demo</h1>
+        <CounterpartDemoLink />
+      </div>
       <nav className="demo-navigation" aria-label="Demo pages">
         <div className="demo-navigation-tabs">
           {navigationItems.map((item) => (
