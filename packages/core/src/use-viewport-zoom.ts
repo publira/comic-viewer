@@ -1,6 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 import type { RefObject } from "react";
 
+import {
+  RESTING_VIEWPORT_ZOOM,
+  getViewportZoomKey,
+  useViewportZoomStore,
+} from "./viewer-context";
 import type { PageFitMode } from "./viewer-context";
 import {
   getTouchCenter,
@@ -22,9 +27,10 @@ interface UseViewportZoomOptions {
 }
 
 /**
- * Owns the pan offset and zoom scale of the current spread, together with the
- * pointer, pinch, and double-tap gestures that change them. Both values are
- * scoped to a pan key so that turning the page or changing the fit mode
+ * Drives the pan offset and zoom scale of the current spread through the
+ * pointer, pinch, and double-tap gestures that change them. The two values
+ * are held by the viewer provider, which exposes the scale to consumers, and
+ * are scoped to a pan key so that turning the page or changing the fit mode
  * restores the resting position.
  */
 export const useViewportZoom = ({
@@ -62,11 +68,13 @@ export const useViewportZoom = ({
     y: number;
   } | null>(null);
   const [panningKey, setPanningKey] = useState<string | null>(null);
-  const [pan, setPan] = useState({ key: "", x: 0, y: 0 });
-  const [zoom, setZoom] = useState({ key: "", scale: 1 });
-  const panKey = `${currentIndex}:${pageFitMode}`;
-  const activePan = pan.key === panKey ? pan : { x: 0, y: 0 };
-  const activeZoom = zoom.key === panKey ? zoom : { scale: 1 };
+  const { setZoom, zoom } = useViewportZoomStore();
+  const panKey = getViewportZoomKey(currentIndex, pageFitMode);
+  const isCurrentZoom = zoom.key === panKey;
+  const activePan = isCurrentZoom
+    ? { x: zoom.panX, y: zoom.panY }
+    : { x: 0, y: 0 };
+  const activeZoom = { scale: isCurrentZoom ? zoom.scale : 1 };
   // Actual-size can exceed the viewport. A pinch may also zoom any fit mode
   // beyond its initial size. Fit-to-width remains swipeable after a double tap.
   const isPannable = pageFitMode === "actual" || activeZoom.scale > 1;
@@ -98,16 +106,19 @@ export const useViewportZoom = ({
     [containerRef]
   );
 
-  const updatePan = useCallback(
+  // The pan offset and the scale are written together, because the limits the
+  // offset is held within are the ones the scale it is applied with gives it.
+  const updateZoom = useCallback(
     (x: number, y: number, scale: number): void => {
       const limits = getPanLimits(scale);
-      setPan({
+      setZoom({
         key: panKey,
-        x: Math.max(-limits.x, Math.min(limits.x, x)),
-        y: Math.max(-limits.y, Math.min(limits.y, y)),
+        panX: Math.max(-limits.x, Math.min(limits.x, x)),
+        panY: Math.max(-limits.y, Math.min(limits.y, y)),
+        scale,
       });
     },
-    [getPanLimits, panKey]
+    [getPanLimits, panKey, setZoom]
   );
 
   const beginPan = useCallback(
@@ -145,14 +156,14 @@ export const useViewportZoom = ({
       if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
         didPanRef.current = true;
       }
-      updatePan(
+      updateZoom(
         panState.startPanX + deltaX,
         panState.startPanY + deltaY,
         activeZoom.scale
       );
       return true;
     },
-    [activeZoom.scale, updatePan]
+    [activeZoom.scale, updateZoom]
   );
 
   const endPan = useCallback((pointerId: number | "touch"): void => {
@@ -165,14 +176,12 @@ export const useViewportZoom = ({
   }, []);
 
   const resetToFitWidth = useCallback((): void => {
-    const widthPanKey = `${currentIndex}:width`;
     didPanRef.current = true;
     pinchStateRef.current = null;
     setPageFitMode("width");
-    setPan({ key: widthPanKey, x: 0, y: 0 });
     setPanningKey(null);
-    setZoom({ key: widthPanKey, scale: 1 });
-  }, [currentIndex, setPageFitMode]);
+    setZoom(RESTING_VIEWPORT_ZOOM);
+  }, [setPageFitMode, setZoom]);
 
   const registerTap = useCallback(
     (clientX: number, clientY: number): void => {
@@ -250,15 +259,14 @@ export const useViewportZoom = ({
       ) {
         didPanRef.current = true;
       }
-      setZoom({ key: panKey, scale });
-      updatePan(
+      updateZoom(
         pinchState.startPanX + center.x - pinchState.startCenterX,
         pinchState.startPanY + center.y - pinchState.startCenterY,
         scale
       );
       return true;
     },
-    [panKey, updatePan]
+    [updateZoom]
   );
 
   const endPinch = useCallback((): void => {
