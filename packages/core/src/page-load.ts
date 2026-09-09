@@ -1,9 +1,13 @@
 import type { ViewerPage } from "./viewer-context";
 
 /** The page pipeline stage that a load failure originated from. */
-export type PageLoadStage = "fetch" | "transform" | "decode";
+export type PageLoadStage =
+  | "fetch"
+  | "transform"
+  | "decode"
+  | "image-transform";
 
-/** The stages the plugin data pipeline runs before an image is decoded. */
+/** The stages the plugin pipeline runs around the built-in image decoder. */
 export type PageDataStage = Exclude<PageLoadStage, "decode">;
 
 /** A failed page load, reported with the page it belongs to. */

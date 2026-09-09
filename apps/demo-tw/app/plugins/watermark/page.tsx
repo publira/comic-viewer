@@ -8,7 +8,9 @@ import { Reader } from "./reader";
 
 const watermarkPlugin = ComicViewer.definePlugin({
   name: "text-watermark",
-  afterFetch: ({ buffer }) => addWatermark(buffer),
+  // The page has already been decoded, so the watermark is drawn onto the
+  // image itself instead of being re-encoded as a JPEG for the viewer.
+  afterDecode: ({ image }) => addWatermark(image),
 });
 
 // A plugin changes how a page is fetched and transformed, never how it is
@@ -29,8 +31,10 @@ const WatermarkPluginDemoPage = () => (
       <section className="rounded-xl border border-slate-300 bg-white p-5 text-sm leading-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <h2 className="font-semibold">Text watermark plugin sample</h2>
         <p className="mt-2 text-slate-600 dark:text-slate-300">
-          The <code>afterFetch</code> hook adds a text watermark to every page
-          before the viewer renders it.
+          The <code>afterDecode</code> hook draws a text watermark onto every
+          page after the viewer has decoded it. It hands back the image it drew,
+          so the page reaches the canvas without the second decode and the lossy
+          re-encode that transforming the fetched JPEG would cost.
         </p>
       </section>
       <SourceCodePanel code={sourceCode} />

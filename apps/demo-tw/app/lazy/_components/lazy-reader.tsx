@@ -2,6 +2,7 @@
 
 import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
+import { useMemo, useState } from "react";
 
 import { readerClassNames } from "../../_components/reader-class-names";
 import { TailwindReader } from "../../_components/tailwind-reader";
@@ -22,8 +23,25 @@ interface LazyReaderProps {
 const statClassName =
   "flex flex-1 basis-48 flex-col gap-1 rounded-xl border border-slate-300 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-900";
 
+/** How many spreads beyond the viewport this demo loads ahead of the reader. */
+const IMAGE_PRELOAD_SPREADS = 1;
+
 /** Renders a reader whose page metadata arrives as the reader reaches it. */
 export const LazyReader = ({ pages }: LazyReaderProps) => {
+  const [decodedImageCount, setDecodedImageCount] = useState(0);
+  // The hook reads each decoded page without returning one of its own, so the
+  // viewer keeps drawing the image it decoded.
+  const plugins = useMemo(
+    () => [
+      ComicViewer.definePlugin({
+        afterDecode: () => {
+          setDecodedImageCount((count) => count + 1);
+        },
+        name: "count-decoded-pages",
+      }),
+    ],
+    []
+  );
   const {
     chapterCount,
     isLoadingChapter,
@@ -41,8 +59,10 @@ export const LazyReader = ({ pages }: LazyReaderProps) => {
         className="aspect-[4/5] min-h-96 w-full md:aspect-[8/5]"
       >
         <TailwindReader
+          imagePreloadSpreads={IMAGE_PRELOAD_SPREADS}
           onEndReached={loadNextChapter}
           pageCount={pageCount}
+          plugins={plugins}
           renderPendingPage={renderPendingPage}
           resolvePage={resolvePage}
         />
@@ -68,6 +88,17 @@ export const LazyReader = ({ pages }: LazyReaderProps) => {
             className="text-lg font-semibold tabular-nums"
           >
             {requestCount}
+          </output>
+        </div>
+        <div className={statClassName}>
+          <span className="text-xs text-slate-600 dark:text-slate-400">
+            Page images decoded
+          </span>
+          <output
+            aria-label="Page images decoded"
+            className="text-lg font-semibold tabular-nums"
+          >
+            {decodedImageCount}
           </output>
         </div>
         <div className={statClassName}>

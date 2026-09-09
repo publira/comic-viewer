@@ -1,3 +1,5 @@
+import { closeDecodedImages } from "./page-image";
+import type { DecodedPageImage } from "./page-image";
 import { PageDataError } from "./page-load";
 import type { PageDataStage } from "./page-load";
 import type { ViewerPage } from "./viewer-context";
@@ -15,6 +17,11 @@ export interface PageLoadContext {
 /** A fetched buffer together with the context that produced it. */
 export interface FetchedPageContext extends PageLoadContext {
   buffer: ArrayBuffer;
+}
+
+/** A decoded image together with the context that produced it. */
+export interface DecodedPageContext extends PageLoadContext {
+  image: DecodedPageImage;
 }
 
 type PipelineHook<TContext, TResult> =
@@ -44,6 +51,17 @@ export interface ViewerPlugin {
    * next hook; returning nothing leaves the current buffer unchanged.
    */
   afterFetch?: PipelineHook<FetchedPageContext, ArrayBuffer>;
+  /**
+   * Runs after a page has been decoded, so that a plugin can draw on the
+   * image or read its pixels without decoding the page a second time.
+   * Returning an image passes it to the next hook; returning nothing leaves
+   * the current image unchanged.
+   *
+   * The viewer owns the decoded image: it releases the image a hook replaces,
+   * so a hook must not keep drawing from an image it has replaced, and it
+   * takes ownership of the image the hook returns.
+   */
+  afterDecode?: PipelineHook<DecodedPageContext, DecodedPageImage>;
   /** Runs whenever the current page changes. */
   onPageChange?: PageChangeHook;
 }
@@ -135,6 +153,42 @@ export const runDataPipeline = async (
     return result;
   });
 };
+
+/** A hook that returns nothing leaves the decoded image as it was. */
+const isDecodedImage = (value: unknown): value is DecodedPageImage =>
+  typeof value === "object" && value !== null;
+
+/**
+ * Runs the decoded-image transforms in registration order. The pipeline owns
+ * the image it is given: it releases every image a hook replaces, and releases
+ * the one it holds when a hook throws, so only the image it returns is left
+ * for the caller to release.
+ */
+export const runDecodePipeline = (
+  context: DecodedPageContext,
+  plugins: readonly ViewerPlugin[]
+): Promise<DecodedPageImage> =>
+  runStage("image-transform", async () => {
+    let { image } = context;
+
+    try {
+      for (const plugin of plugins) {
+        // eslint-disable-next-line no-await-in-loop -- Each hook receives the previous hook's image.
+        const nextImage = await plugin.afterDecode?.({ ...context, image });
+        if (!isDecodedImage(nextImage) || nextImage === image) {
+          continue;
+        }
+
+        closeDecodedImages([image]);
+        image = nextImage;
+      }
+    } catch (error) {
+      closeDecodedImages([image]);
+      throw error;
+    }
+
+    return image;
+  });
 
 /** Notifies each page-change hook without allowing one plugin to block another. */
 export const runPageChangeHooks = async (

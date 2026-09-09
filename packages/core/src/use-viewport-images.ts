@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { closeDecodedImages } from "./page-image";
+import type { DecodedPageImage } from "./page-image";
 import { toPageLoadFailure } from "./page-load";
 import type { PageLoadError, PageLoadStage, PageLoadStatus } from "./page-load";
-import { runDataPipeline } from "./plugin";
+import { runDataPipeline, runDecodePipeline } from "./plugin";
 import type { ViewerPlugin } from "./plugin";
 import type { ViewerPage } from "./viewer-context";
 
@@ -35,10 +37,8 @@ export const getImageMimeType = (
   return extension === undefined ? undefined : mimeTypes[extension];
 };
 
-type DecodedImage = HTMLImageElement | ImageBitmap;
-
 export interface PageImage {
-  bitmap: DecodedImage;
+  bitmap: DecodedPageImage;
   placeholder: boolean;
 }
 
@@ -69,7 +69,7 @@ const decodeImage = async (
   buffer: ArrayBuffer,
   sourceUrl: string,
   mimeType?: string
-): Promise<DecodedImage> => {
+): Promise<DecodedPageImage> => {
   const imageMimeType = getImageMimeTypeOrFallback(sourceUrl, mimeType);
   const blob = new Blob([buffer], { type: imageMimeType });
 
@@ -82,15 +82,6 @@ const decodeImage = async (
   }
 
   return decodeWithImageElement(buffer, imageMimeType);
-};
-
-/** Releases every decoded bitmap that owns an explicit browser resource. */
-const closeImageBitmaps = (images: readonly DecodedImage[]): void => {
-  for (const image of images) {
-    if ("close" in image) {
-      image.close();
-    }
-  }
 };
 
 const waitForAnimationFrame = (): Promise<void> =>
@@ -135,6 +126,12 @@ interface UseViewportImagesOptions<TPage extends ViewerPage> {
   /** An entry is `undefined` while the metadata of that page is unresolved. */
   pages: readonly (TPage | undefined)[];
   plugins: readonly ViewerPlugin[];
+  /**
+   * The pages loaded ahead of the reader, beyond the ones the viewport can
+   * render. They are cached and evicted like the pages of the rail, but they
+   * are queued behind it so they never delay the spread on screen.
+   */
+  preloadIndices: readonly number[];
   shouldLoadImages: boolean;
 }
 
@@ -145,6 +142,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
   onPageLoadError,
   pages,
   plugins,
+  preloadIndices,
   shouldLoadImages,
 }: UseViewportImagesOptions<TPage>): ViewportImages<TPage> => {
   const [pageImages, setPageImages] = useState<ReadonlyMap<string, PageImage>>(
@@ -160,7 +158,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
   );
   const cachedImageKeysRef = useRef<ReadonlySet<string>>(new Set());
   const pageLoadControllersRef = useRef(new Map<string, AbortController>());
-  const retiredImageBitmapsRef = useRef<DecodedImage[]>([]);
+  const retiredImageBitmapsRef = useRef<DecodedPageImage[]>([]);
   const pagesRef = useRef(pages);
   const onPageLoadErrorRef = useRef(onPageLoadError);
 
@@ -207,7 +205,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
     }
 
     const requestedImageKeys = new Set(
-      cachedIndices.flatMap((index) => {
+      [...cachedIndices, ...preloadIndices].flatMap((index) => {
         const page = pages[index];
         return page === undefined ? [] : [getPageImageKey(index, page)];
       })
@@ -216,13 +214,13 @@ export const useViewportImages = <TPage extends ViewerPage>({
     const setPageImage = (index: number, image: PageImage): boolean => {
       const page = pages[index];
       if (page === undefined) {
-        closeImageBitmaps([image.bitmap]);
+        closeDecodedImages([image.bitmap]);
         return false;
       }
 
       const imageKey = getPageImageKey(index, page);
       if (!cachedImageKeysRef.current.has(imageKey)) {
-        closeImageBitmaps([image.bitmap]);
+        closeDecodedImages([image.bitmap]);
         return false;
       }
 
@@ -248,6 +246,9 @@ export const useViewportImages = <TPage extends ViewerPage>({
 
       const imageKey = getPageImageKey(index, page);
       if (
+        // A preload queued behind the rail is dropped when the reader moves
+        // away from the page before its load starts.
+        !cachedImageKeysRef.current.has(imageKey) ||
         pageLoadControllersRef.current.has(imageKey) ||
         // A settled page is reloaded only after an eviction or an explicit retry.
         pageLoadStatesRef.current.has(imageKey)
@@ -345,11 +346,28 @@ export const useViewportImages = <TPage extends ViewerPage>({
         return;
       }
 
-      let bitmap: DecodedImage;
+      let bitmap: DecodedPageImage;
       try {
         bitmap = await decodeImage(result.buffer, page.src, page.mimeType);
       } catch (error) {
         failPageLoad(error, "decode");
+        return;
+      }
+
+      try {
+        // The decode pipeline owns the image it is handed, so a hook that
+        // throws leaves nothing here to release.
+        bitmap = await runDecodePipeline(
+          {
+            image: bitmap,
+            page,
+            signal: abortController.signal,
+            url: page.src,
+          },
+          plugins
+        );
+      } catch (error) {
+        failPageLoad(error, "image-transform");
         return;
       }
 
@@ -364,12 +382,18 @@ export const useViewportImages = <TPage extends ViewerPage>({
       abandonPageLoad();
     };
 
-    void Promise.all(cachedIndices.map(loadPage));
+    void (async () => {
+      // The spread on screen is what the reader waits for, so the pages beyond
+      // the rail are queued only once the rail's own loads have run.
+      await Promise.all(cachedIndices.map(loadPage));
+      await Promise.all(preloadIndices.map(loadPage));
+    })();
   }, [
     cachedIndices,
     commitLoadStates,
     pages,
     plugins,
+    preloadIndices,
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- A retry re-runs the loader for a page that has already settled.
     retryNonce,
     shouldLoadImages,
@@ -381,13 +405,13 @@ export const useViewportImages = <TPage extends ViewerPage>({
     }
 
     const retainedImageKeys = new Set(
-      cachedIndices.flatMap((index) => {
+      [...cachedIndices, ...preloadIndices].flatMap((index) => {
         const page = pages[index];
         return page === undefined ? [] : [getPageImageKey(index, page)];
       })
     );
     const nextImages = new Map(pageImagesRef.current);
-    const expiredImages: DecodedImage[] = [];
+    const expiredImages: DecodedPageImage[] = [];
 
     for (const [key, image] of nextImages) {
       if (!retainedImageKeys.has(key)) {
@@ -417,17 +441,17 @@ export const useViewportImages = <TPage extends ViewerPage>({
     }
 
     if (expiredImages.length > 0) {
-      closeImageBitmaps(expiredImages);
+      closeDecodedImages(expiredImages);
       pageImagesRef.current = nextImages;
       // oxlint-disable-next-line react/set-state-in-effect -- Pages are evicted only after their transition DOM has unmounted.
       setPageImages(nextImages);
     }
 
     if (retiredImageBitmapsRef.current.length > 0) {
-      closeImageBitmaps(retiredImageBitmapsRef.current);
+      closeDecodedImages(retiredImageBitmapsRef.current);
       retiredImageBitmapsRef.current = [];
     }
-  }, [cachedIndices, keepImages, pages, shouldLoadImages]);
+  }, [cachedIndices, keepImages, pages, preloadIndices, shouldLoadImages]);
 
   useEffect(
     () => () => {
@@ -435,7 +459,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
         controller.abort();
       }
       pageLoadControllersRef.current.clear();
-      closeImageBitmaps([
+      closeDecodedImages([
         ...[...pageImagesRef.current.values()].map((image) => image.bitmap),
         ...retiredImageBitmapsRef.current,
       ]);

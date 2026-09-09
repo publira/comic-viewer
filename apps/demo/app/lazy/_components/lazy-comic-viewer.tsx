@@ -2,6 +2,7 @@
 
 import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
+import { useMemo, useState } from "react";
 
 import { useLazyChapters } from "../../_components/use-lazy-chapters";
 import { getViewerStyle } from "../../_components/viewer-layout";
@@ -12,8 +13,25 @@ interface LazyComicViewerProps {
   pages: readonly ViewerPage[];
 }
 
+/** How many spreads beyond the viewport this demo loads ahead of the reader. */
+const IMAGE_PRELOAD_SPREADS = 1;
+
 /** Renders a reader whose page metadata arrives as the reader reaches it. */
 export const LazyComicViewer = ({ pages }: LazyComicViewerProps) => {
+  const [decodedImageCount, setDecodedImageCount] = useState(0);
+  // The hook reads each decoded page without returning one of its own, so the
+  // viewer keeps drawing the image it decoded.
+  const plugins = useMemo(
+    () => [
+      ComicViewer.definePlugin({
+        afterDecode: () => {
+          setDecodedImageCount((count) => count + 1);
+        },
+        name: "count-decoded-pages",
+      }),
+    ],
+    []
+  );
   const {
     chapterCount,
     isLoadingChapter,
@@ -31,8 +49,10 @@ export const LazyComicViewer = ({ pages }: LazyComicViewerProps) => {
       <div className={styles.viewer} style={getViewerStyle(pages)}>
         <ComicViewer.Root
           className={styles.viewerContent}
+          imagePreloadSpreads={IMAGE_PRELOAD_SPREADS}
           onEndReached={loadNextChapter}
           pageCount={pageCount}
+          plugins={plugins}
           resolvePage={resolvePage}
         >
           <ComicViewer.Viewport />
@@ -51,6 +71,12 @@ export const LazyComicViewer = ({ pages }: LazyComicViewerProps) => {
           <span className={styles.statLabel}>Metadata requests</span>
           <output aria-label="Metadata requests" className={styles.statValue}>
             {requestCount}
+          </output>
+        </div>
+        <div className={styles.stat}>
+          <span className={styles.statLabel}>Page images decoded</span>
+          <output aria-label="Page images decoded" className={styles.statValue}>
+            {decodedImageCount}
           </output>
         </div>
         <div className={styles.stat}>

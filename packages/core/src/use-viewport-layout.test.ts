@@ -1,3 +1,4 @@
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,8 +7,34 @@ import {
   getPageTurnDirection,
   getSwipeTargetIndex,
   getVisibleIndices,
+  useViewportLayout,
 } from "./use-viewport-layout";
 import { getPreviousSpreadIndex } from "./viewer-context";
+
+/** Renders the layout of a ten-page document read as spreads. */
+const renderLayout = ({
+  displayedIndex = 4,
+  imagePreloadSpreads = 0,
+  minIndex = 0,
+  transitionToIndex = undefined as number | undefined,
+} = {}) =>
+  renderHook(() =>
+    useViewportLayout({
+      displayedIndex,
+      imagePreloadSpreads,
+      maxIndex: 9,
+      minIndex,
+      readingDirection: "rtl",
+      spreadStartIndex: 0,
+      transitionToIndex,
+      usesPageRail: true,
+      viewMode: "double",
+    })
+  );
+
+/** The window a hook reports, compared without depending on its order. */
+const windowOf = (indices: readonly number[]): ReadonlySet<number> =>
+  new Set(indices);
 
 describe(getPageTurnDirection, () => {
   it("maps forward and backward turns to opposite physical directions", () => {
@@ -136,5 +163,69 @@ describe(getSwipeTargetIndex, () => {
 
   it("swipes back onto the start page", () => {
     expect(getSwipeTargetIndex("left", 0, -1, 3, "ltr", 0, "single")).toBe(-1);
+  });
+});
+
+describe(useViewportLayout, () => {
+  it("caches the rail and loads nothing beyond it by default", () => {
+    const { result } = renderLayout();
+
+    expect(windowOf(result.current.cachedIndices)).toStrictEqual(
+      new Set([2, 3, 4, 5, 6, 7])
+    );
+    expect(result.current.preloadIndices).toStrictEqual([]);
+  });
+
+  it("preloads whole spreads on either side of the rail", () => {
+    const { result } = renderLayout({ imagePreloadSpreads: 1 });
+
+    // The rail already holds the spreads at 2 and 6, so the preload window
+    // continues from there rather than repeating them.
+    expect(windowOf(result.current.cachedIndices)).toStrictEqual(
+      new Set([2, 3, 4, 5, 6, 7])
+    );
+    expect(windowOf(result.current.preloadIndices)).toStrictEqual(
+      new Set([0, 1, 8, 9])
+    );
+  });
+
+  it("stops the preload window at the ends of the document", () => {
+    const { result } = renderLayout({
+      displayedIndex: 0,
+      imagePreloadSpreads: 3,
+    });
+
+    expect(windowOf(result.current.cachedIndices)).toStrictEqual(
+      new Set([0, 1, 2, 3])
+    );
+    expect(windowOf(result.current.preloadIndices)).toStrictEqual(
+      new Set([4, 5, 6, 7, 8, 9])
+    );
+  });
+
+  it("counts the preload window from the spread a page turn is heading for", () => {
+    const { result } = renderLayout({
+      imagePreloadSpreads: 1,
+      transitionToIndex: 8,
+    });
+
+    expect(windowOf(result.current.cachedIndices)).toStrictEqual(
+      new Set([2, 3, 4, 5, 6, 7, 8, 9])
+    );
+    expect(windowOf(result.current.preloadIndices)).toStrictEqual(
+      new Set([0, 1])
+    );
+  });
+
+  it("preloads the start pages behind the first page of the document", () => {
+    const { result } = renderLayout({
+      displayedIndex: 2,
+      imagePreloadSpreads: 1,
+      minIndex: -1,
+    });
+
+    expect(windowOf(result.current.preloadIndices)).toStrictEqual(
+      new Set([-1, 6, 7])
+    );
   });
 });

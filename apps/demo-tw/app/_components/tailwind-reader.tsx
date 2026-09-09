@@ -2,6 +2,7 @@
 
 import * as ComicViewer from "@publira/comic-viewer";
 import type {
+  DecodedPageImage,
   PageResolver,
   ReadingDirection,
   ViewerPage,
@@ -9,7 +10,7 @@ import type {
   ViewerPlugin,
   ViewportProps,
 } from "@publira/comic-viewer";
-import { Children, isValidElement } from "react";
+import { Children, isValidElement, useMemo } from "react";
 import type { PropsWithChildren, ReactNode } from "react";
 
 import { readerClassNames } from "./reader-class-names";
@@ -53,58 +54,35 @@ const encryptedJpegPlugin = ComicViewer.definePlugin({
   name: "encrypted-jpeg",
 });
 
-const canvasToBuffer = (canvas: HTMLCanvasElement): Promise<ArrayBuffer> =>
-  // eslint-disable-next-line promise/avoid-new -- HTMLCanvasElement exposes encoding through this callback API.
-  new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (blob === null) {
-          reject(new Error("Failed to encode the watermarked page."));
-          return;
-        }
-
-        void (async () => {
-          try {
-            resolve(await blob.arrayBuffer());
-          } catch (error) {
-            reject(error);
-          }
-        })();
-      },
-      "image/jpeg",
-      0.92
-    );
-  });
-
-const addWatermark = async (buffer: ArrayBuffer): Promise<ArrayBuffer> => {
-  const source = await createImageBitmap(
-    new Blob([buffer], { type: "image/jpeg" })
-  );
+/** Draws the watermark onto the decoded page and hands back the new image. */
+const addWatermark = (image: DecodedPageImage): Promise<ImageBitmap> => {
+  const height = "naturalHeight" in image ? image.naturalHeight : image.height;
+  const width = "naturalWidth" in image ? image.naturalWidth : image.width;
   const canvas = document.createElement("canvas");
-  canvas.height = source.height;
-  canvas.width = source.width;
+  canvas.height = height;
+  canvas.width = width;
 
   const context = canvas.getContext("2d");
   if (context === null) {
-    source.close();
     throw new Error("Canvas 2D rendering is unavailable.");
   }
 
-  context.drawImage(source, 0, 0);
+  context.drawImage(image, 0, 0);
   context.fillStyle = "rgba(0, 0, 0, 0.45)";
-  context.fillRect(0, canvas.height - 96, canvas.width, 96);
+  context.fillRect(0, height - 96, width, 96);
   context.fillStyle = "rgba(255, 255, 255, 0.88)";
   context.font = "600 32px system-ui, sans-serif";
   context.textAlign = "right";
   context.textBaseline = "middle";
-  context.fillText("PUBLIRA DEMO", canvas.width - 40, canvas.height - 48);
-  source.close();
+  context.fillText("PUBLIRA DEMO", width - 40, height - 48);
 
-  return canvasToBuffer(canvas);
+  // The viewer releases the image this one replaces, so the page it was drawn
+  // from is not closed here.
+  return createImageBitmap(canvas);
 };
 
 const watermarkPlugin = ComicViewer.definePlugin({
-  afterFetch: ({ buffer }) => addWatermark(buffer),
+  afterDecode: ({ image }) => addWatermark(image),
   name: "text-watermark",
 });
 
@@ -123,12 +101,16 @@ const pluginsForMode: Readonly<Record<ReaderMode, readonly ViewerPlugin[]>> = {
 type TailwindReaderProps = PropsWithChildren<ViewerPageListProps> & {
   /** The controlled zero-based page index, for a host that owns the position. */
   currentIndex?: number;
+  /** How many spreads beyond the viewport are loaded ahead of the reader. */
+  imagePreloadSpreads?: number;
   initialReadingDirection?: ReadingDirection;
   mode?: ReaderMode;
   /** Called as the reader comes within two pages of the last one. */
   onEndReached?: () => void;
   /** Called when navigation requests a different zero-based page index. */
   onIndexChange?: (index: number) => void;
+  /** Plugins composed with the ones the reader mode brings of its own. */
+  plugins?: readonly ViewerPlugin[];
   /** Fills the place of a page whose metadata is still being resolved. */
   renderPendingPage?: ViewportProps<ViewerPage>["renderPendingPage"];
   /** Resolves the metadata of a page the reader is approaching. */
@@ -199,25 +181,37 @@ const NavigationControls = () => {
 export const TailwindReader = ({
   children,
   currentIndex,
+  imagePreloadSpreads,
   initialReadingDirection,
   mode = "basic",
   onEndReached,
   onIndexChange,
+  plugins: extraPlugins,
   renderPendingPage,
   resolvePage,
   spreadStartIndex,
   ...pageListProps
 }: TailwindReaderProps) => {
   const { children: content, toolbar } = extractToolbar(children);
+  // The viewer reloads its pages whenever the plugin list changes identity,
+  // so the composed list is only rebuilt when the reader is given a new one.
+  const plugins = useMemo(
+    () =>
+      extraPlugins === undefined
+        ? pluginsForMode[mode]
+        : [...pluginsForMode[mode], ...extraPlugins],
+    [extraPlugins, mode]
+  );
 
   return (
     <ComicViewer.Root
       {...pageListProps}
       currentIndex={currentIndex}
+      imagePreloadSpreads={imagePreloadSpreads}
       onEndReached={onEndReached}
       onIndexChange={onIndexChange}
       resolvePage={resolvePage}
-      plugins={pluginsForMode[mode]}
+      plugins={plugins}
       initialReadingDirection={initialReadingDirection}
       spreadStartIndex={spreadStartIndex}
       className={readerClassNames.root}

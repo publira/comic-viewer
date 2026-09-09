@@ -538,6 +538,11 @@ test("counts the whole document while its page metadata resolves", async ({
   await expect(
     page.getByRole("status", { name: "Metadata requests" })
   ).toHaveText("5");
+  // The rail holds two spreads of this document, and `imagePreloadSpreads` of
+  // one loads the spread after them, as far as the resolved metadata reaches.
+  await expect(
+    page.getByRole("status", { name: "Page images decoded" })
+  ).toHaveText("5");
 });
 
 test("appends the next chapter as the reader reaches the end of the loaded pages", async ({

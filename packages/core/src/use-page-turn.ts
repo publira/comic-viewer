@@ -33,6 +33,8 @@ interface PageTurnTransition {
 
 interface UsePageTurnOptions<TPage extends ViewerPage> {
   currentIndex: number;
+  /** How many spreads beyond the rail are loaded ahead of the reader. */
+  imagePreloadSpreads: number;
   maxIndex: number;
   minIndex: number;
   onPageLoadError?: (error: PageLoadError<TPage>) => void;
@@ -53,6 +55,7 @@ interface UsePageTurnOptions<TPage extends ViewerPage> {
  */
 export const usePageTurn = <TPage extends ViewerPage>({
   currentIndex,
+  imagePreloadSpreads,
   maxIndex,
   minIndex,
   onPageLoadError,
@@ -74,9 +77,11 @@ export const usePageTurn = <TPage extends ViewerPage>({
     cachedIndices,
     orderedIndices,
     orderedIndicesFor,
+    preloadIndices,
     railSpreadIndices,
   } = useViewportLayout({
     displayedIndex,
+    imagePreloadSpreads,
     maxIndex,
     minIndex,
     readingDirection,
@@ -95,6 +100,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
     onPageLoadError,
     pages,
     plugins,
+    preloadIndices,
     shouldLoadImages: usesManagedImageLoading,
   });
   const isIncomingPageSetReady =

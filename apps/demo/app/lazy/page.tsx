@@ -26,6 +26,7 @@ export const Reader = () => {
 
   return (
     <ComicViewer.Root
+      imagePreloadSpreads={1}
       onEndReached={loadNextChapter}
       pageCount={pageCount}
       resolvePage={resolvePage}
@@ -61,6 +62,15 @@ const LazyPage = () => (
           pages the viewport can still render, so a page returned to much later
           is resolved again and a signed URL that has expired in the meantime is
           reissued.
+        </p>
+        <p>
+          Page images follow a window of their own.{" "}
+          <code>imagePreloadSpreads</code> is <code>1</code> here, so the viewer
+          fetches and decodes one spread beyond the ones it can render on either
+          side of the reader. Those loads are queued behind the spread on screen
+          and dropped when the reader moves away from them, so the count of
+          decoded pages runs ahead of the three spreads the viewport holds
+          without the current one waiting for them.
         </p>
         <p>
           The document also grows as it is read. It starts as the first chapter
