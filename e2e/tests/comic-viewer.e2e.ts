@@ -285,7 +285,7 @@ const expectPageOnHalf = async (
 test("places the page before the spread start on the half it faces from", async ({
   page,
 }) => {
-  await openShortenedReader(page, "/spreads");
+  await openShortenedReader(page, "/features/spreads");
 
   const coverCanvas = page.locator(`${currentPageSet} canvas`);
 
@@ -304,7 +304,7 @@ test("places the page before the spread start on the half it faces from", async 
 });
 
 test("opens the first spread after the spread start", async ({ page }) => {
-  await openShortenedReader(page, "/spreads");
+  await openShortenedReader(page, "/features/spreads");
   await turnToNextScreen(page, "Pages 2-3 of 8");
 
   const pageCanvases = page.locator(`${currentPageSet} canvas`);
@@ -325,7 +325,7 @@ test("opens the first spread after the spread start", async ({ page }) => {
 test("keeps the unpaired last page on the side a spread starts on", async ({
   page,
 }) => {
-  await openShortenedReader(page, "/spreads");
+  await openShortenedReader(page, "/features/spreads");
 
   await turnThroughScreens(page, [
     "Pages 2-3 of 8",
@@ -366,7 +366,7 @@ const openReader = async (page: Page, path: string) => {
 test("gives a page that is a whole spread both halves of the page set", async ({
   page,
 }) => {
-  await openReader(page, "/spread-page");
+  await openReader(page, "/features/spread-page");
 
   // Pages 1 and 2 pair. The spread cannot share a sheet, so it moves on to
   // one of its own and leaves page 3 facing the blank half before it.
@@ -407,7 +407,7 @@ test("shows a page that is a whole spread whole at a narrow viewport", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 600 });
-  await page.goto("/spread-page");
+  await page.goto("/features/spread-page");
 
   await expect(page.locator(viewport)).toHaveAttribute(
     "data-view-mode",
@@ -445,7 +445,7 @@ test("shows a page that is a whole spread whole at a narrow viewport", async ({
 });
 
 test("opens a left-to-right spread in reading order", async ({ page }) => {
-  await openShortenedReader(page, "/ltr");
+  await openShortenedReader(page, "/features/ltr");
 
   const pageCanvases = page.locator(`${currentPageSet} canvas`);
 
@@ -463,7 +463,7 @@ test("opens a left-to-right spread in reading order", async ({ page }) => {
 test("keeps the unpaired last page of a left-to-right reader on the left", async ({
   page,
 }) => {
-  await openShortenedReader(page, "/ltr");
+  await openShortenedReader(page, "/features/ltr");
 
   const spreadStatuses = [3, 5, 7, 9, 11, 13, 15, 17, 19].map(
     (firstPage) => `Pages ${firstPage}-${firstPage + 1} of 21`
@@ -489,7 +489,7 @@ test("keeps the reading position across a fullscreen round trip", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/fullscreen");
+  await page.goto("/recipes/fullscreen");
 
   const enterFullscreenButton = page.getByRole("button", {
     name: "Enter full screen",
@@ -564,7 +564,7 @@ test("restores the stored reading position after a reload", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/progress");
+  await page.goto("/recipes/progress");
 
   const savedPosition = page.getByRole("status", { name: "Saved position" });
   const startOverButton = page.getByRole("button", { name: "Start over" });
@@ -609,7 +609,7 @@ test("counts the whole document while its page metadata resolves", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/lazy");
+  await page.goto("/recipes/lazy");
 
   await expect(
     page.getByRole("heading", { name: "Lazy page metadata" })
@@ -645,7 +645,7 @@ test("appends the next chapter as the reader reaches the end of the loaded pages
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/lazy");
+  await page.goto("/recipes/lazy");
 
   await expect(
     page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`)
@@ -674,7 +674,7 @@ test("turns through the start pages without counting them as pages", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/slots");
+  await page.goto("/features/slots");
 
   await expect(
     page.getByRole("heading", { name: "Pages around the chapter" })
@@ -708,7 +708,7 @@ test("pairs the first end page with the last page of an odd chapter", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/slots");
+  await page.goto("/features/slots");
 
   await turnThroughScreens(page, [
     "Pages 1-2 of 7",
@@ -767,7 +767,7 @@ const revealReaderControl = async (page: Page, name: string) => {
 
 test("switches the view mode from the toolbar toggle", async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/controls");
+  await page.goto("/features/controls");
 
   const viewModeToggle = await revealReaderControl(page, "Double-page view");
 
@@ -788,7 +788,7 @@ test("disables the view-mode toggle on a viewport too narrow for a spread", asyn
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 600 });
-  await page.goto("/controls");
+  await page.goto("/features/controls");
 
   await expect(page.locator(viewport)).toHaveAttribute(
     "data-view-mode",
@@ -803,7 +803,7 @@ test("switches the reading direction and the page fit from the toolbar", async (
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/controls");
+  await page.goto("/features/controls");
 
   const directionToggle = await revealReaderControl(
     page,
@@ -840,7 +840,7 @@ test("leaves a control on a slot page out of the page-turn edge", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 600 });
-  await page.goto("/slots");
+  await page.goto("/features/slots");
 
   await expect(page.locator(viewport)).toHaveAttribute(
     "data-view-mode",
@@ -909,7 +909,7 @@ test("steps through the document with the arrow keys on the reading progress", a
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/ltr");
+  await page.goto("/features/ltr");
   await revealReaderControls(page);
   await page.locator(progressSlider).focus();
 
@@ -940,7 +940,7 @@ test("steps through the document with the arrow keys on the reading progress", a
 
 test("snaps a scrub to the page a spread starts from", async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/spreads");
+  await page.goto("/features/spreads");
   await revealReaderControls(page);
 
   await expect(page.locator(".pcv-page-status")).toHaveText("Page 1 of 8");
@@ -973,7 +973,7 @@ test("runs the reading progress the way the reader turns pages", async ({
     "Pages 15-16 of 21"
   );
 
-  await page.goto("/ltr");
+  await page.goto("/features/ltr");
   await revealReaderControls(page);
   await dragSliderThumbToFraction(page, 0.25);
 
@@ -1036,10 +1036,10 @@ test("crosses over to the same page of the counterpart demo", async ({
   const counterpart =
     counterpartDemos[testInfo.project.name as keyof typeof counterpartDemos];
 
-  await page.goto("/spreads");
+  await page.goto("/features/spreads");
   await page.getByRole("link", { name: counterpart.link }).click();
 
-  await expect(page).toHaveURL(/\/spreads$/u);
+  await expect(page).toHaveURL(/\/features\/spreads$/u);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
     counterpart.heading
   );
@@ -1092,7 +1092,7 @@ const pinchViewport = async (
 
 test("reports the pinch scale through the viewer context", async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/zoom");
+  await page.goto("/features/zoom");
 
   const resetZoomButton = await revealReaderControl(page, "Reset zoom");
   const zoomScale = page.getByRole("status", { name: "Zoom scale" });
@@ -1110,7 +1110,7 @@ test("returns a pinched spread to its fit mode from the context reset", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/zoom");
+  await page.goto("/features/zoom");
 
   const resetZoomButton = await revealReaderControl(page, "Reset zoom");
 
@@ -1129,7 +1129,7 @@ test("drops the zoom scale of the spread the reader turns away from", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/zoom");
+  await page.goto("/features/zoom");
 
   await revealReaderControl(page, "Reset zoom");
   await pinchViewport(page, 100, 200);
@@ -1142,4 +1142,103 @@ test("drops the zoom scale of the spread the reader turns away from", async ({
 
   await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 21");
   await expect(zoomScale).toHaveText("100%");
+});
+
+/** The disclosure button one of the grouped demo menus opens from. */
+const getNavigationTrigger = (page: Page, group: string) =>
+  page
+    .getByRole("navigation", { name: "Demo pages" })
+    .getByRole("button", { name: group });
+
+test("opens a navigation group from a click on its trigger", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const trigger = getNavigationTrigger(page, "Features");
+  const spreadsLink = page.getByRole("link", { name: "Spreads" });
+
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expect(spreadsLink).toBeHidden();
+
+  await trigger.click();
+
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expect(spreadsLink).toBeVisible();
+
+  await spreadsLink.click();
+
+  await expect(page).toHaveURL(/\/features\/spreads$/u);
+});
+
+test("dismisses an open navigation group from the keyboard", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const trigger = getNavigationTrigger(page, "Recipes");
+
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+  // The arrow keys walk the menu the trigger opened.
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("link", { name: "Fullscreen" })).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("link", { name: "Progress" })).toBeFocused();
+
+  await page.keyboard.press("Escape");
+
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expect(trigger).toBeFocused();
+  await expect(page.getByRole("link", { name: "Progress" })).toBeHidden();
+});
+
+test("closes an open navigation group on a click outside it", async ({
+  page,
+}) => {
+  await page.goto("/");
+
+  const trigger = getNavigationTrigger(page, "Plugins");
+
+  await trigger.click();
+
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+
+  await page.getByRole("heading", { level: 1 }).click();
+
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+});
+
+test("marks the group the page on screen belongs to", async ({ page }) => {
+  await page.goto("/recipes/progress");
+
+  await expect(getNavigationTrigger(page, "Recipes")).toHaveAttribute(
+    "aria-current",
+    "true"
+  );
+  await expect(getNavigationTrigger(page, "Features")).not.toHaveAttribute(
+    "aria-current"
+  );
+  await expect(page.getByRole("link", { name: "Basic" })).not.toHaveAttribute(
+    "aria-current"
+  );
+
+  await getNavigationTrigger(page, "Recipes").click();
+
+  await expect(page.getByRole("link", { name: "Progress" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
+});
+
+test("redirects the flat path a demo used to live at", async ({ page }) => {
+  await page.goto("/progress");
+
+  await expect(page).toHaveURL(/\/recipes\/progress$/u);
+  await expect(
+    page.getByRole("heading", { name: "Remember the reading position" })
+  ).toBeVisible();
 });
