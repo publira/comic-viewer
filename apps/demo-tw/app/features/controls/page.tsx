@@ -1,6 +1,7 @@
-import { readerClassNames } from "../../_components/reader-class-names";
-import { basicSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
+import { readerClassNames } from "#components/reader-class-names";
+import { basicSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
+
 import { ControlsReader } from "./_components/controls-reader";
 
 // "./reader" is the styled reader the front page shows in full. A Toolbar

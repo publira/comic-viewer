@@ -3,8 +3,8 @@
 import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 
-import { useReadingProgress } from "../../../_components/use-reading-progress";
-import { getViewerStyle } from "../../../_components/viewer-layout";
+import { useReadingProgress } from "#components/use-reading-progress";
+import { getViewerStyle } from "#components/viewer-layout";
 
 import styles from "../page.module.css";
 

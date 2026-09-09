@@ -1,5 +1,6 @@
-import { basicSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
+import { basicSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
+
 import { slotClassNames } from "./_components/slot-class-names";
 import { SlotReader } from "./_components/slot-reader";
 

@@ -4,8 +4,8 @@ import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 import { useMemo, useState } from "react";
 
-import { useLazyChapters } from "../../../_components/use-lazy-chapters";
-import { getViewerStyle } from "../../../_components/viewer-layout";
+import { useLazyChapters } from "#components/use-lazy-chapters";
+import { getViewerStyle } from "#components/viewer-layout";
 
 import styles from "../page.module.css";
 

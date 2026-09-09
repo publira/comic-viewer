@@ -3,8 +3,8 @@
 import type { ViewerPage } from "@publira/comic-viewer";
 import { useRef } from "react";
 
-import { TailwindReader } from "../../../_components/tailwind-reader";
-import { useFullscreen } from "../../../_components/use-fullscreen";
+import { TailwindReader } from "#components/tailwind-reader";
+import { useFullscreen } from "#components/use-fullscreen";
 
 interface FullscreenReaderProps {
   pages: readonly ViewerPage[];

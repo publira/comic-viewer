@@ -1,5 +1,6 @@
-import { basicSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
+import { basicSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
+
 import { FullscreenReader } from "./_components/fullscreen-reader";
 
 const sourceCode = `import { useCallback, useRef, useSyncExternalStore } from "react";

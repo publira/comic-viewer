@@ -3,8 +3,8 @@
 import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 
-import { readerClassNames } from "../../../_components/reader-class-names";
-import { TailwindReader } from "../../../_components/tailwind-reader";
+import { readerClassNames } from "#components/reader-class-names";
+import { TailwindReader } from "#components/tailwind-reader";
 
 interface ControlsReaderProps {
   pages: readonly ViewerPage[];

@@ -3,7 +3,7 @@
 import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 
-import { getViewerStyle } from "../../../_components/viewer-layout";
+import { getViewerStyle } from "#components/viewer-layout";
 
 import styles from "../page.module.css";
 

@@ -5,7 +5,8 @@ import type { ViewerPage } from "@publira/comic-viewer";
 import Link from "next/link";
 import type { PropsWithChildren } from "react";
 
-import { TailwindReader } from "../../../_components/tailwind-reader";
+import { TailwindReader } from "#components/tailwind-reader";
+
 import { slotClassNames } from "./slot-class-names";
 
 interface SlotReaderProps {

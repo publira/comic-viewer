@@ -5,7 +5,7 @@ import type { ViewerPage } from "@publira/comic-viewer";
 import Link from "next/link";
 import type { PropsWithChildren } from "react";
 
-import { getViewerStyle } from "../../../_components/viewer-layout";
+import { getViewerStyle } from "#components/viewer-layout";
 
 import styles from "../page.module.css";
 

@@ -4,9 +4,9 @@ import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 import { useMemo, useState } from "react";
 
-import { readerClassNames } from "../../../_components/reader-class-names";
-import { TailwindReader } from "../../../_components/tailwind-reader";
-import { useLazyChapters } from "../../../_components/use-lazy-chapters";
+import { readerClassNames } from "#components/reader-class-names";
+import { TailwindReader } from "#components/tailwind-reader";
+import { useLazyChapters } from "#components/use-lazy-chapters";
 
 // Lazily resolved metadata is what this demo is about, so the page standing in
 // for one still on its way is styled here rather than in the shared reader.

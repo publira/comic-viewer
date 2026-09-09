@@ -1,6 +1,7 @@
-import { basicSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
-import { getViewerStyle } from "../../_components/viewer-layout";
+import { basicSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
+import { getViewerStyle } from "#components/viewer-layout";
+
 import { WatermarkedComicViewer } from "./_components/watermarked-comic-viewer";
 
 import styles from "./page.module.css";

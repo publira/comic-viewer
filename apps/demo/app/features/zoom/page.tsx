@@ -1,5 +1,6 @@
-import { basicSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
+import { basicSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
+
 import { ZoomComicViewer } from "./_components/zoom-comic-viewer";
 
 import styles from "./page.module.css";

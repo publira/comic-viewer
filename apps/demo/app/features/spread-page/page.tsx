@@ -1,6 +1,6 @@
-import { ComicViewerDemo } from "../../_components/comic-viewer-demo";
-import { spreadPageSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
+import { ComicViewerDemo } from "#components/comic-viewer-demo";
+import { spreadPageSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
 
 import styles from "./page.module.css";
 

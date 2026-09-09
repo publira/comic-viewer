@@ -1,5 +1,6 @@
-import { encryptedSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
+import { encryptedSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
+
 import { EncryptedComicViewer } from "./_components/encrypted-comic-viewer";
 
 import styles from "./page.module.css";

@@ -1,10 +1,10 @@
 import {
   pageLayoutUtilities,
   readerClassNames,
-} from "../../_components/reader-class-names";
-import { spreadPageSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
-import { TailwindReader } from "../../_components/tailwind-reader";
+} from "#components/reader-class-names";
+import { spreadPageSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
+import { TailwindReader } from "#components/tailwind-reader";
 
 const sourceCode = `import { Reader } from "./reader";
 

@@ -1,10 +1,10 @@
 import {
   pageSideUtilities,
   readerClassNames,
-} from "../../_components/reader-class-names";
-import { basicSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
-import { TailwindReader } from "../../_components/tailwind-reader";
+} from "#components/reader-class-names";
+import { basicSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
+import { TailwindReader } from "#components/tailwind-reader";
 
 // The first page stands alone, and the even total leaves the last page
 // unpaired as well, so both ends of the arrangement are on screen.

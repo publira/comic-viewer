@@ -2,8 +2,8 @@
 
 import type { ViewerPage } from "@publira/comic-viewer";
 
-import { TailwindReader } from "../../../_components/tailwind-reader";
-import { useReadingProgress } from "../../../_components/use-reading-progress";
+import { TailwindReader } from "#components/tailwind-reader";
+import { useReadingProgress } from "#components/use-reading-progress";
 
 /** What the stored position is keyed by. A real one would be a slug or an ID. */
 const documentId = "basic-sample";

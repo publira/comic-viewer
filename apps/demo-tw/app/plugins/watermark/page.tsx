@@ -1,6 +1,6 @@
-import { basicSamplePages } from "../../_components/sample-pages";
-import { SourceCodePanel } from "../../_components/source-code-panel";
-import { TailwindReader } from "../../_components/tailwind-reader";
+import { basicSamplePages } from "#components/sample-pages";
+import { SourceCodePanel } from "#components/source-code-panel";
+import { TailwindReader } from "#components/tailwind-reader";
 
 const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 

@@ -4,8 +4,8 @@ import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
 import { useRef } from "react";
 
-import { useFullscreen } from "../../../_components/use-fullscreen";
-import { getViewerStyle } from "../../../_components/viewer-layout";
+import { useFullscreen } from "#components/use-fullscreen";
+import { getViewerStyle } from "#components/viewer-layout";
 
 import styles from "../page.module.css";
 
