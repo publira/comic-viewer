@@ -11,7 +11,7 @@ interface SlotReaderProps {
   pages: readonly ViewerPage[];
 }
 
-/** Renders a reader that opens on a notice and closes on a chapter link. */
+/** Renders a reader that opens on front matter and closes on back matter. */
 export const SlotReader = ({ pages }: SlotReaderProps) => (
   <TailwindReader pages={pages}>
     <ComicViewer.StartPage className={slotClassNames.slotPage}>
@@ -32,12 +32,34 @@ export const SlotReader = ({ pages }: SlotReaderProps) => (
       </div>
     </ComicViewer.StartPage>
 
+    <ComicViewer.StartPage className={slotClassNames.slotPage}>
+      <div className={slotClassNames.slotCard}>
+        <h3 className="text-base font-semibold">
+          Chapter 1: The long way round
+        </h3>
+        <p>Written and drawn by the Publira sample studio.</p>
+      </div>
+    </ComicViewer.StartPage>
+
     <ComicViewer.EndPage className={slotClassNames.slotPage}>
       <div className={slotClassNames.slotCard}>
         <h3 className="text-base font-semibold">Next chapter</h3>
         <p>Chapter 2 is ready to read.</p>
         <Link className="font-semibold underline" href="/">
           Back to the first chapter
+        </Link>
+      </div>
+    </ComicViewer.EndPage>
+
+    <ComicViewer.EndPage className={slotClassNames.slotPage}>
+      <div className={slotClassNames.slotCard}>
+        <h3 className="text-base font-semibold">More from this series</h3>
+        <p>
+          Three side stories follow the same cast between the chapters of the
+          main run.
+        </p>
+        <Link className="font-semibold underline" href="/progress">
+          A longer chapter to scrub through
         </Link>
       </div>
     </ComicViewer.EndPage>

@@ -40,20 +40,20 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   /** The total number of pages, including the ones not resolved yet. */
   pageCount: number;
   /**
-   * The lowest index navigation reaches. It is `START_PAGE_INDEX` while the
-   * viewer holds a start page, and `0` otherwise.
+   * The lowest index navigation reaches. It is the negated number of start
+   * pages the viewer holds, and `0` while it holds none.
    */
   minIndex: number;
   /**
-   * The highest index navigation reaches. It is `pageCount` while the viewer
-   * holds an end page, and `pageCount - 1` otherwise, so an index outside the
-   * page list belongs to a slot page rather than to `pages`.
+   * The highest index navigation reaches. It is `pageCount - 1` plus the
+   * number of end pages the viewer holds, so an index outside the page list
+   * belongs to a slot page rather than to `pages`.
    */
   maxIndex: number;
-  /** The StartPage found among the viewer children, if it was given one. */
-  startPage?: ReactNode;
-  /** The EndPage found among the viewer children, if it was given one. */
-  endPage?: ReactNode;
+  /** The StartPage children of the viewer, in the order they are written. */
+  startPages: readonly ReactNode[];
+  /** The EndPage children of the viewer, in the order they are written. */
+  endPages: readonly ReactNode[];
   plugins: readonly ViewerPlugin[];
   currentIndex: number;
   viewMode: ViewMode;
@@ -159,9 +159,9 @@ export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
   initialReadingDirection?: ReadingDirection;
   /**
    * The page every double-page spread is counted from. Every page before it is
-   * shown on its own. The lowest value it takes is `START_PAGE_INDEX`, which a
-   * viewer holding a start page accepts to pair that page with the first page
-   * of the document.
+   * shown on its own. The lowest value it takes is `minIndex`, the first start
+   * page the viewer holds, so a negative value pairs the start pages with each
+   * other and with the first page of the document.
    */
   spreadStartIndex?: number;
 }
@@ -173,7 +173,12 @@ const ViewerContext = createContext<ViewerContextValue | null>(null);
 const EMPTY_PAGES: readonly never[] = [];
 const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
 const CONTROLS_HIDE_DELAY_MS = 2000;
-/** The index the extra page shown before the first page occupies. */
+/**
+ * The index of the start page nearest the first page of the document, which
+ * is the last StartPage written among the children of the viewer. A viewer
+ * holding several of them fills the indexes below it as well, down to
+ * `minIndex`, so this is no longer the index such a viewer opens on.
+ */
 export const START_PAGE_INDEX = -1;
 const DEFAULT_END_REACHED_THRESHOLD = 2;
 
@@ -187,30 +192,71 @@ const clamp = (value: number, min: number, max: number): number => {
 
 /** The extra pages a viewer holds at the ends of its reading sequence. */
 export interface ViewerSlotPages {
-  endPage?: ReactNode;
-  startPage?: ReactNode;
+  endPages: readonly ReactNode[];
+  startPages: readonly ReactNode[];
+}
+
+/** One of the extra pages, together with its place among the slot it fills. */
+export interface ViewerSlotPage {
+  /** How many pages the slot holds. */
+  count: number;
+  /** The content written for this position of the slot. */
+  page: ReactNode;
+  /** The one-based position the page takes among the pages of its slot. */
+  position: number;
+  slot: ViewerSlot;
 }
 
 /**
- * Returns the slot a navigable index belongs to, or `undefined` for an index
- * that addresses a page of the document. An index outside the page list
- * belongs to a slot only while the viewer holds the page that fills it.
+ * Returns the extra page a navigable index addresses, or `undefined` for an
+ * index that addresses a page of the document. The start pages take the
+ * indexes below the page list, `-1` being the last one written, and the end
+ * pages the indexes above it, `pageCount` being the first one written, so the
+ * reading order follows the order they are written in.
  */
-export const getPageSlot = (
+export const getSlotPage = (
   index: number,
   pageCount: number,
-  { endPage, startPage }: ViewerSlotPages
-): ViewerSlot | undefined => {
+  { endPages, startPages }: ViewerSlotPages
+): ViewerSlotPage | undefined => {
   if (index < 0) {
-    return startPage === undefined ? undefined : "start";
+    const position = startPages.length + index + 1;
+
+    return position < 1
+      ? undefined
+      : {
+          count: startPages.length,
+          page: startPages[position - 1],
+          position,
+          slot: "start",
+        };
   }
 
   if (index < pageCount) {
     return undefined;
   }
 
-  return endPage === undefined ? undefined : "end";
+  const position = index - pageCount + 1;
+
+  return position > endPages.length
+    ? undefined
+    : {
+        count: endPages.length,
+        page: endPages[position - 1],
+        position,
+        slot: "end",
+      };
 };
+
+/**
+ * Returns the slot a navigable index belongs to, or `undefined` for an index
+ * that addresses a page of the document.
+ */
+export const getPageSlot = (
+  index: number,
+  pageCount: number,
+  slotPages: ViewerSlotPages
+): ViewerSlot | undefined => getSlotPage(index, pageCount, slotPages)?.slot;
 
 /**
  * Returns the index the viewer steps back to, or `undefined` on the first
@@ -295,21 +341,21 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   // tree here and rendered from the context instead.
   const {
     children: viewerChildren,
-    endPage,
-    startPage,
+    endPages,
+    startPages,
   } = extractViewerSlotPages(children);
   const totalPageCount = clamp(
     pageCount ?? pages.length,
     0,
     Number.MAX_SAFE_INTEGER
   );
-  // A slot page sits outside the page list, so it takes the index next to the
-  // end of the list it belongs to rather than one of its own.
-  const minIndex = startPage === undefined ? 0 : START_PAGE_INDEX;
-  const maxIndex = Math.max(
-    minIndex,
-    totalPageCount - (endPage === undefined ? 1 : 0)
-  );
+  // A slot page sits outside the page list, so the pages of a slot take the
+  // indexes running away from the end of the list they belong to rather than
+  // indexes of their own.
+  // Subtracting from zero rather than negating the count keeps a viewer
+  // holding no start page on `0` instead of the `-0` negation would give.
+  const minIndex = 0 - startPages.length;
+  const maxIndex = Math.max(minIndex, totalPageCount - 1 + endPages.length);
   const clampedSpreadStartIndex = clamp(
     spreadStartIndex,
     minIndex,
@@ -441,7 +487,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     () => ({
       areControlsVisible,
       currentIndex: clampedCurrentIndex,
-      endPage,
+      endPages,
       goTo,
       goToNext,
       goToPrev,
@@ -459,18 +505,18 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       setReadingDirection,
       setViewMode,
       spreadStartIndex: clampedSpreadStartIndex,
-      startPage,
+      startPages,
       toggleControls,
       viewMode,
     }),
     [
       areControlsVisible,
-      endPage,
+      endPages,
       isDoublePageAvailable,
       maxIndex,
       minIndex,
       sourcePages,
-      startPage,
+      startPages,
       totalPageCount,
       plugins,
       clampedCurrentIndex,

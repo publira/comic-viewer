@@ -15,7 +15,8 @@ export type ComicViewerProps<TPage extends ViewerPage> =
  * tree-shake subcomponents that a consumer never renders.
  *
  * A StartPage or an EndPage written among its children is shown at that end of
- * the reading sequence rather than where it stands.
+ * the reading sequence rather than where it stands, and a slot holds as many
+ * of them as it is written with.
  */
 export const ComicViewer = <TPage extends ViewerPage>({
   children,
@@ -28,8 +29,8 @@ export const ComicViewer = <TPage extends ViewerPage>({
   // of it and left among the children the provider reads them from.
   const {
     children: content,
-    endPage,
-    startPage,
+    endPages,
+    startPages,
   } = extractViewerSlotPages(children);
 
   return (
@@ -38,8 +39,8 @@ export const ComicViewer = <TPage extends ViewerPage>({
       initialViewMode={initialViewMode}
       initialReadingDirection={initialReadingDirection}
     >
-      {startPage}
-      {endPage}
+      {startPages}
+      {endPages}
       <div className={composeClassName("pcv-root", className)}>{content}</div>
     </ViewerProvider>
   );

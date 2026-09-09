@@ -145,6 +145,30 @@ Use `spreadStartIndex` to leave leading pages unpaired before double-page spread
 </ComicViewer.Root>
 ```
 
+Each end takes as many of them as it is written with, and each one is a page of its own, turned to in the order it is written. Front and back matter that runs over several pages therefore stays out of the page count without being squeezed into a single card.
+
+```tsx
+<ComicViewer.Root pages={pages}>
+  <ComicViewer.StartPage>
+    <CoverNotice />
+  </ComicViewer.StartPage>
+
+  <ComicViewer.StartPage>
+    <ChapterTitleCard />
+  </ComicViewer.StartPage>
+
+  <ComicViewer.Viewport />
+
+  <ComicViewer.EndPage>
+    <Afterword />
+  </ComicViewer.EndPage>
+
+  <ComicViewer.EndPage>
+    <NextChapterCard />
+  </ComicViewer.EndPage>
+</ComicViewer.Root>
+```
+
 A viewer composed from `ViewerProvider` finds them among its own children in the same way, and so does a reader component of your own that passes its children on to the viewer root.
 
 ```tsx
@@ -159,15 +183,17 @@ A viewer composed from `ViewerProvider` finds them among its own children in the
 
 ### Reading order and page numbering
 
-The reader turns to an extra page exactly as it turns to a page of the document, through the navigation buttons, the keyboard, an edge click, or a swipe. Neither of them is counted in `pageCount` or in the zero-based index mapping of `pages`, so the numbering a reader sees stays the numbering of the document. They take the indexes next to the list instead: the start page is `START_PAGE_INDEX`, which is `-1`, and the end page is `pageCount`. A viewer holding a start page opens on it; pass `initialIndex={0}` to open on the first page of the document instead. A controlled `currentIndex` reaches them through those same indexes, and `onIndexChange` reports them.
+The reader turns to an extra page exactly as it turns to a page of the document, through the navigation buttons, the keyboard, an edge click, or a swipe. None of them is counted in `pageCount` or in the zero-based index mapping of `pages`, so the numbering a reader sees stays the numbering of the document. They take the indexes next to the list instead: `N` start pages take `-N` to `-1`, and `M` end pages take `pageCount` to `pageCount + M - 1`, each of them in the order it is written, so the reading order stays monotonic. `minIndex` and `maxIndex` on `useViewerContext` report the two ends of that range. A viewer holding start pages opens on `minIndex`, the first of them; pass `initialIndex={0}` to open on the first page of the document instead. A controlled `currentIndex` reaches them through those same indexes, and `onIndexChange` reports them.
 
-`PageStatus` names an extra page shown on its own — `Start page` or `End page` — rather than giving it a number, and reads `Page 7 of 7` while one shares a spread with a page. Its `format` function receives the same `slot` the viewer is showing, as `"start"`, `"end"`, or `undefined`, so a reader can label them in its own words:
+`START_PAGE_INDEX` stays `-1`, which is now the index of the start page nearest the document — the last one written — rather than the index every viewer with front matter opens on. Read `minIndex` for that.
+
+`PageStatus` names an extra page shown on its own rather than giving it a number: `Start page` or `End page` while the slot holds one page, and `Start page 2 of 3` while it holds several. It reads `Page 7 of 7` while an extra page shares a spread with a page of the document. Its `format` function receives the `slot` the viewer is showing, as `"start"`, `"end"`, or `undefined`, together with `slotPage` and `slotPageCount` for the place that page takes in its slot, so a reader can label them in its own words:
 
 ```tsx
 <ComicViewer.PageStatus
-  format={({ firstPage, lastPage, pageCount, slot }) => {
+  format={({ firstPage, lastPage, pageCount, slot, slotPage }) => {
     if (slot === "start") {
-      return "Notice";
+      return slotPage === 1 ? "Notice" : "Chapter title";
     }
 
     return slot === "end"
@@ -179,9 +205,9 @@ The reader turns to an extra page exactly as it turns to a page of the document,
 
 ### Spreads and styling
 
-In double-page mode an extra page takes a half of the spread like any other page, following the same parity as the pages around it. With the default `spreadStartIndex={0}` the start page comes before the first spread and is shown on its own, and the end page pairs with the last page whenever the document holds an odd number of pages and leaves it without a facing page. Pass `spreadStartIndex={-1}` to count the spreads from the start page itself, which pairs it with the first page of the document.
+In double-page mode an extra page takes a half of the spread like any other page, following the same parity as the pages around it. With the default `spreadStartIndex={0}` every start page comes before the first spread and is shown on its own, so several of them are turned through one at a time, and the end pages pair by the parity of the pages before them: the first of them faces the last page whenever the document holds an odd number of pages, and the rest pair with each other. Pass a negative `spreadStartIndex` to count the spreads from a start page instead — `-1` pairs the last start page with the first page of the document, and `-2` pairs two start pages with each other.
 
-Each of them renders one element carrying `pcv-page` and `pcv-page-slot`, with `data-page-slot="start"` or `data-page-slot="end"`, and the `data-page-side` a page in its position would take. Both take a `className` and the rest of the props of a `div`, and a custom `ViewportPageSlot` layout receives the same `data-page-slot` so a stylesheet can tell an extra page from a page of the document.
+Each of them renders one element carrying `pcv-page` and `pcv-page-slot`, with `data-page-slot="start"` or `data-page-slot="end"`, the `data-page-side` a page in its position would take, and `data-slot-page` and `data-slot-page-count` for the one-based place it takes among the pages of its slot. They take a `className` and the rest of the props of a `div`, and a custom `ViewportPageSlot` layout receives the same attributes so a stylesheet can tell an extra page from a page of the document, and one extra page from another.
 
 ```tsx
 <ComicViewer.EndPage className="chapter-end">

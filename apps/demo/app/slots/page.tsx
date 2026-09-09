@@ -10,16 +10,25 @@ const slotSamplePages = basicSamplePages.slice(0, 7);
 
 const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 
+// A slot holds as many pages as it is written with, in that order.
 export const Reader = ({ pages }) => (
   <ComicViewer.Root pages={pages}>
     <ComicViewer.StartPage>
       <CoverNotice />
     </ComicViewer.StartPage>
 
+    <ComicViewer.StartPage>
+      <ChapterTitleCard />
+    </ComicViewer.StartPage>
+
     <ComicViewer.Viewport />
 
     <ComicViewer.EndPage>
       <NextChapterCard />
+    </ComicViewer.EndPage>
+
+    <ComicViewer.EndPage>
+      <SeriesRecommendations />
     </ComicViewer.EndPage>
 
     <ComicViewer.Toolbar />
@@ -35,23 +44,27 @@ const SlotsPage = () => (
         <h2>Pages around the chapter</h2>
         <p>
           <code>StartPage</code> and <code>EndPage</code> put content of your
-          own at the two ends of the reading sequence. The reader opens on the
-          notice before the first page and reaches the next-chapter card after
-          the last one, turning to both exactly as it turns to a page.
+          own at the two ends of the reading sequence, and each end takes as
+          many of them as it is written with. This chapter opens on a notice and
+          a title card, and closes on a next-chapter card and a list of side
+          stories, each of them turned to exactly as a page is.
         </p>
         <p>
-          Neither of them is counted as a page. The progress still reads{" "}
+          None of them is counted as a page. The progress still reads{" "}
           <code>Pages 1-2 of 7</code> on the first spread, and the page list
           keeps the indexes it was given, so the numbering a reader sees is the
           numbering of the document. While one of them is on screen on its own,
-          the status names it instead of a page number.
+          the status names it and its place in the slot, as{" "}
+          <code>Start page 2 of 2</code>.
         </p>
         <p>
           In double-page mode they take a half of the spread like any other
-          page: this chapter holds an odd number of pages, which leaves the last
-          one without a facing page, so the next-chapter card pairs with it. The
-          links and the disclosure inside them stay usable, and the swipe and
-          edge-click page turns leave a control that was pressed alone.
+          page: the pages before the first spread are shown one at a time, so
+          the two opening pages arrive in turn, while this chapter holds an odd
+          number of pages, which leaves the last one without a facing page, so
+          the next-chapter card pairs with it. The links and the disclosure
+          inside them stay usable, and the swipe and edge-click page turns leave
+          a control that was pressed alone.
         </p>
       </section>
       <SourceCodePanel code={sourceCode} />

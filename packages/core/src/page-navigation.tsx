@@ -21,7 +21,7 @@ import type {
 import { composeClassName } from "./class-names";
 import { useControlsHold } from "./use-controls-hold";
 import {
-  getPageSlot,
+  getSlotPage,
   getSpreadIndex,
   getVisiblePageCount,
   useViewerContext,
@@ -139,6 +139,13 @@ export interface PageStatusValue {
   pageCount: number;
   /** The slot of the extra page on screen, if one of them is showing. */
   slot?: ViewerSlot;
+  /**
+   * The one-based position the extra page on screen takes among the pages of
+   * its slot, absent while none of them is showing.
+   */
+  slotPage?: number;
+  /** How many pages that slot holds, absent as `slotPage` is. */
+  slotPageCount?: number;
   viewMode: "single" | "double";
 }
 
@@ -147,8 +154,19 @@ export interface PageStatusProps {
   format?: (value: PageStatusValue) => ReactNode;
 }
 
-const getSlotLabel = (slot: ViewerSlot): string =>
-  slot === "start" ? "Start page" : "End page";
+const getSlotLabel = ({
+  slot,
+  slotPage,
+  slotPageCount,
+}: PageStatusValue): string => {
+  const label = slot === "start" ? "Start page" : "End page";
+
+  // A slot holding one page has nothing to tell apart, so it keeps the plain
+  // name a reader of a single notice or chapter link expects.
+  return slotPageCount === undefined || slotPageCount < 2
+    ? label
+    : `${label} ${slotPage} of ${slotPageCount}`;
+};
 
 interface PageStatusInput extends ViewerSlotPages {
   currentIndex: number;
@@ -164,11 +182,11 @@ interface PageStatusInput extends ViewerSlotPages {
  */
 const getPageStatusValue = ({
   currentIndex,
-  endPage,
+  endPages,
   maxIndex,
   pageCount,
   spreadStartIndex,
-  startPage,
+  startPages,
   viewMode,
 }: PageStatusInput): PageStatusValue => {
   const lastIndex =
@@ -177,10 +195,10 @@ const getPageStatusValue = ({
     1;
   // A slot page is counted neither in the page numbers nor in the total, so
   // the reader keeps the numbering of the document itself.
-  const slotPages = { endPage, startPage };
-  const slot =
-    getPageSlot(currentIndex, pageCount, slotPages) ??
-    getPageSlot(lastIndex, pageCount, slotPages);
+  const slotPages = { endPages, startPages };
+  const slotPage =
+    getSlotPage(currentIndex, pageCount, slotPages) ??
+    getSlotPage(lastIndex, pageCount, slotPages);
   const firstVisiblePage = Math.max(currentIndex, 0) + 1;
   const lastVisiblePage = Math.min(lastIndex + 1, pageCount);
   const hasVisiblePages = pageCount > 0 && firstVisiblePage <= lastVisiblePage;
@@ -190,19 +208,18 @@ const getPageStatusValue = ({
     firstPage: hasVisiblePages ? firstVisiblePage : 0,
     lastPage: hasVisiblePages ? lastVisiblePage : 0,
     pageCount,
-    slot,
+    slot: slotPage?.slot,
+    slotPage: slotPage?.position,
+    slotPageCount: slotPage?.count,
     viewMode,
   };
 };
 
-const getDefaultPageStatusLabel = ({
-  firstPage,
-  lastPage,
-  pageCount,
-  slot,
-}: PageStatusValue): string => {
+const getDefaultPageStatusLabel = (value: PageStatusValue): string => {
+  const { firstPage, lastPage, pageCount, slot } = value;
+
   if (firstPage === 0 || lastPage === 0) {
-    return slot === undefined ? "No pages" : getSlotLabel(slot);
+    return slot === undefined ? "No pages" : getSlotLabel(value);
   }
 
   return firstPage === lastPage
@@ -225,21 +242,21 @@ const useProgressIndex = (currentIndex: number): number => {
 export const PageStatus = ({ className, format }: PageStatusProps) => {
   const {
     currentIndex,
-    endPage,
+    endPages,
     maxIndex,
     pageCount,
     spreadStartIndex,
-    startPage,
+    startPages,
     viewMode,
   } = useViewerContext();
   const progressIndex = useProgressIndex(currentIndex);
   const value = getPageStatusValue({
     currentIndex: progressIndex,
-    endPage,
+    endPages,
     maxIndex,
     pageCount,
     spreadStartIndex,
-    startPage,
+    startPages,
     viewMode,
   });
   const label = format?.(value) ?? getDefaultPageStatusLabel(value);
@@ -358,14 +375,14 @@ export const PageProgressSlider = ({
   const pageProgress = useContext(PageProgressContext);
   const {
     currentIndex,
-    endPage,
+    endPages,
     goTo,
     holdControls,
     maxIndex,
     minIndex,
     pageCount,
     spreadStartIndex,
-    startPage,
+    startPages,
     viewMode,
   } = useViewerContext();
   const [scrubIndex, setScrubIndex] = useState<number | null>(null);
@@ -474,11 +491,11 @@ export const PageProgressSlider = ({
 
   const statusValue = getPageStatusValue({
     currentIndex: value,
-    endPage,
+    endPages,
     maxIndex,
     pageCount,
     spreadStartIndex,
-    startPage,
+    startPages,
     viewMode,
   });
   const fillRatio =

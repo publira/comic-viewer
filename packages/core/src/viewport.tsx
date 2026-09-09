@@ -49,7 +49,7 @@ export const Viewport = <TPage extends ViewerPage>({
     layoutTemplate === undefined ? children : layoutTemplate.pageTemplate;
   const containerRef = useRef<HTMLDivElement>(null);
   const {
-    endPage,
+    endPages,
     maxIndex,
     minIndex,
     pageCount,
@@ -59,7 +59,7 @@ export const Viewport = <TPage extends ViewerPage>({
     pageFitMode,
     readingDirection,
     spreadStartIndex,
-    startPage,
+    startPages,
     goToNext,
     goToPrev,
     setPageFitMode,
@@ -147,7 +147,7 @@ export const Viewport = <TPage extends ViewerPage>({
         activePan={activePan}
         activeZoom={activeZoom}
         dragOffset={dragOffset}
-        endPage={endPage}
+        endPages={endPages}
         getPageIndices={orderedIndicesFor}
         isDragging={isDragging}
         layoutTemplate={layoutTemplate}
@@ -164,7 +164,7 @@ export const Viewport = <TPage extends ViewerPage>({
         retryPage={retryPage}
         slideDirection={slideDirection}
         spreadStartIndex={spreadStartIndex}
-        startPage={startPage}
+        startPages={startPages}
         transitionState={transitionState}
         viewMode={viewMode}
       />
