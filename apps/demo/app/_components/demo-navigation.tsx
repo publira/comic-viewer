@@ -2,27 +2,39 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import { CounterpartDemoLink } from "./counterpart-demo-link";
-
-const navigationItems = [
-  { href: "/", label: "Basic" },
-  { href: "/spreads", label: "Spreads" },
-  { href: "/spread-page", label: "Spread page" },
-  { href: "/slots", label: "Slots" },
-  { href: "/ltr", label: "LTR" },
-  { href: "/controls", label: "Controls" },
-  { href: "/zoom", label: "Zoom" },
-  { href: "/fullscreen", label: "Fullscreen" },
-  { href: "/progress", label: "Progress" },
-  { href: "/lazy", label: "Lazy" },
-  { href: "/plugins/decrypted", label: "Decrypt" },
-  { href: "/plugins/watermark", label: "Watermark" },
-] as const;
+import { DemoNavigationMenu } from "./demo-navigation-menu";
+import {
+  basicRoute,
+  demoRouteGroups,
+  isRouteGroupCurrent,
+} from "./demo-routes";
 
 /** Renders the persistent navigation between the demo variants. */
 export const DemoNavigation = () => {
   const pathname = usePathname();
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const navigationRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (openGroup === null) {
+      return;
+    }
+
+    const handlePointerDown = (event: globalThis.PointerEvent) => {
+      if (!navigationRef.current?.contains(event.target as Node)) {
+        setOpenGroup(null);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [openGroup]);
 
   return (
     <header className="demo-header">
@@ -30,18 +42,34 @@ export const DemoNavigation = () => {
         <h1 className="demo-title">Comic Viewer Demo</h1>
         <CounterpartDemoLink />
       </div>
-      <nav className="demo-navigation" aria-label="Demo pages">
-        <div className="demo-navigation-tabs">
-          {navigationItems.map((item) => (
+      <nav
+        aria-label="Demo pages"
+        className="demo-navigation"
+        ref={navigationRef}
+      >
+        <ul className="demo-navigation-tabs">
+          <li>
             <Link
-              key={item.href}
-              aria-current={pathname === item.href ? "page" : undefined}
-              href={item.href}
+              aria-current={pathname === basicRoute.href ? "page" : undefined}
+              className="demo-navigation-link"
+              href={basicRoute.href}
             >
-              {item.label}
+              {basicRoute.label}
             </Link>
+          </li>
+          {demoRouteGroups.map((group) => (
+            <DemoNavigationMenu
+              isCurrent={isRouteGroupCurrent(group, pathname)}
+              isOpen={openGroup === group.label}
+              items={group.items}
+              key={group.label}
+              label={group.label}
+              onClose={() => setOpenGroup(null)}
+              onOpen={() => setOpenGroup(group.label)}
+              pathname={pathname}
+            />
           ))}
-        </div>
+        </ul>
       </nav>
     </header>
   );

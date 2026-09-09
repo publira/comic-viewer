@@ -110,29 +110,96 @@ code {
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  overflow-x: auto;
+  list-style: none;
 }
 
-.demo-navigation a {
-  flex: 0 0 auto;
+.demo-navigation-link,
+.demo-navigation-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   padding: 0.65rem 1rem;
   border: 1px solid transparent;
   border-bottom: 0;
   border-radius: 0.5rem 0.5rem 0 0;
+  background: none;
   color: var(--demo-navigation-foreground);
+  font: inherit;
   font-weight: 600;
   text-decoration: none;
+  cursor: pointer;
 }
 
-.demo-navigation a:hover {
+.demo-navigation-link:hover,
+.demo-navigation-trigger:hover {
   background: var(--demo-navigation-hover-background);
   color: var(--demo-foreground);
 }
 
-.demo-navigation a[aria-current="page"] {
+.demo-navigation-link[aria-current],
+.demo-navigation-trigger[aria-current] {
   border-color: var(--demo-navigation-active-border);
   border-bottom-color: var(--demo-header-background);
   background: var(--demo-navigation-active-background);
   box-shadow: inset 0 2px var(--demo-accent);
+  color: var(--demo-foreground);
+}
+
+/* The group holds the menu it opens, which is laid out against its tab. */
+.demo-navigation-group {
+  position: relative;
+}
+
+.demo-navigation-menu {
+  --demo-navigation-menu-gap: 0.25rem;
+
+  position: absolute;
+  z-index: 30;
+  top: 100%;
+  left: 0;
+  min-width: 12rem;
+  margin-top: var(--demo-navigation-menu-gap);
+  padding: 0.35rem;
+  border: 1px solid var(--demo-border);
+  border-radius: 0.5rem;
+  background: var(--demo-panel-background);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 18%);
+  list-style: none;
+}
+
+/*
+ * The menu stands clear of the tab it opens from, and the gap that leaves
+ * belongs to neither of them: a pointer travelling down to the menu would
+ * leave the group there and close what it was on its way to. This strip fills
+ * the gap so that it answers for the menu, and shows nothing while it does.
+ * It reaches back over the menu's own top border and no further, because
+ * anything taller would cover the bottom edge of the tab and eat its clicks.
+ */
+.demo-navigation-menu::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: calc(var(--demo-navigation-menu-gap) + 1px);
+}
+
+.demo-navigation-menu a {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.35rem;
+  color: var(--demo-navigation-foreground);
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.demo-navigation-menu a:hover {
+  background: var(--demo-navigation-hover-background);
+  color: var(--demo-foreground);
+}
+
+.demo-navigation-menu a[aria-current="page"] {
+  background: var(--demo-navigation-active-background);
   color: var(--demo-foreground);
 }

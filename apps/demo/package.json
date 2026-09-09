@@ -4,6 +4,15 @@
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
+  "imports": {
+    "#components/*": {
+      "types": [
+        "./app/_components/*.ts",
+        "./app/_components/*.tsx"
+      ],
+      "default": "./app/_components/*"
+    }
+  },
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
