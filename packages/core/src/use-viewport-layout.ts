@@ -115,6 +115,11 @@ export const getSwipeTargetIndex = (
 
 interface UseViewportLayoutOptions {
   displayedIndex: number;
+  /**
+   * How many spreads beyond the ones the viewport can render are loaded ahead
+   * of the reader in each direction.
+   */
+  imagePreloadSpreads: number;
   maxIndex: number;
   minIndex: number;
   /** The page list the spread pages among the document are read from. */
@@ -129,6 +134,7 @@ interface UseViewportLayoutOptions {
 /** Calculates visible, rail, and image-cache page indices for the viewport. */
 export const useViewportLayout = ({
   displayedIndex,
+  imagePreloadSpreads,
   maxIndex,
   minIndex,
   pages,
@@ -200,14 +206,14 @@ export const useViewportLayout = ({
     readingDirection,
     usesPageRail,
   ]);
-  const cachedIndices = useMemo(() => {
-    const indices = new Set<number>();
-
-    for (const spreadIndex of railSpreadIndices) {
-      if (spreadIndex === undefined) {
-        continue;
-      }
-
+  const { cachedIndices, preloadIndices } = useMemo(() => {
+    const cached = new Set<number>();
+    const preloaded = new Set<number>();
+    // The spreads the cache already holds, so that the preload window starts
+    // where the viewport stops rather than reloading a page it can render.
+    let firstCachedSpreadIndex = displayedIndex;
+    let lastCachedSpreadIndex = displayedIndex;
+    const addSpread = (indices: Set<number>, spreadIndex: number): void => {
       for (const pageIndex of getVisibleIndices(
         spreadIndex,
         maxIndex,
@@ -217,18 +223,21 @@ export const useViewportLayout = ({
       )) {
         indices.add(pageIndex);
       }
+    };
+    const cacheSpread = (spreadIndex: number): void => {
+      addSpread(cached, spreadIndex);
+      firstCachedSpreadIndex = Math.min(firstCachedSpreadIndex, spreadIndex);
+      lastCachedSpreadIndex = Math.max(lastCachedSpreadIndex, spreadIndex);
+    };
+
+    for (const spreadIndex of railSpreadIndices) {
+      if (spreadIndex !== undefined) {
+        cacheSpread(spreadIndex);
+      }
     }
 
     if (transitionToIndex !== undefined) {
-      for (const pageIndex of getVisibleIndices(
-        transitionToIndex,
-        maxIndex,
-        spreadStartIndex,
-        viewMode,
-        pages
-      )) {
-        indices.add(pageIndex);
-      }
+      cacheSpread(transitionToIndex);
     }
 
     if (!usesPageRail) {
@@ -240,15 +249,7 @@ export const useViewportLayout = ({
         pages
       );
       for (let count = 0; count < 2 && nextIndex !== undefined; count += 1) {
-        for (const pageIndex of getVisibleIndices(
-          nextIndex,
-          maxIndex,
-          spreadStartIndex,
-          viewMode,
-          pages
-        )) {
-          indices.add(pageIndex);
-        }
+        cacheSpread(nextIndex);
         nextIndex = getNextSpreadIndex(
           nextIndex,
           maxIndex,
@@ -259,10 +260,50 @@ export const useViewportLayout = ({
       }
     }
 
-    return [...indices];
+    let forwardIndex = lastCachedSpreadIndex;
+    for (let count = 0; count < imagePreloadSpreads; count += 1) {
+      const nextIndex = getNextSpreadIndex(
+        forwardIndex,
+        maxIndex,
+        spreadStartIndex,
+        viewMode,
+        pages
+      );
+      if (nextIndex === undefined) {
+        break;
+      }
+
+      addSpread(preloaded, nextIndex);
+      forwardIndex = nextIndex;
+    }
+
+    let backwardIndex = firstCachedSpreadIndex;
+    for (let count = 0; count < imagePreloadSpreads; count += 1) {
+      const previousIndex = getPreviousSpreadIndex(
+        backwardIndex,
+        minIndex,
+        spreadStartIndex,
+        viewMode,
+        pages
+      );
+      if (previousIndex === undefined) {
+        break;
+      }
+
+      addSpread(preloaded, previousIndex);
+      backwardIndex = previousIndex;
+    }
+
+    for (const pageIndex of cached) {
+      preloaded.delete(pageIndex);
+    }
+
+    return { cachedIndices: [...cached], preloadIndices: [...preloaded] };
   }, [
     displayedIndex,
+    imagePreloadSpreads,
     maxIndex,
+    minIndex,
     pages,
     railSpreadIndices,
     spreadStartIndex,
@@ -275,6 +316,7 @@ export const useViewportLayout = ({
     cachedIndices,
     orderedIndices,
     orderedIndicesFor,
+    preloadIndices,
     railSpreadIndices,
   };
 };

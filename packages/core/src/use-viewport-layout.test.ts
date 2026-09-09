@@ -1,3 +1,4 @@
+import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -6,6 +7,7 @@ import {
   getPageTurnDirection,
   getSwipeTargetIndex,
   getVisibleIndices,
+  useViewportLayout,
 } from "./use-viewport-layout";
 import { getPreviousSpreadIndex } from "./viewer-context";
 import type { ViewerPage } from "./viewer-context";
@@ -26,6 +28,41 @@ const plainPages = createPages(8);
 // Pages 1 and 2 pair, page 3 is left facing the blank half before the spread,
 // and the pages after it pair again from the sheet the spread ends.
 const pagesWithSpread = createPages(8, 3);
+/** The ten pages the rail and preload windows are measured over. */
+const railPages = createPages(10);
+
+/** Renders the layout of a ten-page document read as spreads. */
+const renderLayout = ({
+  displayedIndex = 4,
+  imagePreloadSpreads = 0,
+  minIndex = 0,
+  pages = railPages,
+  transitionToIndex = undefined as number | undefined,
+}: {
+  displayedIndex?: number;
+  imagePreloadSpreads?: number;
+  minIndex?: number;
+  pages?: readonly (ViewerPage | undefined)[];
+  transitionToIndex?: number;
+} = {}) =>
+  renderHook(() =>
+    useViewportLayout({
+      displayedIndex,
+      imagePreloadSpreads,
+      maxIndex: 9,
+      minIndex,
+      pages,
+      readingDirection: "rtl",
+      spreadStartIndex: 0,
+      transitionToIndex,
+      usesPageRail: true,
+      viewMode: "double",
+    })
+  );
+
+/** The window a hook reports, compared without depending on its order. */
+const windowOf = (indices: readonly number[]): ReadonlySet<number> =>
+  new Set(indices);
 
 describe(getPageTurnDirection, () => {
   it("maps forward and backward turns to opposite physical directions", () => {
@@ -247,5 +284,85 @@ describe(getSwipeTargetIndex, () => {
     expect(
       getSwipeTargetIndex("left", 4, 0, 7, "ltr", 0, "double", pagesWithSpread)
     ).toBe(3);
+  });
+});
+
+describe(useViewportLayout, () => {
+  it("caches the rail and loads nothing beyond it by default", () => {
+    const { result } = renderLayout();
+
+    expect(windowOf(result.current.cachedIndices)).toStrictEqual(
+      new Set([2, 3, 4, 5, 6, 7])
+    );
+    expect(result.current.preloadIndices).toStrictEqual([]);
+  });
+
+  it("preloads whole spreads on either side of the rail", () => {
+    const { result } = renderLayout({ imagePreloadSpreads: 1 });
+
+    // The rail already holds the spreads at 2 and 6, so the preload window
+    // continues from there rather than repeating them.
+    expect(windowOf(result.current.cachedIndices)).toStrictEqual(
+      new Set([2, 3, 4, 5, 6, 7])
+    );
+    expect(windowOf(result.current.preloadIndices)).toStrictEqual(
+      new Set([0, 1, 8, 9])
+    );
+  });
+
+  it("stops the preload window at the ends of the document", () => {
+    const { result } = renderLayout({
+      displayedIndex: 0,
+      imagePreloadSpreads: 3,
+    });
+
+    expect(windowOf(result.current.cachedIndices)).toStrictEqual(
+      new Set([0, 1, 2, 3])
+    );
+    expect(windowOf(result.current.preloadIndices)).toStrictEqual(
+      new Set([4, 5, 6, 7, 8, 9])
+    );
+  });
+
+  it("counts the preload window from the spread a page turn is heading for", () => {
+    const { result } = renderLayout({
+      imagePreloadSpreads: 1,
+      transitionToIndex: 8,
+    });
+
+    expect(windowOf(result.current.cachedIndices)).toStrictEqual(
+      new Set([2, 3, 4, 5, 6, 7, 8, 9])
+    );
+    expect(windowOf(result.current.preloadIndices)).toStrictEqual(
+      new Set([0, 1])
+    );
+  });
+
+  it("counts a spread page as one whole spread in both windows", () => {
+    // Page 7 of this document is a spread, so the rail holds it alone and the
+    // preload window continues with the pair that follows it.
+    const { result } = renderLayout({
+      imagePreloadSpreads: 1,
+      pages: createPages(10, 6),
+    });
+
+    expect(windowOf(result.current.cachedIndices)).toStrictEqual(
+      new Set([2, 3, 4, 5, 6])
+    );
+    expect(windowOf(result.current.preloadIndices)).toStrictEqual(
+      new Set([0, 1, 7, 8])
+    );
+  });
+
+  it("preloads the start pages behind the first page of the document", () => {
+    const { result } = renderLayout({
+      displayedIndex: 2,
+      imagePreloadSpreads: 1,
+      minIndex: -1,
+    });
+
+    expect(windowOf(result.current.preloadIndices)).toStrictEqual(
+      new Set([-1, 6, 7])
+    );
   });
 });

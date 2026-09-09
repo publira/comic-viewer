@@ -50,6 +50,7 @@ export const Viewport = <TPage extends ViewerPage>({
   const containerRef = useRef<HTMLDivElement>(null);
   const {
     endPages,
+    imagePreloadSpreads,
     maxIndex,
     minIndex,
     pageCount,
@@ -87,6 +88,7 @@ export const Viewport = <TPage extends ViewerPage>({
     transitionState,
   } = usePageTurn({
     currentIndex,
+    imagePreloadSpreads,
     maxIndex,
     minIndex,
     onPageLoadError,

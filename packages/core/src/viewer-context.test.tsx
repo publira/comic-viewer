@@ -63,6 +63,30 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.plugins).toStrictEqual([]);
   });
 
+  it("preloads no image beyond the viewport by default", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper(),
+    });
+
+    expect(result.current.imagePreloadSpreads).toBe(0);
+  });
+
+  it("holds the image preload window as whole spreads", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({ imagePreloadSpreads: 2.7 }),
+    });
+
+    expect(result.current.imagePreloadSpreads).toBe(2);
+  });
+
+  it("preloads nothing for a negative window", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({ imagePreloadSpreads: -3 }),
+    });
+
+    expect(result.current.imagePreloadSpreads).toBe(0);
+  });
+
   it("registers plugins in the viewer context", () => {
     const plugin = definePlugin({ name: "analytics" });
     const { result } = renderHook(() => useViewerContext(), {

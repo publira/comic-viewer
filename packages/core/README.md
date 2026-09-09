@@ -295,6 +295,20 @@ A resolver that returns `undefined` leaves the page unresolved, and one that rej
 
 Through `useViewerContext()`, `pages` holds one entry per page of the document, `undefined` while that page is unresolved, and `pageCount` gives the total.
 
+### Preloading page images
+
+Resolved metadata is not a loaded page: the viewer fetches and decodes the images of the spreads its viewport can render, which are the spread on screen and the ones before and after it. `imagePreloadSpreads` widens that window by whole spreads in each direction. It defaults to `0`, which loads nothing the viewport cannot show, and an application that would rather spend bandwidth than have the reader wait raises it:
+
+```tsx
+<ComicViewer.Root imagePreloadSpreads={2} pages={pages}>
+  <ComicViewer.Viewport />
+</ComicViewer.Root>
+```
+
+A preloaded image is cached and evicted on the same terms as the ones on screen: it is kept until it leaves this wider window, so turning a page onto a preloaded spread draws it without a fetch, and turning back to a spread still inside the window costs nothing either.
+
+Preloading never delays the spread the reader is waiting for. The extra loads are queued behind the loads of the rail and start only once those have settled, and a page the reader moves away from before its turn comes is dropped, while one already in flight is aborted through the same `AbortSignal` the pipeline threads through `resolvePage`, `customFetch`, and the built-in fetch. The window still only reaches pages whose metadata is resolved, so with `resolvePage` it is `pageResolveOverscan` that decides how far ahead there is anything to preload at all.
+
 ### Pending pages
 
 A page whose metadata is still being resolved keeps its place in the spread. `Viewport` renders `ViewportPendingPage` for it, which carries the `pcv-page-pending` class, `data-page-status="pending"`, and `aria-busy`. Pass `renderPendingPage` to render a skeleton of your own instead.
@@ -391,6 +405,7 @@ Each failure reports the `page` it belongs to, its zero-based `index`, the `stag
 - `"fetch"` — the built-in `fetch` rejected or returned a non-OK response, or a `customFetch` hook threw.
 - `"transform"` — a `beforeFetch` or `afterFetch` hook threw.
 - `"decode"` — the fetched data could not be decoded as an image.
+- `"image-transform"` — an `afterDecode` hook threw.
 
 `usePageLoadState()` exposes the same failure to the page template, together with the page's `status` (`"idle"`, `"loading"`, `"loaded"`, or `"error"`), whether a `placeholder` is currently drawn, and a `retry` function that starts a new attempt for a failed page. A failed page is not retried automatically, so nothing is refetched until `retry` is called or the page is evicted from the cache and scrolled back into view.
 
@@ -504,8 +519,35 @@ Pass plugins through the `plugins` prop to customize the page data pipeline. Use
 
 - `beforeFetch` receives `{ url, signal, page }` and can replace the page URL.
 - `customFetch` receives `{ url, signal, page }` and can supply the page data instead of the built-in `fetch`; if several return a buffer, the last buffer is used.
-- `afterFetch` receives `{ url, signal, page, buffer }` and can transform the fetched `ArrayBuffer`, for example to decrypt a page or add a watermark. Each returned buffer is passed to the following hook.
+- `afterFetch` receives `{ url, signal, page, buffer }` and can transform the fetched `ArrayBuffer`, for example to decrypt a page. Each returned buffer is passed to the following hook.
+- `afterDecode` receives `{ url, signal, page, image }` and can replace the decoded image. Each returned image is passed to the following hook. Its `url` is the `src` of the page rather than a URL `beforeFetch` replaced.
 - `onPageChange` receives the current page index and total number of pages.
+
+`afterDecode` runs after the viewer has decoded the page, so a plugin that draws on a page or reads its pixels does not decode it a second time. A hook that returns nothing leaves the image as it was, which is what an analysis hook wants; one that returns an image hands the viewer the image it drew, without the lossy re-encode that transforming the buffer would need:
+
+```tsx
+const watermarkPlugin = ComicViewer.definePlugin({
+  name: "watermark",
+  afterDecode: ({ image }) => {
+    const canvas = document.createElement("canvas");
+    canvas.height =
+      "naturalHeight" in image ? image.naturalHeight : image.height;
+    canvas.width = "naturalWidth" in image ? image.naturalWidth : image.width;
+
+    const context = canvas.getContext("2d");
+    context.drawImage(image, 0, 0);
+    context.fillText("PUBLIRA DEMO", canvas.width - 40, canvas.height - 48);
+
+    return createImageBitmap(canvas);
+  },
+});
+```
+
+The image is an `ImageBitmap` wherever the browser can decode the page with `createImageBitmap`, and an `HTMLImageElement` where it falls back to an image element, which is what `DecodedPageImage` covers and why the size is read through `naturalWidth` when it is there. Both are drawable by `drawImage`, so a hook that only draws needs no branch of its own.
+
+The viewer owns the decoded image. It releases the image a hook replaces, so a hook must not keep drawing from an image it has handed back a replacement for, and it releases the replacement in turn once the page leaves the cache. A hook that throws reports the failure as the `"image-transform"` stage of [a page load error](#page-loading-state-and-errors), and the viewer releases the image it was holding.
+
+A page `placeholder` is decoded outside this pipeline, as it is fetched outside the rest of it, so a preview is never watermarked or transformed.
 
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";

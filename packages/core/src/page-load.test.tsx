@@ -82,15 +82,17 @@ const renderPageLoad = ({
 
 describe("page load state", () => {
   let getContext: ReturnType<typeof vi.spyOn>;
+  let drawImage: ReturnType<typeof vi.fn<() => void>>;
 
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
     MockResizeObserver.callback = null;
+    drawImage = vi.fn<() => void>();
     getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
       .mockReturnValue({
         clearRect: vi.fn<() => void>(),
-        drawImage: vi.fn<() => void>(),
+        drawImage,
       } as unknown as CanvasRenderingContext2D);
     vi.stubGlobal(
       "createImageBitmap",
@@ -231,6 +233,55 @@ describe("page load state", () => {
     } finally {
       Reflect.deleteProperty(HTMLImageElement.prototype, "decode");
     }
+  });
+
+  it("reports a failing afterDecode hook as an image-transform failure", async () => {
+    const onPageLoadError = vi.fn<(error: PageLoadError) => void>();
+    renderPageLoad({
+      onPageLoadError,
+      plugins: [
+        definePlugin({
+          afterDecode: () => {
+            throw new Error("canvas unavailable");
+          },
+          name: "failing-watermark",
+        }),
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("error");
+    });
+
+    expect(screen.getByTestId("stage")).toHaveTextContent("image-transform");
+    expect(onPageLoadError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cause: new Error("canvas unavailable"),
+        stage: "image-transform",
+      })
+    );
+  });
+
+  it("draws the image an afterDecode hook returns", async () => {
+    const watermarkedImage = {
+      close: vi.fn<() => void>(),
+      height: 1,
+      width: 1,
+    } as unknown as ImageBitmap;
+    renderPageLoad({
+      plugins: [
+        definePlugin({
+          afterDecode: () => watermarkedImage,
+          name: "watermark",
+        }),
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("loaded");
+    });
+
+    expect(drawImage).toHaveBeenCalledWith(watermarkedImage, 0, 0, 1, 1);
   });
 
   it("keeps the decoded placeholder visible after the full page fails", async () => {
