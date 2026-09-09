@@ -10,25 +10,41 @@ const slotSamplePages = basicSamplePages.slice(0, 7);
 
 const sourceCode = `import * as ComicViewer from "@publira/comic-viewer";
 
+// The sheet gives the extra page the shape and the colour of a page, and the
+// card floats at the centre of it.
+const SlotSheet = ({ children }) => (
+  <div className={styles.slotSheet}>
+    <div className={styles.slotCard}>{children}</div>
+  </div>
+);
+
 // A slot holds as many pages as it is written with, in that order.
 export const Reader = ({ pages }) => (
   <ComicViewer.Root pages={pages}>
     <ComicViewer.StartPage>
-      <CoverNotice />
+      <SlotSheet>
+        <CoverNotice />
+      </SlotSheet>
     </ComicViewer.StartPage>
 
     <ComicViewer.StartPage>
-      <ChapterTitleCard />
+      <SlotSheet>
+        <ChapterTitleCard />
+      </SlotSheet>
     </ComicViewer.StartPage>
 
     <ComicViewer.Viewport />
 
     <ComicViewer.EndPage>
-      <NextChapterCard />
+      <SlotSheet>
+        <NextChapterCard />
+      </SlotSheet>
     </ComicViewer.EndPage>
 
     <ComicViewer.EndPage>
-      <SeriesRecommendations />
+      <SlotSheet>
+        <SeriesRecommendations />
+      </SlotSheet>
     </ComicViewer.EndPage>
 
     <ComicViewer.Toolbar />
@@ -62,9 +78,11 @@ const SlotsPage = () => (
           page: the pages before the first spread are shown one at a time, so
           the two opening pages arrive in turn, while this chapter holds an odd
           number of pages, which leaves the last one without a facing page, so
-          the next-chapter card pairs with it. The links and the disclosure
-          inside them stay usable, and the swipe and edge-click page turns leave
-          a control that was pressed alone.
+          the next-chapter card pairs with it. Each of them is laid out as a
+          sheet the shape of a page, with its card floating at the centre, so it
+          sits in the spread exactly where a page would. The links and the
+          disclosure inside them stay usable, and the swipe and edge-click page
+          turns leave a control that was pressed alone.
         </p>
       </section>
       <SourceCodePanel code={sourceCode} />

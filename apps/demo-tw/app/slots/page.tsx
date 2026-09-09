@@ -16,8 +16,19 @@ import { Reader } from "./reader";
 const slotPageClassName =
   "${slotClassNames.slotPage}";
 
+// The sheet gives the extra page the shape and the colour of a page, and the
+// card floats at the centre of it.
+const slotSheetClassName =
+  "${slotClassNames.slotSheet}";
+
 const slotCardClassName =
   "${slotClassNames.slotCard}";
+
+const SlotSheet = ({ children }) => (
+  <div className={slotSheetClassName}>
+    <div className={slotCardClassName}>{children}</div>
+  </div>
+);
 
 // The reader hands its children to the viewer root, so a start or an end page
 // is composed into it exactly as it is into ComicViewer.Root, and each end
@@ -25,27 +36,27 @@ const slotCardClassName =
 export const SlotReader = ({ pages }) => (
   <Reader pages={pages}>
     <ComicViewer.StartPage className={slotPageClassName}>
-      <div className={slotCardClassName}>
+      <SlotSheet>
         <CoverNotice />
-      </div>
+      </SlotSheet>
     </ComicViewer.StartPage>
 
     <ComicViewer.StartPage className={slotPageClassName}>
-      <div className={slotCardClassName}>
+      <SlotSheet>
         <ChapterTitleCard />
-      </div>
+      </SlotSheet>
     </ComicViewer.StartPage>
 
     <ComicViewer.EndPage className={slotPageClassName}>
-      <div className={slotCardClassName}>
+      <SlotSheet>
         <NextChapterCard />
-      </div>
+      </SlotSheet>
     </ComicViewer.EndPage>
 
     <ComicViewer.EndPage className={slotPageClassName}>
-      <div className={slotCardClassName}>
+      <SlotSheet>
         <SeriesRecommendations />
-      </div>
+      </SlotSheet>
     </ComicViewer.EndPage>
   </Reader>
 );`;
@@ -69,7 +80,8 @@ const SlotsPage = () => (
           carry the same <code>data-page-side</code> attribute as a page, so the
           same variants keep them on the half of the spread they belong to, and
           a <code>data-slot-page</code> attribute of their own for the place
-          each of them takes in its slot.
+          each of them takes in its slot. Each one is laid out as a sheet the
+          shape of a page, with its card floating at the centre.
         </p>
       </section>
       <SourceCodePanel code={sourceCode} />
