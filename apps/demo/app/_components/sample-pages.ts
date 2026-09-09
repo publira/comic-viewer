@@ -50,3 +50,27 @@ export const encryptedSamplePages = createPages(
   (pageNumber) => `/plugin-pages/page-${pageNumber}.jpg.enc`,
   "image/jpeg"
 );
+
+// A landscape image covering a whole two-page spread, the way a magazine or a
+// collected volume delivers one.
+const spreadPlaceholder =
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAZCAIAAADMuvsyAAACKklEQVR42uWW30vbUBTH+xcZa6qta71pGtMksyX+KFsNFAbCQPHFgQ8ukhAtth2pNNURqG1gWKUU8Y6CeVIo5kHZg5g3wYf9Kxu7Ekrt1h9mhDH4PoSbe84n53yTk+sbm/noiXzeg0NcPpxQnzSnTpDyy7NPkHJ4TnXShrh8DzCV0um3FUdBJtczFwbEIJMDfIlcPCQXDwFfCjI5DIg9NweZXGdOKqWP2OpprhBPH7GC0aV4+miaK/wtjwlee47sFMFr7oMjyf0/U5EiyX03wQFqZxAqUoDacQ0cXSgPDo4ulN0BY0BklmuDg5nl2u9e8oHAmVW93rTqTQuPKZXjG2jae9oVKxh72hU07crxDSsYG3ILmnbXrcx6A48pKDazqg8NrjetJ4Nnd6Fps4Kh6u21LYiu17agqrfRCioUrbCCAU07MLuLwp0kQ4A35dN609qUT/GYYt0+QtM+qFn8uy/QtC+vHxpf7968P1H19uX1g/Mo3+6+Q9O2bh9RxSOCnbp/GnZ+ce9YCE175cPZQc1yetBV8fnFPQbE0cGdJkmFlgNGdmbWGxtyq9NjtMIKhlRodYX/g9+xZ5PLy1ntzd8JA+IknY0ki7Glz8/BgNfGiW1Xjz6/eIAvxdPVPmMyXQW8NkVn+w5Lf1R69foTldJ9kURxis76SQnFjBPbOKWE2Dwxr/Xl9ep5lZgvh7g8TimoDRgQ/VFpks6GE0UqpTs7fcOmdkv/H/gHjT9J7aEn/LkAAAAASUVORK5CYII=";
+
+/** The two-page spread that stands in the middle of the spread-page document. */
+const spreadSamplePage: ViewerPage = {
+  height: 1000,
+  id: "page-4",
+  layout: "spread",
+  placeholder: spreadPlaceholder,
+  src: "/basic-pages/spread.png",
+  title: "Page 4",
+  width: 1600,
+};
+
+// Page 4 of this document is the spread, so its pages run 1, 2, and 3, then
+// the spread, and then 5 through 8.
+export const spreadPageSamplePages: ViewerPage[] = [
+  ...basicSamplePages.slice(0, 3),
+  spreadSamplePage,
+  ...basicSamplePages.slice(4, 8),
+];

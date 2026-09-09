@@ -8,6 +8,7 @@ import { CounterpartDemoLink } from "./counterpart-demo-link";
 const navigationItems = [
   { href: "/", label: "Basic" },
   { href: "/spreads", label: "Spreads" },
+  { href: "/spread-page", label: "Spread page" },
   { href: "/slots", label: "Slots" },
   { href: "/ltr", label: "LTR" },
   { href: "/controls", label: "Controls" },

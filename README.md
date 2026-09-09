@@ -16,6 +16,7 @@ It provides robust core functionalities like memory-efficient virtualization, re
 - **Gesture & Keyboard Support:** Built-in support for swipe, click, and keyboard navigation.
 - **Scrubbable Reading Progress:** Drag the toolbar slider to any page of the document, or step through it with the arrow keys, instead of turning one spread at a time.
 - **Pages Around the Document:** Insert a notice, a cover card, or a next-chapter link before the first page or after the last one without disturbing the page numbering.
+- **Single-Image Spreads:** Mark a page that is a whole two-page spread, as EPUB fixed layout does, and it takes both halves in double-page mode and is shown whole rather than cut in half on a phone.
 
 ## Installation
 

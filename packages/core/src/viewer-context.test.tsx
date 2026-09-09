@@ -13,6 +13,11 @@ const pages: ViewerPage[] = [
   { id: "p5", src: "page5.png", title: "Page 5" },
 ];
 
+// The third page is a whole two-page spread delivered as one landscape image.
+const spreadPages: ViewerPage[] = pages.map((page, index) =>
+  index === 2 ? { ...page, layout: "spread" } : page
+);
+
 const makeWrapper = (props?: Partial<ViewerProviderProps>) =>
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
@@ -21,6 +26,24 @@ const makeWrapper = (props?: Partial<ViewerProviderProps>) =>
       </ViewerProvider>
     );
   };
+
+/** Steps forward and reports where the reading position landed. */
+const NextPageTrigger = () => {
+  const { currentIndex, goToNext } = useViewerContext();
+
+  return (
+    <button onClick={goToNext} type="button">
+      {currentIndex}
+    </button>
+  );
+};
+
+/** A double-page reader over a page list that a rerender can replace. */
+const renderWithPages = (currentPages: (ViewerPage | undefined)[]) => (
+  <ViewerProvider initialViewMode="double" pages={currentPages}>
+    <NextPageTrigger />
+  </ViewerProvider>
+);
 
 const CurrentIndexOutput = () => {
   const { currentIndex } = useViewerContext();
@@ -356,6 +379,104 @@ describe("ViewerProvider / useViewerContext", () => {
     });
 
     expect(result.current.currentIndex).toBe(2);
+  });
+
+  it("turns through a spread page as one step in double mode", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({ initialViewMode: "double", pages: spreadPages }),
+    });
+
+    // The pages before the spread still pair with each other.
+    act(() => {
+      result.current.goToNext();
+    });
+
+    expect(result.current.currentIndex).toBe(2);
+
+    // The spread fills a page set on its own, so one step leaves it whole.
+    act(() => {
+      result.current.goToNext();
+    });
+
+    expect(result.current.currentIndex).toBe(3);
+
+    act(() => {
+      result.current.goToPrev();
+    });
+
+    expect(result.current.currentIndex).toBe(2);
+
+    act(() => {
+      result.current.goToPrev();
+    });
+
+    expect(result.current.currentIndex).toBe(0);
+  });
+
+  it("turns through a spread page as one step in single mode", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({ initialIndex: 2, pages: spreadPages }),
+    });
+
+    act(() => {
+      result.current.goToNext();
+    });
+
+    expect(result.current.currentIndex).toBe(3);
+
+    act(() => {
+      result.current.goToPrev();
+    });
+
+    expect(result.current.currentIndex).toBe(2);
+  });
+
+  it("leaves the page before a spread unpaired", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper({
+        initialViewMode: "double",
+        pages: spreadPages,
+        spreadStartIndex: 1,
+      }),
+    });
+
+    // Counted from page 2, the page facing the spread would be page 3, which
+    // the spread takes for itself, so page 2 is turned through on its own.
+    act(() => {
+      result.current.goToNext();
+    });
+
+    expect(result.current.currentIndex).toBe(1);
+
+    act(() => {
+      result.current.goToNext();
+    });
+
+    expect(result.current.currentIndex).toBe(2);
+  });
+
+  it("regroups the pages once a lazily resolved page turns out to be a spread", () => {
+    const unresolvedPages: (ViewerPage | undefined)[] = pages.map(
+      (page, index) => (index === 2 ? undefined : page)
+    );
+    const { rerender } = render(renderWithPages(unresolvedPages));
+    const goToNext = screen.getByRole("button");
+
+    act(() => {
+      goToNext.click();
+    });
+
+    expect(goToNext).toHaveTextContent("2");
+
+    rerender(renderWithPages(spreadPages));
+
+    act(() => {
+      goToNext.click();
+    });
+
+    // The resolved page is a spread, so the step that would have paired it
+    // with the page after it now leaves it whole.
+    expect(goToNext).toHaveTextContent("3");
   });
 
   it("setViewMode changes the view mode", () => {

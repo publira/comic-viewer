@@ -6,6 +6,7 @@ import type {
   RefObject,
 } from "react";
 
+import type { SpreadPageList } from "./page-spread";
 import { getSwipeTargetIndex } from "./use-viewport-layout";
 import { useViewportZoom } from "./use-viewport-zoom";
 import type { PageFitMode, ViewMode } from "./viewer-context";
@@ -70,6 +71,8 @@ interface UseViewportGesturesOptions {
   maxIndex: number;
   minIndex: number;
   pageFitMode: PageFitMode;
+  /** The page list the spread pages among the document are read from. */
+  pages: SpreadPageList;
   readingDirection: "rtl" | "ltr";
   setDragOffset: (offset: number) => void;
   setPageFitMode: (mode: PageFitMode) => void;
@@ -95,6 +98,7 @@ export const useViewportGestures = ({
   maxIndex,
   minIndex,
   pageFitMode,
+  pages,
   readingDirection,
   setDragOffset,
   setPageFitMode,
@@ -313,7 +317,8 @@ export const useViewportGestures = ({
         maxIndex,
         readingDirection,
         spreadStartIndex,
-        viewMode
+        viewMode,
+        pages
       );
 
       if (targetIndex === undefined) {
@@ -334,6 +339,7 @@ export const useViewportGestures = ({
       isTouchPanning,
       maxIndex,
       minIndex,
+      pages,
       readingDirection,
       registerTap,
       setDragOffset,
