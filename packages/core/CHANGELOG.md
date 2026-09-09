@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.8.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.7.0...comic-viewer-v0.8.0) (2026-09-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** allow more than one StartPage and EndPage ([#221](https://github.com/publira/comic-viewer/issues/221))
+
+### Features
+
+* **core:** add a draggable page slider to the reading progress ([#216](https://github.com/publira/comic-viewer/issues/216)) ([807c7e0](https://github.com/publira/comic-viewer/commit/807c7e0eb0b1a618d7b564ef85708f5e550d24ab))
+* **core:** add an afterDecode hook and an image preload window ([#225](https://github.com/publira/comic-viewer/issues/225)) ([93056da](https://github.com/publira/comic-viewer/commit/93056da71a0e66da99483af90dfbba0f48e13914))
+* **core:** add opt-in toggles for view mode, reading direction, and page fit ([#215](https://github.com/publira/comic-viewer/issues/215)) ([ee96287](https://github.com/publira/comic-viewer/commit/ee96287043eb3bbbcec6c2df01d47e23b6fb912a))
+* **core:** allow more than one StartPage and EndPage ([#221](https://github.com/publira/comic-viewer/issues/221)) ([7b25757](https://github.com/publira/comic-viewer/commit/7b2575713be65f9bd5e1d9ea3bff895e1090f47d))
+* **core:** expose the zoom scale through the viewer context ([#223](https://github.com/publira/comic-viewer/issues/223)) ([b67cad2](https://github.com/publira/comic-viewer/commit/b67cad23759c027a9a3c8ec9f2542ae0490e4b7d))
+* **core:** rename core.css to default.css and keep core.css as an alias ([#213](https://github.com/publira/comic-viewer/issues/213)) ([ab357b8](https://github.com/publira/comic-viewer/commit/ab357b8e6b7d0e166ea2b548a8781119a9b94334))
+* **core:** support a page that is a single-image spread ([#226](https://github.com/publira/comic-viewer/issues/226)) ([288d367](https://github.com/publira/comic-viewer/commit/288d367563f3cf95e32209c61d0d76bb36192c6a)), closes [#201](https://github.com/publira/comic-viewer/issues/201)
+
 ## [0.7.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.6.1...comic-viewer-v0.7.0) (2026-09-02)
 
 
