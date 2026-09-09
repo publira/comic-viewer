@@ -578,32 +578,24 @@ test("turns through the start pages without counting them as pages", async ({
   await expect(
     page.getByRole("heading", { name: "Pages around the chapter" })
   ).toBeVisible();
+  // The demo counts the spreads from the first start page, so the two of them
+  // open the reader facing each other.
+  await expect(page.locator(`${currentPageSet} ${startSlotPage}`)).toHaveCount(
+    2
+  );
+  await expect(page.locator(currentPageSet)).toHaveAttribute(
+    "data-page-count",
+    "2"
+  );
   await expect(
-    page.locator(`${currentPageSet} ${startSlotPage}`)
+    page.locator(`${currentPageSet} ${startSlotPage}[data-slot-page="2"]`)
   ).toBeVisible();
   // An extra page is turned to like any other, yet the numbering the reader
-  // sees stays the numbering of the document, so the status names the place
-  // it takes in its slot rather than giving it a page number.
+  // sees stays the numbering of the document, so the status names the places
+  // they take in their slot rather than giving them page numbers.
   await expect(page.locator(".pcv-page-status")).toHaveText(
-    "Start page 1 of 2"
+    "Start pages 1-2 of 2"
   );
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "1"
-  );
-  await expect(
-    page.locator(`${currentPageSet} ${startSlotPage}`)
-  ).toHaveAttribute("data-slot-page", "1");
-
-  // Both start pages sit before the first spread, so they arrive one at a time.
-  await turnToNextScreen(page, "Start page 2 of 2");
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "1"
-  );
-  await expect(
-    page.locator(`${currentPageSet} ${startSlotPage}`)
-  ).toHaveAttribute("data-slot-page", "2");
 
   await turnToNextScreen(page, "Pages 1-2 of 7");
   await expect(page.locator(`${currentPageSet} ${startSlotPage}`)).toHaveCount(
@@ -618,7 +610,6 @@ test("pairs the first end page with the last page of an odd chapter", async ({
   await page.goto("/slots");
 
   await turnThroughScreens(page, [
-    "Start page 2 of 2",
     "Pages 1-2 of 7",
     "Pages 3-4 of 7",
     "Pages 5-6 of 7",

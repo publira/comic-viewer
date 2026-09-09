@@ -26,7 +26,13 @@ const SlotSheet = ({ children }: PropsWithChildren) => (
 /** Renders a reader that opens on front matter and closes on back matter. */
 export const SlotComicViewer = ({ pages }: SlotComicViewerProps) => (
   <div className={styles.viewer} style={getViewerStyle(pages)}>
-    <ComicViewer.Root className={styles.viewerContent} pages={pages}>
+    {/* Counting the spreads from the first start page pairs the two of them
+        with each other, and leaves the document paired as it was. */}
+    <ComicViewer.Root
+      className={styles.viewerContent}
+      pages={pages}
+      spreadStartIndex={-2}
+    >
       <ComicViewer.StartPage>
         <SlotSheet>
           <h3>Before you read</h3>

@@ -140,11 +140,16 @@ export interface PageStatusValue {
   /** The slot of the extra page on screen, if one of them is showing. */
   slot?: ViewerSlot;
   /**
-   * The one-based position the extra page on screen takes among the pages of
-   * its slot, absent while none of them is showing.
+   * The one-based position the first extra page on screen takes among the
+   * pages of its slot, absent while none of them is showing.
    */
-  slotPage?: number;
-  /** How many pages that slot holds, absent as `slotPage` is. */
+  firstSlotPage?: number;
+  /**
+   * The position of the last extra page of that slot on screen, which is
+   * `firstSlotPage` unless a spread holds two pages of the same slot.
+   */
+  lastSlotPage?: number;
+  /** How many pages that slot holds, absent as `firstSlotPage` is. */
   slotPageCount?: number;
   viewMode: "single" | "double";
 }
@@ -155,17 +160,22 @@ export interface PageStatusProps {
 }
 
 const getSlotLabel = ({
+  firstSlotPage,
+  lastSlotPage,
   slot,
-  slotPage,
   slotPageCount,
 }: PageStatusValue): string => {
   const label = slot === "start" ? "Start page" : "End page";
 
   // A slot holding one page has nothing to tell apart, so it keeps the plain
   // name a reader of a single notice or chapter link expects.
-  return slotPageCount === undefined || slotPageCount < 2
-    ? label
-    : `${label} ${slotPage} of ${slotPageCount}`;
+  if (slotPageCount === undefined || slotPageCount < 2) {
+    return label;
+  }
+
+  return firstSlotPage === lastSlotPage
+    ? `${label} ${firstSlotPage} of ${slotPageCount}`
+    : `${label}s ${firstSlotPage}-${lastSlotPage} of ${slotPageCount}`;
 };
 
 interface PageStatusInput extends ViewerSlotPages {
@@ -196,9 +206,15 @@ const getPageStatusValue = ({
   // A slot page is counted neither in the page numbers nor in the total, so
   // the reader keeps the numbering of the document itself.
   const slotPages = { endPages, startPages };
+  const lastVisibleSlotPage = getSlotPage(lastIndex, pageCount, slotPages);
   const slotPage =
-    getSlotPage(currentIndex, pageCount, slotPages) ??
-    getSlotPage(lastIndex, pageCount, slotPages);
+    getSlotPage(currentIndex, pageCount, slotPages) ?? lastVisibleSlotPage;
+  // A spread that pairs two pages of the same slot is reported as the range
+  // they cover, the way a spread of two pages of the document is.
+  const lastSlotPage =
+    lastVisibleSlotPage?.slot === slotPage?.slot
+      ? lastVisibleSlotPage
+      : slotPage;
   const firstVisiblePage = Math.max(currentIndex, 0) + 1;
   const lastVisiblePage = Math.min(lastIndex + 1, pageCount);
   const hasVisiblePages = pageCount > 0 && firstVisiblePage <= lastVisiblePage;
@@ -206,10 +222,11 @@ const getPageStatusValue = ({
   return {
     currentIndex,
     firstPage: hasVisiblePages ? firstVisiblePage : 0,
+    firstSlotPage: slotPage?.position,
     lastPage: hasVisiblePages ? lastVisiblePage : 0,
+    lastSlotPage: lastSlotPage?.position,
     pageCount,
     slot: slotPage?.slot,
-    slotPage: slotPage?.position,
     slotPageCount: slotPage?.count,
     viewMode,
   };

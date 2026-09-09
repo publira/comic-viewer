@@ -368,8 +368,8 @@ describe("viewer slot pages", () => {
         <StartPage>Cover notice</StartPage>
         <StartPage>Publisher card</StartPage>
         <PageStatus
-          format={({ slot, slotPage, slotPageCount }) =>
-            `${slot}: ${slotPage}/${slotPageCount}`
+          format={({ firstSlotPage, slot, slotPageCount }) =>
+            `${slot}: ${firstSlotPage}/${slotPageCount}`
           }
         />
       </ViewerProvider>
@@ -428,6 +428,23 @@ describe("viewer slot pages", () => {
     fireEvent.keyDown(window, { key: "ArrowLeft" });
     expect(screen.getByTestId("p1")).toBeInTheDocument();
     expect(screen.getByTestId("p2")).toBeInTheDocument();
+  });
+
+  it("reports a spread of two start pages as the range it covers", () => {
+    renderSlotViewer({
+      initialViewMode: "double",
+      spreadStartIndex: -2,
+      startPageCount: 3,
+    });
+
+    // The first start page comes before the spread start, so it arrives on its
+    // own, and the two that follow face each other.
+    expect(screen.getByRole("status")).toHaveTextContent("Start page 1 of 3");
+
+    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Start pages 2-3 of 3"
+    );
   });
 
   it("pairs the end pages by the parity of the pages before them", () => {

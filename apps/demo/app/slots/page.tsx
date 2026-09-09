@@ -18,9 +18,10 @@ const SlotSheet = ({ children }) => (
   </div>
 );
 
-// A slot holds as many pages as it is written with, in that order.
+// A slot holds as many pages as it is written with, in that order, and
+// counting the spreads from the first start page pairs the two of them.
 export const Reader = ({ pages }) => (
-  <ComicViewer.Root pages={pages}>
+  <ComicViewer.Root pages={pages} spreadStartIndex={-2}>
     <ComicViewer.StartPage>
       <SlotSheet>
         <CoverNotice />
@@ -66,23 +67,26 @@ const SlotsPage = () => (
           stories, each of them turned to exactly as a page is.
         </p>
         <p>
-          None of them is counted as a page. The progress still reads{" "}
-          <code>Pages 1-2 of 7</code> on the first spread, and the page list
-          keeps the indexes it was given, so the numbering a reader sees is the
-          numbering of the document. While one of them is on screen on its own,
-          the status names it and its place in the slot, as{" "}
-          <code>Start page 2 of 2</code>.
+          None of them is counted as a page. The progress reads{" "}
+          <code>Pages 1-2 of 7</code> on the first spread of the chapter, and
+          the page list keeps the indexes it was given, so the numbering a
+          reader sees is the numbering of the document. While the extra pages
+          are the ones on screen, the status names them and their place in the
+          slot instead, as <code>Start pages 1-2 of 2</code>.
         </p>
         <p>
           In double-page mode they take a half of the spread like any other
-          page: the pages before the first spread are shown one at a time, so
-          the two opening pages arrive in turn, while this chapter holds an odd
-          number of pages, which leaves the last one without a facing page, so
-          the next-chapter card pairs with it. Each of them is laid out as a
-          sheet the shape of a page, with its card floating at the centre, so it
-          sits in the spread exactly where a page would. The links and the
-          disclosure inside them stay usable, and the swipe and edge-click page
-          turns leave a control that was pressed alone.
+          page. Every index before <code>spreadStartIndex</code> is shown on its
+          own, so this reader counts the spreads from the first start page with{" "}
+          <code>spreadStartIndex=&#123;-2&#125;</code> to open the chapter on
+          the two of them facing each other; the chapter itself pairs from page
+          1 either way. At the other end the odd page count leaves the last page
+          without a facing page, so the next-chapter card pairs with it and the
+          side stories arrive on a spread of their own. Each extra page is laid
+          out as a sheet the shape of a page, with its card floating at the
+          centre, so it sits in the spread exactly where a page would. The links
+          and the disclosure inside them stay usable, and the swipe and
+          edge-click page turns leave a control that was pressed alone.
         </p>
       </section>
       <SourceCodePanel code={sourceCode} />

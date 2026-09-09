@@ -32,9 +32,10 @@ const SlotSheet = ({ children }) => (
 
 // The reader hands its children to the viewer root, so a start or an end page
 // is composed into it exactly as it is into ComicViewer.Root, and each end
-// takes as many of them as it is written with.
+// takes as many of them as it is written with. Counting the spreads from the
+// first start page pairs the two of them.
 export const SlotReader = ({ pages }) => (
-  <Reader pages={pages}>
+  <Reader pages={pages} spreadStartIndex={-2}>
     <ComicViewer.StartPage className={slotPageClassName}>
       <SlotSheet>
         <CoverNotice />
@@ -76,12 +77,15 @@ const SlotsPage = () => (
           <code>StartPage</code> and <code>EndPage</code> put content of your
           own at the two ends of the reading sequence, as many of them at each
           end as you write, and none of them is counted as a page: the progress
-          still reads <code>Pages 1-2 of 7</code> on the first spread. They
-          carry the same <code>data-page-side</code> attribute as a page, so the
-          same variants keep them on the half of the spread they belong to, and
-          a <code>data-slot-page</code> attribute of their own for the place
-          each of them takes in its slot. Each one is laid out as a sheet the
-          shape of a page, with its card floating at the centre.
+          reads <code>Pages 1-2 of 7</code> on the first spread of the chapter.
+          This reader counts the spreads from the first start page with{" "}
+          <code>spreadStartIndex=&#123;-2&#125;</code>, so the two opening pages
+          face each other. They carry the same <code>data-page-side</code>{" "}
+          attribute as a page, so the same variants keep them on the half of the
+          spread they belong to, and a <code>data-slot-page</code> attribute of
+          their own for the place each of them takes in its slot. Each one is
+          laid out as a sheet the shape of a page, with its card floating at the
+          centre.
         </p>
       </section>
       <SourceCodePanel code={sourceCode} />

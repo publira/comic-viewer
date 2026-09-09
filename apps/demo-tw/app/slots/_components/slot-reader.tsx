@@ -24,7 +24,9 @@ const SlotSheet = ({ children }: PropsWithChildren) => (
 
 /** Renders a reader that opens on front matter and closes on back matter. */
 export const SlotReader = ({ pages }: SlotReaderProps) => (
-  <TailwindReader pages={pages}>
+  // Counting the spreads from the first start page pairs the two of them with
+  // each other, and leaves the document paired as it was.
+  <TailwindReader pages={pages} spreadStartIndex={-2}>
     <ComicViewer.StartPage className={slotClassNames.slotPage}>
       <SlotSheet>
         <h3 className="text-base font-semibold">Before you read</h3>

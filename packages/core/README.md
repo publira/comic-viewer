@@ -187,13 +187,13 @@ The reader turns to an extra page exactly as it turns to a page of the document,
 
 `START_PAGE_INDEX` stays `-1`, which is now the index of the start page nearest the document — the last one written — rather than the index every viewer with front matter opens on. Read `minIndex` for that.
 
-`PageStatus` names an extra page shown on its own rather than giving it a number: `Start page` or `End page` while the slot holds one page, and `Start page 2 of 3` while it holds several. It reads `Page 7 of 7` while an extra page shares a spread with a page of the document. Its `format` function receives the `slot` the viewer is showing, as `"start"`, `"end"`, or `undefined`, together with `slotPage` and `slotPageCount` for the place that page takes in its slot, so a reader can label them in its own words:
+`PageStatus` names the extra pages on screen rather than giving them a number: `Start page` or `End page` while the slot holds one page, `Start page 2 of 3` while it holds several, and `Start pages 1-2 of 3` for a spread that pairs two of them. It reads `Page 7 of 7` while an extra page shares a spread with a page of the document. Its `format` function receives the `slot` the viewer is showing, as `"start"`, `"end"`, or `undefined`, together with `firstSlotPage`, `lastSlotPage`, and `slotPageCount` for the places those pages take in the slot, so a reader can label them in its own words:
 
 ```tsx
 <ComicViewer.PageStatus
-  format={({ firstPage, lastPage, pageCount, slot, slotPage }) => {
+  format={({ firstPage, lastPage, pageCount, slot, firstSlotPage }) => {
     if (slot === "start") {
-      return slotPage === 1 ? "Notice" : "Chapter title";
+      return firstSlotPage === 1 ? "Notice" : "Chapter title";
     }
 
     return slot === "end"
