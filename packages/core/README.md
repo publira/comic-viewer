@@ -493,7 +493,7 @@ Pass plugins through the `plugins` prop to customize the page data pipeline. Use
 - `beforeFetch` receives `{ url, signal, page }` and can replace the page URL.
 - `customFetch` receives `{ url, signal, page }` and can supply the page data instead of the built-in `fetch`; if several return a buffer, the last buffer is used.
 - `afterFetch` receives `{ url, signal, page, buffer }` and can transform the fetched `ArrayBuffer`, for example to decrypt a page. Each returned buffer is passed to the following hook.
-- `afterDecode` receives `{ url, signal, page, image }` and can replace the decoded image. Each returned image is passed to the following hook.
+- `afterDecode` receives `{ url, signal, page, image }` and can replace the decoded image. Each returned image is passed to the following hook. Its `url` is the `src` of the page rather than a URL `beforeFetch` replaced.
 - `onPageChange` receives the current page index and total number of pages.
 
 `afterDecode` runs after the viewer has decoded the page, so a plugin that draws on a page or reads its pixels does not decode it a second time. A hook that returns nothing leaves the image as it was, which is what an analysis hook wants; one that returns an image hands the viewer the image it drew, without the lossy re-encode that transforming the buffer would need:

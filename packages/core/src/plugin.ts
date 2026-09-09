@@ -19,7 +19,11 @@ export interface FetchedPageContext extends PageLoadContext {
   buffer: ArrayBuffer;
 }
 
-/** A decoded image together with the context that produced it. */
+/**
+ * A decoded image together with the context that produced it. Its `url` is
+ * the source of the page rather than a URL a `beforeFetch` hook replaced,
+ * because the data pipeline hands the loader the page data alone.
+ */
 export interface DecodedPageContext extends PageLoadContext {
   image: DecodedPageImage;
 }
