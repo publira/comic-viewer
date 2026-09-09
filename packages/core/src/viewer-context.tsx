@@ -7,7 +7,12 @@ import {
   useRef,
   useState,
 } from "react";
-import type { PropsWithChildren, ReactNode } from "react";
+import type {
+  Dispatch,
+  PropsWithChildren,
+  ReactNode,
+  SetStateAction,
+} from "react";
 
 import { DEFAULT_PAGE_RESOLVE_OVERSCAN, usePageSource } from "./page-source";
 import type { PageResolveError, PageResolver } from "./page-source";
@@ -59,6 +64,13 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   viewMode: ViewMode;
   pageFitMode: PageFitMode;
   readingDirection: ReadingDirection;
+  /**
+   * The zoom scale the viewport gestures have left on the current spread, and
+   * `1` while it rests at the size its fit mode gives it. It belongs to the
+   * spread rather than to the reader, so turning the page or changing the fit
+   * mode returns it to `1`.
+   */
+  zoomScale: number;
   spreadStartIndex: number;
   /**
    * Whether the viewport is wide enough for a double-page spread, which
@@ -89,6 +101,13 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   setDoublePageAvailable: (available: boolean) => void;
   setPageFitMode: (mode: PageFitMode) => void;
   setReadingDirection: (direction: ReadingDirection) => void;
+  /**
+   * Returns the current spread to the resting position of its fit mode,
+   * clearing the zoom scale and the pan offset a gesture left on it. It is
+   * the one write operation the zoom state offers: zooming in and out stays
+   * with the viewport gestures.
+   */
+  resetZoom: () => void;
   goToNext: () => void;
   goToPrev: () => void;
   goTo: (index: number) => void;
@@ -170,6 +189,58 @@ export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
   PropsWithChildren<ViewerPageListProps<TPage> & ViewerOptionsProps<TPage>>;
 
 const ViewerContext = createContext<ViewerContextValue | null>(null);
+
+/**
+ * The pan offset and zoom scale one spread carries. `key` names the spread
+ * and the fit mode the gesture was made in, so a state left over from another
+ * one falls back to the resting position instead of being applied to a spread
+ * it was never meant for.
+ */
+export interface ViewportZoomState {
+  key: string;
+  panX: number;
+  panY: number;
+  scale: number;
+}
+
+/** The position every spread starts from, and the one `resetZoom` restores. */
+export const RESTING_VIEWPORT_ZOOM: ViewportZoomState = {
+  key: "",
+  panX: 0,
+  panY: 0,
+  scale: 1,
+};
+
+/** Names the spread and fit mode a zoom state belongs to. */
+export const getViewportZoomKey = (
+  currentIndex: number,
+  pageFitMode: PageFitMode
+): string => `${currentIndex}:${pageFitMode}`;
+
+interface ViewportZoomStore {
+  setZoom: Dispatch<SetStateAction<ViewportZoomState>>;
+  zoom: ViewportZoomState;
+}
+
+const ViewportZoomContext = createContext<ViewportZoomStore | null>(null);
+
+/**
+ * Reads the zoom state the provider holds on behalf of the viewport. It stays
+ * inside the library, because the viewport is the only thing that writes it:
+ * a consumer reads `zoomScale` and calls `resetZoom` on the viewer context.
+ */
+export const useViewportZoomStore = (): ViewportZoomStore => {
+  const store = useContext(ViewportZoomContext);
+
+  if (store === null) {
+    throw new Error(
+      "The viewport zoom state must be read within a ViewerProvider"
+    );
+  }
+
+  return store;
+};
+
 const EMPTY_PAGES: readonly never[] = [];
 const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
 const CONTROLS_HIDE_DELAY_MS = 2000;
@@ -391,6 +462,14 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     initialReadingDirection
   );
 
+  // The viewport gestures write the zoom state, but it lives here so that the
+  // context can carry the scale and offer the reset a consumer builds on.
+  const [zoom, setZoom] = useState<ViewportZoomState>(RESTING_VIEWPORT_ZOOM);
+  const zoomStore = useMemo(() => ({ setZoom, zoom }), [zoom]);
+  const resetZoom = useCallback(() => {
+    setZoom(RESTING_VIEWPORT_ZOOM);
+  }, []);
+
   const [areControlsVisible, setAreControlsVisible] = useState(false);
   const [controlsHoldCount, setControlsHoldCount] = useState(0);
   const toggleControls = useCallback(() => {
@@ -483,6 +562,13 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     onEndReachedRef.current?.();
   }, [clampedCurrentIndex, endReachedThreshold, totalPageCount]);
 
+  // A zoom state left on another spread, or on the same spread under another
+  // fit mode, no longer applies, so the scale reads as unzoomed again.
+  const zoomScale =
+    zoom.key === getViewportZoomKey(clampedCurrentIndex, pageFitMode)
+      ? zoom.scale
+      : 1;
+
   const value = useMemo<ViewerContextValue<TPage>>(
     () => ({
       areControlsVisible,
@@ -500,6 +586,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       pages: sourcePages,
       plugins,
       readingDirection,
+      resetZoom,
       setDoublePageAvailable: setIsDoublePageAvailable,
       setPageFitMode,
       setReadingDirection,
@@ -508,6 +595,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       startPages,
       toggleControls,
       viewMode,
+      zoomScale,
     }),
     [
       areControlsVisible,
@@ -529,12 +617,16 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       goTo,
       goToNext,
       goToPrev,
+      resetZoom,
+      zoomScale,
     ]
   );
 
   return (
     <ViewerContext.Provider value={value}>
-      {viewerChildren}
+      <ViewportZoomContext.Provider value={zoomStore}>
+        {viewerChildren}
+      </ViewportZoomContext.Provider>
     </ViewerContext.Provider>
   );
 };
