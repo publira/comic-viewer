@@ -116,6 +116,7 @@ export const Viewport = <TPage extends ViewerPage>({
     maxIndex,
     minIndex,
     pageFitMode,
+    pages,
     readingDirection,
     setDragOffset,
     setPageFitMode,

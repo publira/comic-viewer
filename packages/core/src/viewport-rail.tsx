@@ -5,6 +5,7 @@ import type {
   TransitionEvent as ReactTransitionEvent,
 } from "react";
 
+import { isSpreadPage } from "./page-spread";
 import { getPageImageKey } from "./use-viewport-images";
 import type { PageImage, PageLoadEntry } from "./use-viewport-images";
 import { getPageSide } from "./use-viewport-layout";
@@ -87,8 +88,12 @@ export const ViewportRail = <TPage extends ViewerPage>({
   // alone.
   const getSide = (index: number): PageSide | undefined =>
     viewMode === "double"
-      ? getPageSide(index, spreadStartIndex, readingDirection)
+      ? getPageSide(index, spreadStartIndex, readingDirection, pages)
       : undefined;
+  // A spread page reports its layout in both view modes, because it is the
+  // width of two pages whether or not the other one is on screen.
+  const getLayout = (index: number): "spread" | undefined =>
+    isSpreadPage(index, pages) ? "spread" : undefined;
   const pageSets = railSpreadIndices.map((spreadIndex, slot) => {
     const pageSetStyle =
       slot === 1
@@ -118,6 +123,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
         ? null
         : pageIndices.map((index) => {
             const page = pages[index];
+            const layout = getLayout(index);
             const side = getSide(index);
             const slotPage = getSlotPage(index, pageCount, {
               endPages,
@@ -155,6 +161,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
                   error={loadState?.error}
                   image={pageImages.get(imageKey)}
                   index={index}
+                  layout={layout}
                   page={page}
                   renderPage={renderPage}
                   retryPage={retryPage}
@@ -174,6 +181,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
             return cloneElement(
               pageSlotTemplate,
               {
+                "data-page-layout": layout,
                 "data-page-side": side,
                 "data-page-slot": slotPage?.slot,
                 "data-page-status":

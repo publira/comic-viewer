@@ -79,6 +79,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
     displayedIndex,
     maxIndex,
     minIndex,
+    pages,
     readingDirection,
     spreadStartIndex,
     transitionToIndex: pageTurnTransition?.toIndex,
@@ -103,7 +104,8 @@ export const usePageTurn = <TPage extends ViewerPage>({
       pageTurnTransition.toIndex,
       maxIndex,
       spreadStartIndex,
-      viewMode
+      viewMode,
+      pages
     ).every((index) => {
       // An index outside the page list belongs to a slot page, which holds
       // content of its own and never waits for the image cache.
@@ -124,13 +126,15 @@ export const usePageTurn = <TPage extends ViewerPage>({
       displayedIndex,
       minIndex,
       spreadStartIndex,
-      viewMode
+      viewMode,
+      pages
     );
     const nextIndex = getNextSpreadIndex(
       displayedIndex,
       maxIndex,
       spreadStartIndex,
-      viewMode
+      viewMode,
+      pages
     );
     const isAdjacent =
       currentIndex === previousIndex || currentIndex === nextIndex;
@@ -165,6 +169,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
     displayedIndex,
     maxIndex,
     minIndex,
+    pages,
     pageTurnTransition,
     readingDirection,
     spreadStartIndex,

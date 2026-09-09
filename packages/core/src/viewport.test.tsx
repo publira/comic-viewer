@@ -25,6 +25,11 @@ import {
   renderViewport,
 } from "./viewport-test-helpers";
 
+// The third page is a whole two-page spread delivered as one landscape image.
+const pagesWithSpread = pages.map((page, index) =>
+  index === 2 ? { ...page, layout: "spread" as const } : page
+);
+
 const GoToIndexButton = ({ index }: { index: number }) => {
   const { goTo } = useViewerContext();
   return (
@@ -240,6 +245,89 @@ describe(Viewport, () => {
     expect(currentPageSet.firstElementChild).not.toHaveAttribute(
       "data-page-side"
     );
+  });
+
+  it("gives a spread page the whole page set and no half of its own", () => {
+    const { container } = render(
+      <ViewerProvider
+        pages={pagesWithSpread}
+        initialIndex={2}
+        initialViewMode="double"
+      >
+        <Viewport>
+          <ViewportTrack>
+            <ViewportPageSet>
+              <ViewportPageSlot>
+                <ViewportPage />
+              </ViewportPageSlot>
+            </ViewportPageSet>
+          </ViewportTrack>
+        </Viewport>
+      </ViewerProvider>
+    );
+    const currentPageSet = container.querySelector<HTMLDivElement>(
+      '.pcv-viewport-page-set[data-rail-slot="current"]'
+    );
+
+    if (currentPageSet === null) {
+      throw new Error("The current page set was not rendered.");
+    }
+
+    expect(currentPageSet).toHaveAttribute("data-page-count", "1");
+    expect(currentPageSet).not.toHaveAttribute("data-page-side");
+    expect(
+      currentPageSet.querySelector(".pcv-viewport-page-slot")
+    ).toHaveAttribute("data-page-layout", "spread");
+    expect(currentPageSet.querySelector(".pcv-page")).toHaveAttribute(
+      "data-page-layout",
+      "spread"
+    );
+    expect(currentPageSet.querySelector(".pcv-page")).not.toHaveAttribute(
+      "data-page-side"
+    );
+  });
+
+  it("reports a spread page in single-page mode as well", () => {
+    const { container } = render(
+      <ViewerProvider
+        pages={pagesWithSpread}
+        initialIndex={2}
+        initialViewMode="single"
+      >
+        <Viewport>
+          <ViewportPage />
+        </Viewport>
+      </ViewerProvider>
+    );
+
+    // The page carries the layout without a page-slot template of its own, so
+    // a stylesheet can size it from the direct child of the page set.
+    expect(container.querySelector(".pcv-page")).toHaveAttribute(
+      "data-page-layout",
+      "spread"
+    );
+  });
+
+  it("leaves an ordinary page without a layout of its own", () => {
+    const { container } = render(
+      <ViewerProvider pages={pagesWithSpread} initialViewMode="double">
+        <Viewport>
+          <ViewportTrack>
+            <ViewportPageSet>
+              <ViewportPageSlot>
+                <ViewportPage />
+              </ViewportPageSlot>
+            </ViewportPageSet>
+          </ViewportTrack>
+        </Viewport>
+      </ViewerProvider>
+    );
+
+    for (const element of container.querySelectorAll(
+      '.pcv-viewport-page-set[data-rail-slot="current"] [data-page-side]'
+    )) {
+      expect(element).not.toHaveAttribute("data-page-layout");
+    }
   });
 
   it("passes LTR reading direction to public page-set components", () => {

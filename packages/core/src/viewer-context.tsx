@@ -16,6 +16,8 @@ import type {
 
 import { DEFAULT_PAGE_RESOLVE_OVERSCAN, usePageSource } from "./page-source";
 import type { PageResolveError, PageResolver } from "./page-source";
+import { isSpreadPage, startsPageSet } from "./page-spread";
+import type { SpreadPageList } from "./page-spread";
 import type { ViewerPlugin } from "./plugin";
 import { extractViewerSlotPages } from "./viewer-slots";
 
@@ -25,10 +27,23 @@ export type ViewerSlot = "start" | "end";
 export type ReadingDirection = "rtl" | "ltr";
 /** Controls how a page is sized inside the viewport. */
 export type PageFitMode = "width" | "height" | "actual";
+/**
+ * How much of a printed sheet the image of a page covers. A `"spread"` page
+ * is a whole two-page spread delivered as one landscape image, as EPUB fixed
+ * layout expresses with `rendition:page-spread-center`. Defaults to
+ * `"single"`.
+ */
+export type PageLayout = "single" | "spread";
 
 export interface ViewerPage {
   height?: number;
   id: string;
+  /**
+   * Whether the image covers one page or a whole two-page spread. A spread
+   * page takes a page set to itself in double-page mode instead of being
+   * squeezed into one half, and is shown whole in single-page mode.
+   */
+  layout?: PageLayout;
   mimeType?: string;
   placeholder?: string;
   title: string;
@@ -340,14 +355,23 @@ export const getPreviousSpreadIndex = (
   currentIndex: number,
   minIndex: number,
   spreadStartIndex: number,
-  viewMode: ViewMode
+  viewMode: ViewMode,
+  pages: SpreadPageList
 ): number | undefined => {
   if (currentIndex <= minIndex) {
     return undefined;
   }
 
   if (viewMode === "double" && currentIndex > spreadStartIndex) {
-    return Math.max(spreadStartIndex, currentIndex - 2);
+    const previousIndex = startsPageSet(
+      currentIndex - 1,
+      spreadStartIndex,
+      pages
+    )
+      ? currentIndex - 1
+      : currentIndex - 2;
+
+    return Math.max(spreadStartIndex, previousIndex);
   }
 
   return currentIndex - 1;
@@ -364,7 +388,8 @@ export const getSpreadIndex = (
   minIndex: number,
   maxIndex: number,
   spreadStartIndex: number,
-  viewMode: ViewMode
+  viewMode: ViewMode,
+  pages: SpreadPageList
 ): number => {
   const clampedIndex = clamp(index, minIndex, maxIndex);
 
@@ -372,22 +397,36 @@ export const getSpreadIndex = (
     return clampedIndex;
   }
 
-  return (
-    spreadStartIndex + Math.floor((clampedIndex - spreadStartIndex) / 2) * 2
-  );
+  return startsPageSet(clampedIndex, spreadStartIndex, pages)
+    ? clampedIndex
+    : clampedIndex - 1;
 };
 
+/**
+ * Returns how many pages the set at `currentIndex` puts on screen. A spread
+ * page fills a set on its own, and so does the page that would have faced it,
+ * which keeps its own half and leaves the other one to the spread.
+ */
 export const getVisiblePageCount = (
   viewMode: ViewMode,
   currentIndex: number,
   maxIndex: number,
-  spreadStartIndex: number
-): number =>
-  viewMode === "double" &&
-  currentIndex >= spreadStartIndex &&
-  currentIndex < maxIndex
-    ? 2
-    : 1;
+  spreadStartIndex: number,
+  pages: SpreadPageList
+): number => {
+  if (
+    viewMode !== "double" ||
+    currentIndex < spreadStartIndex ||
+    currentIndex >= maxIndex
+  ) {
+    return 1;
+  }
+
+  return isSpreadPage(currentIndex, pages) ||
+    isSpreadPage(currentIndex + 1, pages)
+    ? 1
+    : 2;
+};
 
 export const ViewerProvider = <TPage extends ViewerPage>({
   pages = EMPTY_PAGES,
@@ -516,24 +555,40 @@ export const ViewerProvider = <TPage extends ViewerPage>({
         viewMode,
         clampedCurrentIndex,
         maxIndex,
-        clampedSpreadStartIndex
+        clampedSpreadStartIndex,
+        sourcePages
       );
     if (nextIndex <= maxIndex) {
       goTo(nextIndex);
     }
-  }, [clampedCurrentIndex, clampedSpreadStartIndex, goTo, maxIndex, viewMode]);
+  }, [
+    clampedCurrentIndex,
+    clampedSpreadStartIndex,
+    goTo,
+    maxIndex,
+    sourcePages,
+    viewMode,
+  ]);
 
   const goToPrev = useCallback(() => {
     const previousIndex = getPreviousSpreadIndex(
       clampedCurrentIndex,
       minIndex,
       clampedSpreadStartIndex,
-      viewMode
+      viewMode,
+      sourcePages
     );
     if (previousIndex !== undefined) {
       goTo(previousIndex);
     }
-  }, [clampedCurrentIndex, clampedSpreadStartIndex, goTo, minIndex, viewMode]);
+  }, [
+    clampedCurrentIndex,
+    clampedSpreadStartIndex,
+    goTo,
+    minIndex,
+    sourcePages,
+    viewMode,
+  ]);
 
   // A page count that has already been reported is not reported again, so a
   // consumer that has nothing more to append is not asked in a loop.

@@ -163,6 +163,17 @@
   max-width: 50%;
 }
 
+/* A page that is a whole spread on its own takes both halves of the set, so
+   it is shown at the width it was drawn at instead of squeezed into one of
+   them. It is the direct child of the page set that has to grow, which is the
+   page slot in a layout that adds one and the page itself otherwise. */
+.pcv-viewport[data-view-mode="double"]
+  .pcv-viewport-page-set
+  > [data-page-layout="spread"] {
+  flex: 0 0 100%;
+  max-width: 100%;
+}
+
 /* An unpaired page keeps the half of the spread its own parity gives it, so a
    leading page faces the page that follows it instead of sharing its side. */
 .pcv-viewport[data-view-mode="double"]

@@ -41,7 +41,7 @@ The stylesheet was named `core.css` before it was renamed to `default.css`. `@pu
 
 ## Basic usage
 
-Import the package namespace and compose `ComicViewer.Root` with `ComicViewer.Viewport`, providing a page list. Each component is an independent named export, so a bundler can omit the ones you never render. A page needs an `id`, `src`, and accessible `title`; `width`, `height`, `mimeType`, and `placeholder` are optional.
+Import the package namespace and compose `ComicViewer.Root` with `ComicViewer.Viewport`, providing a page list. Each component is an independent named export, so a bundler can omit the ones you never render. A page needs an `id`, `src`, and accessible `title`; `width`, `height`, `layout`, `mimeType`, and `placeholder` are optional.
 
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
@@ -144,6 +144,31 @@ Use `spreadStartIndex` to leave leading pages unpaired before double-page spread
   <ComicViewer.Viewport />
 </ComicViewer.Root>
 ```
+
+### Pages that are a whole spread
+
+Magazines and collected volumes often deliver a two-page spread as one landscape image. Set `layout: "spread"` on such a page, the way EPUB fixed layout marks one with `rendition:page-spread-center`, and the viewer treats it as the pair of pages it is instead of squeezing it into one half. Every other page is `layout: "single"`, which is the default.
+
+```tsx
+const pages: ViewerPage[] = [
+  { id: "page-1", src: "/pages/1.jpg", title: "Page 1" },
+  { id: "page-2", src: "/pages/2.jpg", title: "Page 2" },
+  {
+    height: 1000,
+    id: "page-3",
+    layout: "spread",
+    src: "/pages/3.png",
+    title: "Page 3",
+    width: 1600,
+  },
+];
+```
+
+In double-page mode the spread takes a page set of its own, reported as `data-page-count="1"` with no `data-page-side`, and fills the whole width of that set. It counts as both halves of the sheet it sits on, so a spread that would otherwise land in the middle of a sheet moves on to the next one: the page before it is shown on its own, facing the blank half, and every page after it keeps the side it would have had in print. In single-page mode the spread is shown whole, fitted to the width of the viewport, so a phone reader sees the whole picture rather than half of one.
+
+Navigation steps over the spread as one unit in both modes, and it is one entry in `pages`, so `PageStatus` reports it as one page number and the reading progress counts it once. A page resolved later by `resolvePage` can turn out to be a spread; the grouping is recalculated as soon as its metadata arrives.
+
+Both the page slot and the page carry `data-page-layout="spread"`, which is what `default.css` and the [Tailwind CSS](#tailwind-css) setup size it from. The attribute is absent for an ordinary page.
 
 ## Start and end pages
 
@@ -310,7 +335,7 @@ import * as ComicViewer from "@publira/comic-viewer";
   <ComicViewer.Viewport className="group/viewport relative flex min-h-0 min-w-0 flex-1 touch-pan-y overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing">
     <ComicViewer.ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset)))] data-[dragging]:transition-none data-[transition-state=active]:transition-transform data-[transition-state=active]:duration-[260ms] data-[transition-state=active]:ease-out data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]">
       <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 data-[page-side=left]:justify-start data-[page-side=right]:justify-end data-[rail-slot=current]:[transform:translate(var(--pcv-pan-x,0)_var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))]">
-        <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:basis-1/2 data-[view-mode=double]:max-w-1/2">
+        <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:basis-1/2 data-[view-mode=double]:max-w-1/2 data-[view-mode=double]:data-[page-layout=spread]:basis-full data-[view-mode=double]:data-[page-layout=spread]:max-w-full">
           <ComicViewer.ViewportPage className="flex h-full w-full min-w-0 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
             <ComicViewer.PageCanvas className="h-full max-w-full object-contain group-data-[page-fit-mode=actual]/viewport:h-auto group-data-[page-fit-mode=actual]/viewport:w-auto group-data-[page-fit-mode=actual]/viewport:max-w-none group-data-[page-fit-mode=width]/viewport:h-auto group-data-[page-fit-mode=width]/viewport:w-full group-data-[page-fit-mode=width]/viewport:max-w-none" />
           </ComicViewer.ViewportPage>
@@ -334,6 +359,8 @@ import * as ComicViewer from "@publira/comic-viewer";
 None of this is decoration. The rail is three spreads wide, so `w-[300%]` and the `translateX(…)` transforms are what a page turn moves, and `--pcv-drag-offset` is what follows a finger during one; the transition is limited to `data-[transition-state=active]` so that only a settling turn animates and a drag tracks the pointer. The zoom and pan transform is limited to `data-[rail-slot=current]`, because only the spread the reader is on is zoomed, and `touch-pan-y` leaves vertical scrolling to the browser while a horizontal drag turns the page. The page fit modes are reported on `Viewport`, so `PageCanvas` reads them through the `group/viewport` variants. `Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else, so without `default.css` they would stay on screen permanently and the `aria-hidden` variant, which matches only the hidden state, is what hides them. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. [Reader control visibility](#reader-control-visibility) describes when that state changes.
 
 In double-page mode the rail reports the half of the spread a page takes as `data-page-side="left"` or `data-page-side="right"`, on `ViewportPageSlot` and `ViewportPage`, and on `ViewportPageSet` while it holds a single page. The side follows the parity of the page's offset from `spreadStartIndex`, so an unpaired page keeps the side it would have had in a printed book: with `spreadStartIndex={1}` the cover faces the page after it instead of sharing its side. The attribute is absent in single-page mode, where a page has no facing half. Align each page against the edge of its half that faces the gutter, as the example does, so the two pages of a spread meet at the centre line instead of drifting apart on a viewport wider than the pages.
+
+A page declared with `layout: "spread"` covers both halves at once, so it reports no `data-page-side` at all and carries `data-page-layout="spread"` on `ViewportPageSlot` and `ViewportPage` in both view modes. The `data-[page-layout=spread]` variants in the example are what give it back the half that the double-page basis would otherwise take; the pair of variants keeps them ahead of the plain `data-[view-mode=double]` ones they override.
 
 Use `className` on the other components to style their controls. For page markup that keeps the viewer loading, decoding, and virtualization pipeline, provide a page template with the public `ViewportPage` and `PageCanvas` primitives:
 

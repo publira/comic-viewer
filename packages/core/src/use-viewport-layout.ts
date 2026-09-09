@@ -1,5 +1,7 @@
 import { useCallback, useMemo } from "react";
 
+import { isSpreadPage, startsPageSet } from "./page-spread";
+import type { SpreadPageList } from "./page-spread";
 import { getPreviousSpreadIndex, getVisiblePageCount } from "./viewer-context";
 import type { ViewMode } from "./viewer-context";
 
@@ -9,17 +11,23 @@ export type PageTurnDirection = "left" | "right";
 export type PageSide = "left" | "right";
 
 /**
- * Returns the side a page takes in double-page mode. A page whose offset from
- * `spreadStartIndex` is even starts a spread and takes the side the reading
- * begins on, and the page facing it takes the other side, so an unpaired page
- * keeps the side it would have had in a printed book.
+ * Returns the side a page takes in double-page mode, or `undefined` for a
+ * spread page, which covers both halves and therefore takes neither. A page
+ * whose offset from `spreadStartIndex` is even starts a spread and takes the
+ * side the reading begins on, and the page facing it takes the other side, so
+ * an unpaired page keeps the side it would have had in a printed book.
  */
 export const getPageSide = (
   index: number,
   spreadStartIndex: number,
-  readingDirection: "rtl" | "ltr"
-): PageSide => {
-  const startsSpread = (index - spreadStartIndex) % 2 === 0;
+  readingDirection: "rtl" | "ltr",
+  pages: SpreadPageList
+): PageSide | undefined => {
+  if (isSpreadPage(index, pages)) {
+    return undefined;
+  }
+
+  const startsSpread = startsPageSet(index, spreadStartIndex, pages);
   return startsSpread === (readingDirection === "ltr") ? "left" : "right";
 };
 
@@ -37,12 +45,18 @@ export const getVisibleIndices = (
   currentIndex: number,
   maxIndex: number,
   spreadStartIndex: number,
-  viewMode: ViewMode
+  viewMode: ViewMode,
+  pages: SpreadPageList
 ): number[] => {
   const indices = currentIndex > maxIndex ? [] : [currentIndex];
   if (
-    getVisiblePageCount(viewMode, currentIndex, maxIndex, spreadStartIndex) ===
-    2
+    getVisiblePageCount(
+      viewMode,
+      currentIndex,
+      maxIndex,
+      spreadStartIndex,
+      pages
+    ) === 2
   ) {
     indices.push(currentIndex + 1);
   }
@@ -54,11 +68,18 @@ export const getNextSpreadIndex = (
   currentIndex: number,
   maxIndex: number,
   spreadStartIndex: number,
-  viewMode: ViewMode
+  viewMode: ViewMode,
+  pages: SpreadPageList
 ): number | undefined => {
   const nextIndex =
     currentIndex +
-    getVisiblePageCount(viewMode, currentIndex, maxIndex, spreadStartIndex);
+    getVisiblePageCount(
+      viewMode,
+      currentIndex,
+      maxIndex,
+      spreadStartIndex,
+      pages
+    );
   return nextIndex <= maxIndex ? nextIndex : undefined;
 };
 
@@ -69,18 +90,26 @@ export const getSwipeTargetIndex = (
   maxIndex: number,
   readingDirection: "rtl" | "ltr",
   spreadStartIndex: number,
-  viewMode: ViewMode
+  viewMode: ViewMode,
+  pages: SpreadPageList
 ): number | undefined => {
   const movesForward =
     (direction === "left" && readingDirection === "rtl") ||
     (direction === "right" && readingDirection === "ltr");
   return movesForward
-    ? getNextSpreadIndex(currentIndex, maxIndex, spreadStartIndex, viewMode)
+    ? getNextSpreadIndex(
+        currentIndex,
+        maxIndex,
+        spreadStartIndex,
+        viewMode,
+        pages
+      )
     : getPreviousSpreadIndex(
         currentIndex,
         minIndex,
         spreadStartIndex,
-        viewMode
+        viewMode,
+        pages
       );
 };
 
@@ -88,6 +117,8 @@ interface UseViewportLayoutOptions {
   displayedIndex: number;
   maxIndex: number;
   minIndex: number;
+  /** The page list the spread pages among the document are read from. */
+  pages: SpreadPageList;
   readingDirection: "rtl" | "ltr";
   spreadStartIndex: number;
   transitionToIndex: number | undefined;
@@ -100,6 +131,7 @@ export const useViewportLayout = ({
   displayedIndex,
   maxIndex,
   minIndex,
+  pages,
   readingDirection,
   spreadStartIndex,
   transitionToIndex,
@@ -108,8 +140,14 @@ export const useViewportLayout = ({
 }: UseViewportLayoutOptions) => {
   const visibleIndices = useMemo(
     () =>
-      getVisibleIndices(displayedIndex, maxIndex, spreadStartIndex, viewMode),
-    [displayedIndex, maxIndex, spreadStartIndex, viewMode]
+      getVisibleIndices(
+        displayedIndex,
+        maxIndex,
+        spreadStartIndex,
+        viewMode,
+        pages
+      ),
+    [displayedIndex, maxIndex, pages, spreadStartIndex, viewMode]
   );
   const orderedIndices = useMemo(
     () =>
@@ -124,25 +162,28 @@ export const useViewportLayout = ({
         index,
         maxIndex,
         spreadStartIndex,
-        viewMode
+        viewMode,
+        pages
       );
       return readingDirection === "rtl" && indices.length === 2
         ? [indices[1], indices[0]]
         : indices;
     },
-    [maxIndex, readingDirection, spreadStartIndex, viewMode]
+    [maxIndex, pages, readingDirection, spreadStartIndex, viewMode]
   );
   const previousSpreadIndex = getPreviousSpreadIndex(
     displayedIndex,
     minIndex,
     spreadStartIndex,
-    viewMode
+    viewMode,
+    pages
   );
   const nextSpreadIndex = getNextSpreadIndex(
     displayedIndex,
     maxIndex,
     spreadStartIndex,
-    viewMode
+    viewMode,
+    pages
   );
   const railSpreadIndices = useMemo(() => {
     if (usesPageRail) {
@@ -171,7 +212,8 @@ export const useViewportLayout = ({
         spreadIndex,
         maxIndex,
         spreadStartIndex,
-        viewMode
+        viewMode,
+        pages
       )) {
         indices.add(pageIndex);
       }
@@ -182,7 +224,8 @@ export const useViewportLayout = ({
         transitionToIndex,
         maxIndex,
         spreadStartIndex,
-        viewMode
+        viewMode,
+        pages
       )) {
         indices.add(pageIndex);
       }
@@ -193,14 +236,16 @@ export const useViewportLayout = ({
         displayedIndex,
         maxIndex,
         spreadStartIndex,
-        viewMode
+        viewMode,
+        pages
       );
       for (let count = 0; count < 2 && nextIndex !== undefined; count += 1) {
         for (const pageIndex of getVisibleIndices(
           nextIndex,
           maxIndex,
           spreadStartIndex,
-          viewMode
+          viewMode,
+          pages
         )) {
           indices.add(pageIndex);
         }
@@ -208,7 +253,8 @@ export const useViewportLayout = ({
           nextIndex,
           maxIndex,
           spreadStartIndex,
-          viewMode
+          viewMode,
+          pages
         );
       }
     }
@@ -217,6 +263,7 @@ export const useViewportLayout = ({
   }, [
     displayedIndex,
     maxIndex,
+    pages,
     railSpreadIndices,
     spreadStartIndex,
     transitionToIndex,

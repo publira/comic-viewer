@@ -3,7 +3,7 @@ import type { ComponentPropsWithoutRef, ReactElement } from "react";
 
 import { composeClassName } from "./class-names";
 import type { PageSide, PageTurnDirection } from "./use-viewport-layout";
-import type { ViewerPage, ViewerSlot } from "./viewer-context";
+import type { PageLayout, ViewerPage, ViewerSlot } from "./viewer-context";
 import type { ViewportChildren } from "./viewport-page";
 
 export interface ViewportTrackProps extends ComponentPropsWithoutRef<"div"> {
@@ -47,6 +47,8 @@ export const ViewportPageSet = ({
 );
 
 export interface ViewportPageSlotProps extends ComponentPropsWithoutRef<"div"> {
+  /** Present only for a page that fills a whole spread on its own. */
+  "data-page-layout"?: Extract<PageLayout, "spread">;
   "data-page-side"?: PageSide;
   /** The end of the reading sequence an extra page held by the slot sits at. */
   "data-page-slot"?: ViewerSlot;

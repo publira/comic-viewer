@@ -12,7 +12,7 @@ import { composeClassName } from "./class-names";
 import type { PageLoadError, PageLoadState, PageLoadStatus } from "./page-load";
 import type { PageImage } from "./use-viewport-images";
 import type { PageSide } from "./use-viewport-layout";
-import type { ViewerPage } from "./viewer-context";
+import type { PageLayout, ViewerPage } from "./viewer-context";
 
 /** A page template rendered either as static markup or per visible page. */
 export type ViewportChildren<TPage extends ViewerPage> =
@@ -23,6 +23,8 @@ interface ViewportPageContextValue {
   error?: PageLoadError;
   image?: PageImage;
   index: number;
+  /** Present only for a page that fills a whole spread on its own. */
+  layout?: Extract<PageLayout, "spread">;
   page: ViewerPage;
   retry: () => void;
   side?: PageSide;
@@ -52,6 +54,14 @@ const useViewportPageContext = (
  */
 const useViewportPageSide = (): PageSide | undefined =>
   useContext(ViewportPageContext)?.side;
+
+/**
+ * Reads the layout of the page being rendered, which is `"spread"` only for a
+ * page that covers a whole spread on its own and absent for every other page
+ * and outside a page managed by Viewport.
+ */
+const useViewportPageLayout = (): Extract<PageLayout, "spread"> | undefined =>
+  useContext(ViewportPageContext)?.layout;
 
 /**
  * Reads the load state of the page being rendered by a Viewport page template,
@@ -171,7 +181,7 @@ export const ViewportPendingPage = ({
 
 export type ViewportPageProps = Omit<
   ComponentPropsWithoutRef<"div">,
-  "data-page-side"
+  "data-page-layout" | "data-page-side"
 >;
 
 /** Provides the page wrapper for a Viewport page template. */
@@ -180,12 +190,14 @@ export const ViewportPage = ({
   className,
   ...props
 }: ViewportPageProps) => {
+  const layout = useViewportPageLayout();
   const side = useViewportPageSide();
 
   return (
     <div
       {...props}
       className={composeClassName("pcv-page", className)}
+      data-page-layout={layout}
       data-page-side={side}
     >
       {children ?? <PageCanvas />}
@@ -198,6 +210,7 @@ interface ViewportPageInstanceProps<TPage extends ViewerPage> {
   error?: PageLoadError<TPage>;
   image?: PageImage;
   index: number;
+  layout?: Extract<PageLayout, "spread">;
   page: TPage;
   renderPage?: (page: TPage, index: number) => ReactNode;
   retryPage: (index: number) => void;
@@ -211,6 +224,7 @@ export const ViewportPageInstance = <TPage extends ViewerPage>({
   error,
   image,
   index,
+  layout,
   page,
   renderPage,
   retryPage,
@@ -221,8 +235,8 @@ export const ViewportPageInstance = <TPage extends ViewerPage>({
     retryPage(index);
   }, [index, retryPage]);
   const contextValue = useMemo(
-    () => ({ error, image, index, page, retry, side, status }),
-    [error, image, index, page, retry, side, status]
+    () => ({ error, image, index, layout, page, retry, side, status }),
+    [error, image, index, layout, page, retry, side, status]
   );
   let content: ReactNode;
 

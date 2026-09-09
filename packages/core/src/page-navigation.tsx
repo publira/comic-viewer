@@ -26,7 +26,12 @@ import {
   getVisiblePageCount,
   useViewerContext,
 } from "./viewer-context";
-import type { ViewerSlot, ViewerSlotPages, ViewMode } from "./viewer-context";
+import type {
+  ViewerPage,
+  ViewerSlot,
+  ViewerSlotPages,
+  ViewMode,
+} from "./viewer-context";
 
 interface PageProgressState {
   ariaLabel: string;
@@ -96,12 +101,24 @@ export const NextPageButton = ({
   onClick,
   ...props
 }: PageNavigationButtonProps) => {
-  const { currentIndex, goToNext, maxIndex, spreadStartIndex, viewMode } =
-    useViewerContext();
+  const {
+    currentIndex,
+    goToNext,
+    maxIndex,
+    pages,
+    spreadStartIndex,
+    viewMode,
+  } = useViewerContext();
   const isDisabled =
     disabled ||
     currentIndex +
-      getVisiblePageCount(viewMode, currentIndex, maxIndex, spreadStartIndex) >
+      getVisiblePageCount(
+        viewMode,
+        currentIndex,
+        maxIndex,
+        spreadStartIndex,
+        pages
+      ) >
       maxIndex;
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -182,6 +199,8 @@ interface PageStatusInput extends ViewerSlotPages {
   currentIndex: number;
   maxIndex: number;
   pageCount: number;
+  /** The page list, which reports the pages that fill a spread on their own. */
+  pages: readonly (ViewerPage | undefined)[];
   spreadStartIndex: number;
   viewMode: ViewMode;
 }
@@ -195,13 +214,20 @@ const getPageStatusValue = ({
   endPages,
   maxIndex,
   pageCount,
+  pages,
   spreadStartIndex,
   startPages,
   viewMode,
 }: PageStatusInput): PageStatusValue => {
   const lastIndex =
     currentIndex +
-    getVisiblePageCount(viewMode, currentIndex, maxIndex, spreadStartIndex) -
+    getVisiblePageCount(
+      viewMode,
+      currentIndex,
+      maxIndex,
+      spreadStartIndex,
+      pages
+    ) -
     1;
   // A slot page is counted neither in the page numbers nor in the total, so
   // the reader keeps the numbering of the document itself.
@@ -262,6 +288,7 @@ export const PageStatus = ({ className, format }: PageStatusProps) => {
     endPages,
     maxIndex,
     pageCount,
+    pages,
     spreadStartIndex,
     startPages,
     viewMode,
@@ -272,6 +299,7 @@ export const PageStatus = ({ className, format }: PageStatusProps) => {
     endPages,
     maxIndex,
     pageCount,
+    pages,
     spreadStartIndex,
     startPages,
     viewMode,
@@ -334,14 +362,21 @@ export const PageProgressTrack = ({
   ...props
 }: PageProgressTrackProps) => {
   const pageProgress = useContext(PageProgressContext);
-  const { currentIndex, maxIndex, pageCount, spreadStartIndex, viewMode } =
-    useViewerContext();
+  const {
+    currentIndex,
+    maxIndex,
+    pageCount,
+    pages,
+    spreadStartIndex,
+    viewMode,
+  } = useViewerContext();
   const progressIndex = useProgressIndex(currentIndex);
   const visiblePageCount = getVisiblePageCount(
     viewMode,
     progressIndex,
     maxIndex,
-    spreadStartIndex
+    spreadStartIndex,
+    pages
   );
   // A slot page leaves the progress where the pages next to it put it, since
   // it is not one of the pages being counted.
@@ -398,6 +433,7 @@ export const PageProgressSlider = ({
     maxIndex,
     minIndex,
     pageCount,
+    pages,
     spreadStartIndex,
     startPages,
     viewMode,
@@ -412,8 +448,15 @@ export const PageProgressSlider = ({
   const publishScrubIndex = pageProgress?.setScrubIndex;
   const snapToSpread = useCallback(
     (index: number): number =>
-      getSpreadIndex(index, minIndex, maxIndex, spreadStartIndex, viewMode),
-    [maxIndex, minIndex, spreadStartIndex, viewMode]
+      getSpreadIndex(
+        index,
+        minIndex,
+        maxIndex,
+        spreadStartIndex,
+        viewMode,
+        pages
+      ),
+    [maxIndex, minIndex, pages, spreadStartIndex, viewMode]
   );
   const value = snapToSpread(scrubIndex ?? currentIndex);
 
@@ -511,6 +554,7 @@ export const PageProgressSlider = ({
     endPages,
     maxIndex,
     pageCount,
+    pages,
     spreadStartIndex,
     startPages,
     viewMode,

@@ -41,8 +41,10 @@ export const readerClassNames = {
     "flex h-full w-full min-w-0 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start",
   viewportPageSet:
     "flex h-full min-w-0 shrink-0 basis-1/3 data-[page-side=left]:justify-start data-[page-side=right]:justify-end data-[rail-slot=current]:[transform:translate(var(--pcv-pan-x,0)_var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))]",
+  // A page that is a whole spread on its own keeps both halves of the set, so
+  // the double-page basis it would otherwise take is given back to it.
   viewportPageSlot:
-    "flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:max-w-1/2 data-[view-mode=double]:basis-1/2",
+    "flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:max-w-1/2 data-[view-mode=double]:basis-1/2 data-[view-mode=double]:data-[page-layout=spread]:max-w-full data-[view-mode=double]:data-[page-layout=spread]:basis-full",
   viewportPendingPage: "h-full w-full animate-pulse bg-slate-900",
   viewportTrack:
     "flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset)))] data-[dragging]:transition-none data-[transition-state=active]:transition-transform data-[transition-state=active]:duration-[260ms] data-[transition-state=active]:ease-out data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]",
@@ -56,4 +58,14 @@ export const pageSideUtilities = (className: string): string =>
   className
     .split(" ")
     .filter((utility) => utility.startsWith("data-[page-side"))
+    .join(" ");
+
+/**
+ * The variants of a reader class that size a page covering a whole spread,
+ * for the demo page that documents them.
+ */
+export const pageLayoutUtilities = (className: string): string =>
+  className
+    .split(" ")
+    .filter((utility) => utility.includes("data-[page-layout"))
     .join(" ");
