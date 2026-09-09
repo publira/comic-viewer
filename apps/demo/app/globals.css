@@ -99,12 +99,16 @@ code {
 }
 
 .demo-navigation {
+  --demo-navigation-padding: 20px;
+
+  position: relative;
   display: flex;
-  padding: 0 20px;
+  padding: 0 var(--demo-navigation-padding);
 }
 
 .demo-navigation-tabs {
   display: flex;
+  flex-wrap: wrap;
   align-items: end;
   gap: 0.3rem;
   width: 100%;
@@ -202,4 +206,35 @@ code {
 .demo-navigation-menu a[aria-current="page"] {
   background: var(--demo-navigation-active-background);
   color: var(--demo-foreground);
+}
+
+/*
+ * A phone has no room for the four entries in one row, so they wrap rather
+ * than push the page sideways. Once they can sit on more than one row the tab
+ * shape reads as loose edges, and they take a shape of their own instead. The
+ * menu leaves the tab it belongs to and spans the navigation, which is also
+ * what keeps the menu of an entry near the right edge inside the viewport.
+ */
+@media (width < 40rem) {
+  .demo-navigation-link,
+  .demo-navigation-trigger {
+    padding: 0.55rem 0.7rem;
+    border-bottom: 1px solid transparent;
+    border-radius: 0.5rem;
+  }
+
+  .demo-navigation-link[aria-current],
+  .demo-navigation-trigger[aria-current] {
+    border-bottom-color: var(--demo-navigation-active-border);
+  }
+
+  .demo-navigation-group {
+    position: static;
+  }
+
+  .demo-navigation-menu {
+    right: var(--demo-navigation-padding);
+    left: var(--demo-navigation-padding);
+    min-width: 0;
+  }
 }

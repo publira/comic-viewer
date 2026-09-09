@@ -45,12 +45,16 @@ export const DemoNavigation = () => {
           </h1>
           <CounterpartDemoLink />
         </div>
-        <nav aria-label="Demo pages" className="mt-4" ref={navigationRef}>
-          <ul className="flex gap-2">
+        <nav
+          aria-label="Demo pages"
+          className="relative mt-4"
+          ref={navigationRef}
+        >
+          <ul className="flex flex-wrap gap-2">
             <li>
               <Link
                 aria-current={pathname === basicRoute.href ? "page" : undefined}
-                className="block rounded-t-lg border border-b-0 border-transparent px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 aria-[current=page]:border-slate-300 aria-[current=page]:bg-slate-100 aria-[current=page]:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:aria-[current=page]:border-slate-700 dark:aria-[current=page]:bg-slate-800 dark:aria-[current=page]:text-white"
+                className="block rounded-t-lg border border-b-0 border-transparent px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 aria-[current=page]:border-slate-300 aria-[current=page]:bg-slate-100 aria-[current=page]:text-slate-950 max-sm:rounded-lg max-sm:border-b max-sm:px-2.5 max-sm:py-1.5 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:aria-[current=page]:border-slate-700 dark:aria-[current=page]:bg-slate-800 dark:aria-[current=page]:text-white"
                 href={basicRoute.href}
               >
                 {basicRoute.label}
