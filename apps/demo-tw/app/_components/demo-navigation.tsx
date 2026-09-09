@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { CounterpartDemoLink } from "./counterpart-demo-link";
+
 const navigationItems = [
   { href: "/", label: "Basic" },
   { href: "/spreads", label: "Spreads" },
@@ -23,9 +25,12 @@ export const DemoNavigation = () => {
   return (
     <header className="sticky top-0 z-20 border-b border-slate-300/80 bg-white/90 backdrop-blur dark:border-slate-700 dark:bg-slate-950/90">
       <div className="mx-auto w-full max-w-6xl px-5 pt-4 sm:px-8">
-        <h1 className="text-xl font-bold tracking-tight">
-          Comic Viewer Tailwind CSS Demo
-        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-xl font-bold tracking-tight">
+            Comic Viewer Tailwind CSS Demo
+          </h1>
+          <CounterpartDemoLink />
+        </div>
         <nav
           className="mt-4 flex gap-2 overflow-x-auto"
           aria-label="Demo pages"
