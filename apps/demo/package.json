@@ -33,12 +33,5 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.7",
     "typescript": "6.0.3"
-  },
-  "browserslist": [
-    "chrome >= 111",
-    "edge >= 111",
-    "firefox >= 128",
-    "safari >= 16.4",
-    "ios_saf >= 16.4"
-  ]
+  }
 }

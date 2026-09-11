@@ -1,0 +1,12 @@
+# The browsers this demo is built for. Without them the build assumes the
+# newest release of every engine, which drops vendor prefixes that phones in
+# use still read: it took `-webkit-text-size-adjust` out of the stylesheet, and
+# iOS Safari then sized every line of a highlighted code block on its own.
+#
+# This is the set Tailwind CSS 4 itself supports, so both demos hold the same
+# line.
+chrome >= 111
+edge >= 111
+firefox >= 128
+safari >= 16.4
+ios_saf >= 16.4
