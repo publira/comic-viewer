@@ -3,6 +3,7 @@
   border: 1px solid var(--demo-border);
   border-radius: 0.75rem;
   background: var(--demo-panel-background);
+  font-size: 0.875rem;
 }
 .title {
   margin-bottom: 0.9rem;
@@ -10,30 +11,18 @@
   font-size: 1.15rem;
 }
 .code {
-  overflow-x: auto;
-  padding: 1rem;
+  /* The font the highlighted block draws its code and file name with. */
+  --sh-font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+
+  overflow: hidden;
   border: 1px solid var(--demo-border);
   border-radius: 0.5rem;
-  background: var(--demo-code-panel-background);
-  color: var(--demo-code-foreground);
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 0.875rem;
   line-height: 1.6;
   tab-size: 2;
-}
-.code code {
-  padding: 0;
-  border-radius: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
 }
 @media (max-width: 768px) {
   .panel {
     padding: 1rem;
-  }
-  .code {
-    padding: 0.85rem;
     font-size: 0.8rem;
   }
 }
