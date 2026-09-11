@@ -7,7 +7,9 @@ This repository is a monorepo configured with Turborepo and managed via `pnpm`.
 ### Directory Structure
 
 - `apps/`: Applications directory
-  - `apps/demo/`: Next.js demo application
+  - `apps/demo/`: Next.js demo application styled with the bundled stylesheet
+  - `apps/demo-tw/`: Next.js demo application styled with Tailwind CSS
+  - `apps/website/`: Next.js landing page for the apex domain
 - `packages/`: Packages directory
   - `packages/core/`: Core library for the comic viewer
 
