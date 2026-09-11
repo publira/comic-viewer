@@ -1,10 +1,1 @@
 @import "tailwindcss";
-
-/*
- * The `dark:` utilities in this app follow the reader's preference, and so does
- * the paired theme the source code panel passes to Sugar High — through the
- * inherited color scheme rather than a rerender.
- */
-:root {
-  color-scheme: light dark;
-}
