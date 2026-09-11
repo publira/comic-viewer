@@ -22,9 +22,11 @@
   },
   "dependencies": {
     "@publira/comic-viewer": "workspace:*",
+    "@sugar-high/react": "2.3.1",
     "next": "16.3.4",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "sugar-high": "2.4.0"
   },
   "devDependencies": {
     "@types/node": "24.13.3",

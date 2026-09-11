@@ -130,6 +130,9 @@ importers:
       '@publira/comic-viewer':
         specifier: workspace:*
         version: link:../../packages/core
+      '@sugar-high/react':
+        specifier: 2.3.1
+        version: 2.3.1(react@19.2.8)
       next:
         specifier: 16.3.4
         version: 16.3.4(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -139,6 +142,9 @@ importers:
       react-dom:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
+      sugar-high:
+        specifier: 2.4.0
+        version: 2.4.0
     devDependencies:
       '@types/node':
         specifier: 24.13.3
@@ -158,6 +164,9 @@ importers:
       '@publira/comic-viewer':
         specifier: workspace:*
         version: link:../../packages/core
+      '@sugar-high/react':
+        specifier: 2.3.1
+        version: 2.3.1(react@19.2.8)
       lucide-react:
         specifier: 1.43.0
         version: 1.43.0(react@19.2.8)
@@ -170,6 +179,9 @@ importers:
       react-dom:
         specifier: 19.2.8
         version: 19.2.8(react@19.2.8)
+      sugar-high:
+        specifier: 2.4.0
+        version: 2.4.0
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.3.3
@@ -954,6 +966,11 @@ packages:
   '@sindresorhus/merge-streams@4.0.0':
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
+
+  '@sugar-high/react@2.3.1':
+    resolution: {integrity: sha512-CBla/734xTQO6vlxDepropL/Viql754Bmay0mpDvtfTay5yIGchQ2CsajsJLV5YRXphnJkl0CYQPGHp9BQisLA==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
 
   '@swc/helpers@0.5.23':
     resolution: {integrity: sha512-5lSsMOTXURePglDfvuAQUqkGek9Hg2kksOYay2m0+XR++b2NWYL/4sWyuvVBIs8oKnJaxkdi9whaL/sqN13afw==}
@@ -2081,6 +2098,14 @@ packages:
       babel-plugin-macros:
         optional: true
 
+  sugar-high@2.4.0:
+    resolution: {integrity: sha512-exlimf1RMmnDcnBZeNebvj78eZt6XRmbyu+RCTq1p2RgcjoOfZPDH+hUlvjx5fWGK4M9E54EaDLERdLBQbwaFA==}
+    peerDependencies:
+      gpu-lexer: '>=0.0.2'
+    peerDependenciesMeta:
+      gpu-lexer:
+        optional: true
+
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
 
@@ -2809,6 +2834,13 @@ snapshots:
   '@sec-ant/readable-stream@0.4.1': {}
 
   '@sindresorhus/merge-streams@4.0.0': {}
+
+  '@sugar-high/react@2.3.1(react@19.2.8)':
+    dependencies:
+      react: 19.2.8
+      sugar-high: 2.4.0
+    transitivePeerDependencies:
+      - gpu-lexer
 
   '@swc/helpers@0.5.23':
     dependencies:
@@ -3777,6 +3809,8 @@ snapshots:
     dependencies:
       client-only: 0.0.1
       react: 19.2.8
+
+  sugar-high@2.4.0: {}
 
   symbol-tree@3.2.4: {}
 
