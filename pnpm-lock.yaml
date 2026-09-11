@@ -202,6 +202,43 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
+  apps/website:
+    dependencies:
+      '@sugar-high/react':
+        specifier: 2.3.1
+        version: 2.3.1(react@19.2.8)
+      next:
+        specifier: 16.3.4
+        version: 16.3.4(@playwright/test@1.62.1)(@types/node@24.13.3)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      react:
+        specifier: 19.2.8
+        version: 19.2.8
+      react-dom:
+        specifier: 19.2.8
+        version: 19.2.8(react@19.2.8)
+      sugar-high:
+        specifier: 2.4.0
+        version: 2.4.0
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: 4.3.3
+        version: 4.3.3
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      '@types/react':
+        specifier: 19.2.18
+        version: 19.2.18
+      '@types/react-dom':
+        specifier: 19.2.7
+        version: 19.2.7(@types/react@19.2.18)
+      tailwindcss:
+        specifier: 4.3.3
+        version: 4.3.3
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
   e2e:
     devDependencies:
       '@playwright/test':

@@ -74,7 +74,7 @@ The repository is a [Turborepo](https://turborepo.com/) monorepo managed with [p
 | Command          | Description                                        |
 | ---------------- | -------------------------------------------------- |
 | `pnpm build`     | Build every package and application.               |
-| `pnpm dev`       | Run the demo applications in development mode.     |
+| `pnpm dev`       | Run the demos and the website in development mode. |
 | `pnpm test`      | Run the unit test suites.                          |
 | `pnpm test:e2e`  | Run the Playwright end-to-end tests.               |
 | `pnpm typecheck` | Run TypeScript type checking across the workspace. |
