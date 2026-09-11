@@ -32,6 +32,12 @@
 html,
 body {
   height: 100%;
+  /*
+   * Every highlighted line is a block of its own, which iOS Safari would
+   * otherwise inflate one line at a time to a size of its own choosing.
+   */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu",
     "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
