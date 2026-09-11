@@ -6,6 +6,10 @@ The reader composes the public `ViewportTrack`, `ViewportPageSet`, `ViewportPage
 
 It is deployed at [demo-tw.comic-viewer.publira.dev](https://demo-tw.comic-viewer.publira.dev/). The [standard demo](https://demo.comic-viewer.publira.dev/) shows the same viewer with the bundled stylesheet instead.
 
+## Sample code
+
+Every page prints the files its demo is made of, read from this app's own source: the reader of the demo first, then the shared `app/_components/reader.tsx` the parts come from. Nothing is transcribed into a snippet by hand, so what a page shows is what it runs, and no demo has to be read against another one.
+
 ## Routes
 
 The demos are grouped by what each page teaches, and both applications expose the same set:
