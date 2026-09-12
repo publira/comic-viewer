@@ -15,7 +15,7 @@
     "@playwright/test": "1.63.0",
     "@publira/comic-viewer-demo": "workspace:*",
     "@publira/comic-viewer-tailwind-demo": "workspace:*",
-    "@types/node": "24.13.3",
+    "@types/node": "24.13.4",
     "typescript": "6.0.3"
   }
 }
