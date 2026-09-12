@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@publira/comic-viewer": "workspace:*",
-    "@sugar-high/react": "2.3.1",
+    "@sugar-high/react": "2.4.0",
     "lucide-react": "1.43.0",
     "next": "16.3.4",
     "react": "19.2.8",
