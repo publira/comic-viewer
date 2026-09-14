@@ -1,6 +1,6 @@
 {
   "name": "Publira Comic Viewer",
-  "image": "ghcr.io/publira/base-images/publira-dev:2026.09.13@sha256:53aa73595de6dbc140bac540e68df78bba2cd00fc497551e1cf94fdb3d002c87",
+  "image": "ghcr.io/publira/base-images/publira-dev:2026.09.14@sha256:ca0b3177c0dfc886612ceb4b79c97521db902f7444e904624e9235f7020b11f1",
   "features": {
     "ghcr.io/anthropics/devcontainer-features/claude-code:1.0.5": {}
   },
