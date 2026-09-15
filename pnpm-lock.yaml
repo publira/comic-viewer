@@ -200,8 +200,8 @@ importers:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
       sugar-high:
-        specifier: 2.4.0
-        version: 2.4.0
+        specifier: 2.4.1
+        version: 2.4.1
     devDependencies:
       '@types/node':
         specifier: 24.13.4
@@ -237,8 +237,8 @@ importers:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
       sugar-high:
-        specifier: 2.4.0
-        version: 2.4.0
+        specifier: 2.4.1
+        version: 2.4.1
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.3.3
@@ -274,8 +274,8 @@ importers:
         specifier: 19.3.0
         version: 19.3.0(react@19.3.0)
       sugar-high:
-        specifier: 2.4.0
-        version: 2.4.0
+        specifier: 2.4.1
+        version: 2.4.1
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.3.3
@@ -2167,8 +2167,8 @@ packages:
       babel-plugin-macros:
         optional: true
 
-  sugar-high@2.4.0:
-    resolution: {integrity: sha512-exlimf1RMmnDcnBZeNebvj78eZt6XRmbyu+RCTq1p2RgcjoOfZPDH+hUlvjx5fWGK4M9E54EaDLERdLBQbwaFA==}
+  sugar-high@2.4.1:
+    resolution: {integrity: sha512-w4uhunMgEP+9f/2W/ZLBjvrVBLY14oL4b6a2+Ca/JWECd0Rc45KqL89bDvUOVFGrr0D14q5hoEqBXkgxwxL6RQ==}
     peerDependencies:
       gpu-lexer: '>=0.0.2'
     peerDependenciesMeta:
@@ -2902,7 +2902,7 @@ snapshots:
   '@sugar-high/react@2.3.1(react@19.3.0)':
     dependencies:
       react: 19.3.0
-      sugar-high: 2.4.0
+      sugar-high: 2.4.1
     transitivePeerDependencies:
       - gpu-lexer
 
@@ -3856,7 +3856,7 @@ snapshots:
       client-only: 0.0.1
       react: 19.3.0
 
-  sugar-high@2.4.0: {}
+  sugar-high@2.4.1: {}
 
   symbol-tree@3.2.4: {}
 
