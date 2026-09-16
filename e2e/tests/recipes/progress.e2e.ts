@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-import { turnThroughScreens } from "#helpers/reader";
+import { revealReaderControls, turnThroughScreens } from "#helpers/reader";
+import { getSliderGeometry, getSliderX } from "#helpers/reading-progress";
 import { currentPageSet } from "#helpers/selectors";
 
 test("restores the stored reading position after a reload", async ({
@@ -46,4 +47,32 @@ test("restores the stored reading position after a reload", async ({
 
   await expect(page.locator(".pcv-page-status")).toHaveText("Pages 1-2 of 21");
   await expect(savedPosition).toHaveText("Not saved yet");
+});
+
+test("stores the position a scrub is released on, not the pages it passes", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/recipes/progress");
+  await revealReaderControls(page);
+
+  const savedPosition = page.getByRole("status", { name: "Saved position" });
+  const geometry = await getSliderGeometry(page);
+
+  await page.mouse.move(getSliderX(geometry, 0), geometry.centreY);
+  await page.mouse.down();
+  await page.mouse.move(getSliderX(geometry, 8.5), geometry.centreY, {
+    steps: 8,
+  });
+
+  // The reader already shows the spread under the thumb, yet nothing has been
+  // written for it, or for any spread the thumb passed, while it is held.
+  await expect(
+    page.locator(`${currentPageSet} canvas[aria-label="Page 9"]`)
+  ).toBeVisible();
+  await expect(savedPosition).toHaveText("Not saved yet");
+
+  await page.mouse.up();
+
+  await expect(savedPosition).toHaveText("Page 9");
 });

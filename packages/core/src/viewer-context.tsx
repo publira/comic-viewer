@@ -81,6 +81,14 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
    */
   imagePreloadSpreads: number;
   currentIndex: number;
+  /**
+   * Where a scrub, such as a drag of PageProgressSlider, rests, in navigable
+   * indices and anywhere between two of them, or `null` while no scrub is in
+   * progress. The viewport follows it continuously, showing the part of the
+   * next spread the position has moved into, without committing it as the
+   * reading position, so `onIndexChange` is not called for it.
+   */
+  scrubPosition: number | null;
   viewMode: ViewMode;
   pageFitMode: PageFitMode;
   readingDirection: ReadingDirection;
@@ -131,6 +139,12 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
   goToNext: () => void;
   goToPrev: () => void;
   goTo: (index: number) => void;
+  /**
+   * Moves the viewport to a scrub position without navigating to it, or
+   * returns it to `currentIndex` given `null`. A scrub commits the spread it
+   * ends nearest to with `goTo`.
+   */
+  setScrubPosition: (position: number | null) => void;
 }
 
 /**
@@ -443,6 +457,65 @@ export const getVisiblePageCount = (
     : 2;
 };
 
+/** Where a scrub position falls among the spreads of the document. */
+export interface ScrubSpread {
+  /** The spread the position has passed, addressed by its first page. */
+  index: number;
+  /**
+   * How far the position has moved from that spread towards the next one,
+   * from `0` up to, but not including, `1`.
+   */
+  fraction: number;
+  /** The spread nearest the position, which a scrub released there commits. */
+  nearestIndex: number;
+}
+
+/**
+ * Places a scrub position between the two spreads it lies between. A spread
+ * rests at the index of its first page, so a position halfway to the next
+ * spread is halfway through the turn to it.
+ */
+export const getScrubSpread = (
+  position: number,
+  minIndex: number,
+  maxIndex: number,
+  spreadStartIndex: number,
+  viewMode: ViewMode,
+  pages: SpreadPageList
+): ScrubSpread => {
+  const clampedPosition = Number.isFinite(position)
+    ? Math.min(maxIndex, Math.max(minIndex, position))
+    : minIndex;
+  const index = getSpreadIndex(
+    Math.floor(clampedPosition),
+    minIndex,
+    maxIndex,
+    spreadStartIndex,
+    viewMode,
+    pages
+  );
+  const nextIndex =
+    index +
+    getVisiblePageCount(viewMode, index, maxIndex, spreadStartIndex, pages);
+
+  if (nextIndex > maxIndex) {
+    return { fraction: 0, index, nearestIndex: index };
+  }
+
+  const fraction = Math.min(
+    Math.max((clampedPosition - index) / (nextIndex - index), 0),
+    1
+  );
+
+  return fraction === 1
+    ? { fraction: 0, index: nextIndex, nearestIndex: nextIndex }
+    : {
+        fraction,
+        index,
+        nearestIndex: fraction < 0.5 ? index : nextIndex,
+      };
+};
+
 export const ViewerProvider = <TPage extends ViewerPage>({
   pages = EMPTY_PAGES,
   pageCount,
@@ -495,8 +568,18 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     minIndex,
     maxIndex
   );
+  const [scrubPosition, setScrubPosition] = useState<number | null>(null);
+  const clampedScrubPosition =
+    scrubPosition === null || !Number.isFinite(scrubPosition)
+      ? null
+      : Math.min(maxIndex, Math.max(minIndex, scrubPosition));
+  // The pages around the position a scrub rests at are the ones on screen, so
+  // they are the ones resolved, whatever reading position the host holds.
+  const scrubbedIndex =
+    clampedScrubPosition === null ? null : Math.round(clampedScrubPosition);
+  const viewIndex = scrubbedIndex ?? clampedCurrentIndex;
   const sourcePages = usePageSource({
-    currentIndex: clampedCurrentIndex,
+    currentIndex: viewIndex,
     onPageResolveError,
     overscan: clamp(pageResolveOverscan, 0, Number.MAX_SAFE_INTEGER),
     pageCount: totalPageCount,
@@ -642,7 +725,8 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   // A zoom state left on another spread, or on the same spread under another
   // fit mode, no longer applies, so the scale reads as unzoomed again.
   const zoomScale =
-    zoom.key === getViewportZoomKey(clampedCurrentIndex, pageFitMode)
+    zoom.key === getViewportZoomKey(clampedCurrentIndex, pageFitMode) &&
+    clampedScrubPosition === null
       ? zoom.scale
       : 1;
 
@@ -665,9 +749,11 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       plugins,
       readingDirection,
       resetZoom,
+      scrubPosition: clampedScrubPosition,
       setDoublePageAvailable: setIsDoublePageAvailable,
       setPageFitMode,
       setReadingDirection,
+      setScrubPosition,
       setViewMode,
       spreadStartIndex: clampedSpreadStartIndex,
       startPages,
@@ -687,6 +773,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       totalPageCount,
       plugins,
       clampedCurrentIndex,
+      clampedScrubPosition,
       clampedSpreadStartIndex,
       holdControls,
       toggleControls,

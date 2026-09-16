@@ -8,7 +8,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { usePageTurn } from "./use-page-turn";
-import { ViewerProvider } from "./viewer-context";
+import { useViewerContext, ViewerProvider } from "./viewer-context";
 import { Viewport } from "./viewport";
 import type { MockFetch } from "./viewport-test-helpers";
 import {
@@ -17,6 +17,48 @@ import {
   mockPageImages,
   pages,
 } from "./viewport-test-helpers";
+
+/** Stands in for a slider that scrubs to a position and is released there. */
+const ScrubControls = ({ position }: { position: number }) => {
+  const { goTo, setScrubPosition } = useViewerContext();
+
+  return (
+    <>
+      <button onClick={() => setScrubPosition(position)} type="button">
+        Scrub
+      </button>
+      <button
+        onClick={() => {
+          setScrubPosition(null);
+          goTo(Math.round(position));
+        }}
+        type="button"
+      >
+        Release
+      </button>
+    </>
+  );
+};
+
+/** Renders a left-to-right single-page viewport one hundred pixels wide. */
+const renderScrubbedViewport = (position: number) => {
+  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(100);
+  const { container } = render(
+    <ViewerProvider pages={pages} initialReadingDirection="ltr">
+      <Viewport />
+      <CurrentIndexIndicator />
+      <ScrubControls position={position} />
+    </ViewerProvider>
+  );
+  const viewport = container.querySelector(".pcv-viewport");
+  const track = container.querySelector(".pcv-viewport-track");
+
+  if (viewport === null || track === null) {
+    throw new Error("The viewport rail was not rendered.");
+  }
+
+  return { track, viewport };
+};
 
 describe(usePageTurn, () => {
   beforeEach(() => {
@@ -65,6 +107,49 @@ describe(usePageTurn, () => {
       );
     } finally {
       restore();
+    }
+  });
+
+  it("drags the rail along with a scrub instead of turning the page", () => {
+    const { restore } = mockPageImages();
+
+    try {
+      const { track, viewport } = renderScrubbedViewport(1.25);
+
+      fireEvent.click(screen.getByRole("button", { name: "Scrub" }));
+
+      // The spread the scrub has passed takes the current slot, and the rail
+      // is a quarter of the way to the one after it.
+      expect(viewport).toHaveAttribute("data-transition-state", "idle");
+      expect(
+        viewport.querySelector('[data-rail-slot="current"]')
+      ).toContainElement(screen.getByLabelText("Page 2"));
+      expect(track).toHaveStyle("--pcv-drag-offset: -25px");
+      expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+    } finally {
+      restore();
+      vi.restoreAllMocks();
+    }
+  });
+
+  it("settles a released scrub from where it left the rail", () => {
+    const { restore } = mockPageImages();
+
+    try {
+      const { track, viewport } = renderScrubbedViewport(1.75);
+
+      fireEvent.click(screen.getByRole("button", { name: "Scrub" }));
+      fireEvent.click(screen.getByRole("button", { name: "Release" }));
+
+      // The turn to the spread nearest the thumb starts from the drag offset
+      // the scrub left, and does not stop to wait for images the scrub has
+      // already had on screen.
+      expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+      expect(viewport).toHaveAttribute("data-transition-state", "prepared");
+      expect(track).toHaveStyle("--pcv-drag-offset: -75px");
+    } finally {
+      restore();
+      vi.restoreAllMocks();
     }
   });
 

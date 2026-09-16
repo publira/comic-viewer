@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { TransitionEvent as ReactTransitionEvent } from "react";
+import type { RefObject, TransitionEvent as ReactTransitionEvent } from "react";
 
 import type { PageLoadError } from "./page-load";
 import { runPageChangeHooks } from "./plugin";
@@ -19,19 +19,25 @@ import {
 } from "./use-viewport-layout";
 import type { PageTurnDirection } from "./use-viewport-layout";
 import { getPreviousSpreadIndex } from "./viewer-context";
-import type { ViewerPage, ViewMode } from "./viewer-context";
+import type { ScrubSpread, ViewerPage, ViewMode } from "./viewer-context";
 
 const PAGE_TURN_FALLBACK_DURATION_MS = 320;
 const PAGE_TURN_IMAGE_WAIT_TIMEOUT_MS = 1200;
 
 interface PageTurnTransition {
-  direction: PageTurnDirection;
+  /**
+   * The side the spread on screen leaves by, or `undefined` for a transition
+   * that returns the rail to rest on the spread it already shows.
+   */
+  direction?: PageTurnDirection;
   id: number;
   phase: "waiting" | "prepared" | "active";
   toIndex: number;
 }
 
 interface UsePageTurnOptions<TPage extends ViewerPage> {
+  /** The element the width of one spread of the rail is measured from. */
+  containerRef: RefObject<HTMLElement | null>;
   currentIndex: number;
   /** How many spreads beyond the rail are loaded ahead of the reader. */
   imagePreloadSpreads: number;
@@ -42,6 +48,11 @@ interface UsePageTurnOptions<TPage extends ViewerPage> {
   pages: readonly (TPage | undefined)[];
   plugins: readonly ViewerPlugin[];
   readingDirection: "rtl" | "ltr";
+  /**
+   * Where a scrub rests among the spreads, which the rail follows directly
+   * instead of turning to it, or `null` while no scrub is in progress.
+   */
+  scrubSpread: ScrubSpread | null;
   spreadStartIndex: number;
   usesManagedImageLoading: boolean;
   usesPageRail: boolean;
@@ -54,6 +65,7 @@ interface UsePageTurnOptions<TPage extends ViewerPage> {
  * reports every committed page change to the plugins.
  */
 export const usePageTurn = <TPage extends ViewerPage>({
+  containerRef,
   currentIndex,
   imagePreloadSpreads,
   maxIndex,
@@ -63,12 +75,25 @@ export const usePageTurn = <TPage extends ViewerPage>({
   pages,
   plugins,
   readingDirection,
+  scrubSpread,
   spreadStartIndex,
   usesManagedImageLoading,
   usesPageRail,
   viewMode,
 }: UsePageTurnOptions<TPage>) => {
   const transitionIdRef = useRef(0);
+  // A scrub leaves the rail wherever it was released, part of the way to the
+  // next spread, and what follows moves it on from there rather than from rest.
+  const endsScrubRef = useRef(false);
+  const isScrubbing = scrubSpread !== null && usesPageRail;
+  const scrubIndex = scrubSpread?.index;
+  const scrubFraction = scrubSpread?.fraction ?? 0;
+  // A viewport without the rail has nothing to drag, so it shows the spread
+  // nearest the scrub instead.
+  const targetIndex =
+    !usesPageRail && scrubSpread !== null
+      ? scrubSpread.nearestIndex
+      : currentIndex;
   const [pageTurnTransition, setPageTurnTransition] =
     useState<PageTurnTransition | null>(null);
   const [displayedIndex, setDisplayedIndex] = useState(currentIndex);
@@ -123,8 +148,53 @@ export const usePageTurn = <TPage extends ViewerPage>({
       return page !== undefined && pageImages.has(getPageImageKey(index, page));
     });
 
+  // A scrub moves the rail with the thumb, the way a swipe moves it with the
+  // finger: the spread it has passed sits in the current slot, and the rail is
+  // dragged towards the next spread by the share of the way it has come.
   useLayoutEffect(() => {
-    if (pageTurnTransition !== null || displayedIndex === currentIndex) {
+    if (!isScrubbing || scrubIndex === undefined) {
+      return;
+    }
+
+    const width = containerRef.current?.clientWidth ?? 0;
+    const offset =
+      (readingDirection === "rtl" ? 1 : -1) * scrubFraction * width;
+
+    endsScrubRef.current = true;
+    // oxlint-disable-next-line react/set-state-in-effect -- A scrub takes the rail over from a running transition before the next paint.
+    setPageTurnTransition(null);
+    // oxlint-disable-next-line react/set-state-in-effect -- The rail follows the scrub before the next paint.
+    setDisplayedIndex(scrubIndex);
+    // oxlint-disable-next-line react/set-state-in-effect -- The rail follows the scrub before the next paint.
+    setDragOffset(offset);
+  }, [containerRef, isScrubbing, readingDirection, scrubFraction, scrubIndex]);
+
+  useLayoutEffect(() => {
+    if (isScrubbing || pageTurnTransition !== null) {
+      return;
+    }
+
+    const endsScrub = endsScrubRef.current;
+    endsScrubRef.current = false;
+    const movesWithoutAnimation =
+      !usesPageRail ||
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    if (displayedIndex === targetIndex) {
+      // A scrub released short of halfway to the next spread settles back on
+      // the one it had passed.
+      if (endsScrub && !movesWithoutAnimation) {
+        transitionIdRef.current += 1;
+        // oxlint-disable-next-line react/set-state-in-effect -- The rail leaves the position a scrub was released at before the next paint.
+        setPageTurnTransition({
+          id: transitionIdRef.current,
+          phase: "prepared",
+          toIndex: targetIndex,
+        });
+      } else if (endsScrub) {
+        // oxlint-disable-next-line react/set-state-in-effect -- The rail leaves the position a scrub was released at before the next paint.
+        setDragOffset(0);
+      }
       return;
     }
 
@@ -143,19 +213,15 @@ export const usePageTurn = <TPage extends ViewerPage>({
       pages
     );
     const isAdjacent =
-      currentIndex === previousIndex || currentIndex === nextIndex;
+      targetIndex === previousIndex || targetIndex === nextIndex;
 
-    if (
-      !usesPageRail ||
-      !isAdjacent ||
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
-    ) {
+    if (movesWithoutAnimation || !isAdjacent) {
       // oxlint-disable-next-line react/set-state-in-effect -- Canceling a running transition must happen before the next paint.
       setPageTurnTransition(null);
       // oxlint-disable-next-line react/set-state-in-effect -- A transition that cannot run must restore the rail to its resting position before paint.
       setDragOffset(0);
       // oxlint-disable-next-line react/set-state-in-effect -- A non-adjacent programmatic change cannot use the three-spread rail.
-      setDisplayedIndex(currentIndex);
+      setDisplayedIndex(targetIndex);
       return;
     }
 
@@ -163,22 +229,25 @@ export const usePageTurn = <TPage extends ViewerPage>({
     setPageTurnTransition({
       direction: getPageTurnDirection(
         displayedIndex,
-        currentIndex,
+        targetIndex,
         readingDirection
       ),
       id: transitionIdRef.current,
-      phase: usesManagedImageLoading ? "waiting" : "prepared",
-      toIndex: currentIndex,
+      // A scrub already shows the spread it was released towards, placeholder
+      // and all, so the rest of the turn does not stop to wait for its images.
+      phase: usesManagedImageLoading && !endsScrub ? "waiting" : "prepared",
+      toIndex: targetIndex,
     });
   }, [
-    currentIndex,
     displayedIndex,
+    isScrubbing,
     maxIndex,
     minIndex,
     pages,
     pageTurnTransition,
     readingDirection,
     spreadStartIndex,
+    targetIndex,
     usesManagedImageLoading,
     usesPageRail,
     viewMode,

@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -31,6 +32,13 @@ const ControlsToggle = () => {
       Toggle controls
     </button>
   );
+};
+
+/** Reports where a scrub rests, as the viewport reads it. */
+const ScrubPositionIndicator = () => {
+  const { scrubPosition } = useViewerContext();
+
+  return <div data-testid="scrub-position">{scrubPosition ?? "none"}</div>;
 };
 
 const toggleControls = (): void => {
@@ -218,6 +226,153 @@ describe(PageNavigation, () => {
     expect(screen.getByText("Page 4 of 5")).toBeInTheDocument();
   });
 
+  it("moves the thumb with the pointer between two spreads", () => {
+    render(
+      <ViewerProvider pages={pages} initialViewMode="double">
+        <ScrubPositionIndicator />
+        <PageProgress>
+          <PageProgressSlider />
+        </PageProgress>
+      </ViewerProvider>
+    );
+
+    const slider = screen.getByRole("slider");
+
+    fireEvent.pointerDown(slider);
+
+    // A drag lifts the step, so the browser reports the thumb wherever the
+    // pointer puts it rather than at the nearest index.
+    expect(slider).toHaveAttribute("step", "any");
+
+    fireEvent.change(slider, { target: { value: "2.4" } });
+
+    expect(slider).toHaveValue("2.4");
+    expect(screen.getByTestId("scrub-position")).toHaveTextContent("2.4");
+    expect(slider).toHaveAttribute("aria-valuetext", "Pages 3-4 of 5");
+  });
+
+  it("commits the spread nearest the thumb once the drag is released", () => {
+    const onIndexChange = vi.fn<(index: number) => void>();
+    render(
+      <ViewerProvider
+        pages={pages}
+        initialViewMode="double"
+        onIndexChange={onIndexChange}
+      >
+        <ScrubPositionIndicator />
+        <PageStatus />
+        <PageProgress>
+          <PageProgressSlider />
+        </PageProgress>
+      </ViewerProvider>
+    );
+
+    const slider = screen.getByRole("slider");
+
+    fireEvent.pointerDown(slider);
+    fireEvent.change(slider, { target: { value: "3.2" } });
+
+    // Past halfway to the next spread, the status outside the progress names
+    // that spread, although nothing has been committed yet.
+    expect(screen.getByText("Page 5 of 5")).toBeInTheDocument();
+    expect(onIndexChange).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(window);
+
+    expect(onIndexChange).toHaveBeenCalledExactlyOnceWith(4);
+    expect(screen.getByTestId("scrub-position")).toHaveTextContent("none");
+  });
+
+  it("settles the thumb on its spread along with the pages once released", () => {
+    const animationFrames: FrameRequestCallback[] = [];
+    vi.stubGlobal(
+      "requestAnimationFrame",
+      // oxlint-disable-next-line promise/prefer-await-to-callbacks -- The test deliberately captures animation-frame callbacks for manual execution.
+      vi.fn((callback: FrameRequestCallback) => {
+        animationFrames.push(callback);
+        return animationFrames.length;
+      })
+    );
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+
+    try {
+      render(
+        <ViewerProvider pages={pages} initialViewMode="double">
+          <PageProgress>
+            <PageProgressSlider />
+          </PageProgress>
+        </ViewerProvider>
+      );
+
+      const slider = screen.getByRole("slider") as HTMLInputElement;
+
+      fireEvent.pointerDown(slider);
+      fireEvent.change(slider, { target: { value: "3.2" } });
+      fireEvent.pointerUp(window);
+
+      // The thumb sets off from where it was released rather than jumping to
+      // the spread at index 4.
+      expect(slider).toHaveValue("3.2");
+
+      act(() => {
+        animationFrames.shift()?.(0);
+      });
+      act(() => {
+        animationFrames.shift()?.(130);
+      });
+
+      expect(Number(slider.value)).toBeGreaterThan(3.2);
+      expect(Number(slider.value)).toBeLessThan(4);
+
+      act(() => {
+        animationFrames.shift()?.(260);
+      });
+
+      expect(slider).toHaveValue("4");
+      expect(slider).toHaveAttribute("step", "1");
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("scrubs over the index a host controls until the drag is released", () => {
+    const onIndexChange = vi.fn<(index: number) => void>();
+    const ControlledViewer = () => {
+      const [currentIndex, setCurrentIndex] = useState(0);
+
+      return (
+        <ViewerProvider
+          currentIndex={currentIndex}
+          onIndexChange={(index) => {
+            onIndexChange(index);
+            setCurrentIndex(index);
+          }}
+          pages={pages}
+        >
+          <PageStatus />
+          <PageProgress>
+            <PageProgressSlider />
+          </PageProgress>
+        </ViewerProvider>
+      );
+    };
+    render(<ControlledViewer />);
+
+    const slider = screen.getByRole("slider");
+
+    fireEvent.pointerDown(slider);
+    fireEvent.change(slider, { target: { value: "2.8" } });
+
+    // The index the host holds does not pull the pages back from where the
+    // thumb has taken them.
+    expect(screen.getByText("Page 4 of 5")).toBeInTheDocument();
+
+    fireEvent.pointerUp(window);
+
+    expect(onIndexChange).toHaveBeenCalledExactlyOnceWith(3);
+    expect(screen.getByText("Page 4 of 5")).toBeInTheDocument();
+  });
+
   it("snaps a drag to the page a spread starts from", () => {
     const onIndexChange = vi.fn<(index: number) => void>();
     render(
@@ -239,9 +394,10 @@ describe(PageNavigation, () => {
     fireEvent.pointerDown(slider);
     fireEvent.change(slider, { target: { value: "4" } });
 
-    // The facing page of a spread is not an index of its own, so the value
-    // falls back to the page the spread it belongs to opens with.
-    expect(slider).toHaveValue("3");
+    // The facing page of a spread is not an index of its own, so the thumb
+    // stays under the pointer while the spread falls back to the page it
+    // opens with.
+    expect(slider).toHaveValue("4");
     expect(screen.getByText("Pages 4-5 of 5")).toBeInTheDocument();
 
     fireEvent.pointerUp(window);

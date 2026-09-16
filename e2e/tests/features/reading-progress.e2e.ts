@@ -20,18 +20,33 @@ test("scrubs to a page by dragging the reading-progress thumb", async ({
 
   await page.mouse.move(getSliderX(geometry, 0), geometry.centreY);
   await page.mouse.down();
-  await page.mouse.move(getSliderX(geometry, 10), geometry.centreY, {
+  // A spread rests at the page it starts from, so 10.5 is a quarter of the
+  // way from the spread of pages 11 and 12 to the one after it.
+  await page.mouse.move(getSliderX(geometry, 10.5), geometry.centreY, {
     steps: 10,
   });
 
-  // The status follows the thumb, while the document waits for the drag to be
-  // released rather than turning at every index the thumb passes over.
+  // The pages follow the thumb while it is still held, and the rail is dragged
+  // part of the way into the next spread rather than resting on a whole one.
   await expect(page.locator(".pcv-page-status")).toHaveText(
     "Pages 11-12 of 21"
   );
   await expect(
-    page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`)
+    page.locator(`${currentPageSet} canvas[aria-label="Page 11"]`)
   ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .locator(".pcv-viewport-track")
+        .evaluate((track) =>
+          Number(
+            getComputedStyle(track)
+              .getPropertyValue("--pcv-drag-offset")
+              .replace(/px$/u, "")
+          )
+        )
+    )
+    .toBeGreaterThan(0);
 
   await page.mouse.up();
 
@@ -90,11 +105,12 @@ test("snaps a scrub to the page a spread starts from", async ({ page }) => {
 
   await expect(page.locator(".pcv-page-status")).toHaveText("Page 1 of 8");
 
-  await dragSliderThumbTo(page, 4);
+  await dragSliderThumbTo(page, 3.6);
 
-  // The spreads of this document are counted from the second page, so index 4
-  // is the facing page of the spread that opens at index 3, and a spread is
-  // addressed by the page it starts from.
+  // The spreads of this document are counted from the second page, so the
+  // spread that opens at index 3 runs to the one that opens at index 5, and a
+  // thumb released short of halfway between them comes to rest on the page
+  // the first of them starts from.
   await expect(page.locator(progressSlider)).toHaveValue("3");
   await expect(page.locator(".pcv-page-status")).toHaveText("Pages 4-5 of 8");
   await expect(page.locator(currentPageSet)).toHaveAttribute(
@@ -110,17 +126,17 @@ test("runs the reading progress the way the reader turns pages", async ({
   await page.goto("/");
   await revealReaderControls(page);
 
-  // A quarter of the way in from the left edge is three quarters of the way
-  // through a document read from right to left.
-  await dragSliderThumbToFraction(page, 0.25);
+  // A fifth of the way in from the left edge is four fifths of the way through
+  // a document read from right to left.
+  await dragSliderThumbToFraction(page, 0.2);
 
   await expect(page.locator(".pcv-page-status")).toHaveText(
-    "Pages 15-16 of 21"
+    "Pages 17-18 of 21"
   );
 
   await page.goto("/features/ltr");
   await revealReaderControls(page);
-  await dragSliderThumbToFraction(page, 0.25);
+  await dragSliderThumbToFraction(page, 0.2);
 
   await expect(page.locator(".pcv-page-status")).toHaveText("Pages 5-6 of 21");
 });

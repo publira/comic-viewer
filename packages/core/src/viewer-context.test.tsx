@@ -2,7 +2,11 @@ import { act, render, renderHook, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { definePlugin } from "./plugin";
-import { ViewerProvider, useViewerContext } from "./viewer-context";
+import {
+  getScrubSpread,
+  ViewerProvider,
+  useViewerContext,
+} from "./viewer-context";
 import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
 
 const pages: ViewerPage[] = [
@@ -507,5 +511,43 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(() => {
       renderHook(() => useViewerContext());
     }).toThrow("useViewerContext must be used within a ViewerProvider");
+  });
+});
+
+describe(getScrubSpread, () => {
+  const scrubbedPages = Array.from({ length: 6 }, (_, index) => ({
+    id: `p${index + 1}`,
+    src: `page${index + 1}.png`,
+    title: `Page ${index + 1}`,
+  }));
+
+  it("places a position between the spread it has passed and the next", () => {
+    // Spreads open at 0, 2, and 4, so 2.5 is a quarter of the way from the
+    // second spread to the third.
+    expect(getScrubSpread(2.5, 0, 5, 0, "double", scrubbedPages)).toStrictEqual(
+      {
+        fraction: 0.25,
+        index: 2,
+        nearestIndex: 2,
+      }
+    );
+    expect(getScrubSpread(3, 0, 5, 0, "double", scrubbedPages)).toStrictEqual({
+      fraction: 0.5,
+      index: 2,
+      nearestIndex: 4,
+    });
+  });
+
+  it("rests on the last spread past which there is nothing to move towards", () => {
+    expect(getScrubSpread(5, 0, 5, 0, "double", scrubbedPages)).toStrictEqual({
+      fraction: 0,
+      index: 4,
+      nearestIndex: 4,
+    });
+    expect(getScrubSpread(9, 0, 5, 0, "single", scrubbedPages)).toStrictEqual({
+      fraction: 0,
+      index: 5,
+      nearestIndex: 5,
+    });
   });
 });
