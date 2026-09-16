@@ -1,3 +1,5 @@
+"use client";
+
 import { Code } from "@sugar-high/react/core";
 import type { CodeProps } from "@sugar-high/react/core";
 import { vercel } from "@sugar-high/react/themes";
@@ -18,9 +20,10 @@ interface SourceCodePanelProps {
 }
 
 /**
- * Displays the relevant example code beneath each interactive demo. The block
- * is highlighted on the server: the `core` entry of `@sugar-high/react` carries
- * no client directive, so the browser is sent the markup and nothing else.
+ * Displays the relevant example code beneath each interactive demo. It is a
+ * client module because the `core` entry of `@sugar-high/react` ships `Code`
+ * behind a client directive, and the language configuration it tokenizes with is
+ * made of functions, which a server component cannot pass across that boundary.
  */
 export const SourceCodePanel = ({
   code,

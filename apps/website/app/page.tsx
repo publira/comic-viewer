@@ -1,14 +1,4 @@
-import { Code } from "@sugar-high/react/core";
-import type { CodeProps } from "@sugar-high/react/core";
-import { vercel } from "@sugar-high/react/themes";
-import * as typescript from "sugar-high/lang/typescript";
-
-/**
- * The language configuration `Code` tokenizes with. `CodeProps` intersects
- * React's `HTMLAttributes`, whose `lang` is the HTML language attribute, so the
- * two leave no type a configuration object can be declared as.
- */
-const typescriptLang = typescript as unknown as CodeProps["lang"];
+import { TypeScriptCode } from "./typescript-code";
 
 const INSTALL_COMMAND = "npm install @publira/comic-viewer";
 
@@ -135,14 +125,9 @@ const Home = () => (
         React 19 or later is required as a peer dependency. Compose{" "}
         <code>ComicViewer.Root</code> with the parts the reader needs:
       </p>
-      <Code
-        className="overflow-hidden rounded-xl border border-slate-300 text-sm leading-6 shadow-sm dark:border-slate-700"
-        lang={typescriptLang}
-        theme={vercel}
-        wrapLongLines={false}
-      >
+      <TypeScriptCode className="overflow-hidden rounded-xl border border-slate-300 text-sm leading-6 shadow-sm dark:border-slate-700">
         {USAGE_SNIPPET}
-      </Code>
+      </TypeScriptCode>
       <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
         Everything else — theming, controlled navigation, double-page grouping,
         lazy page metadata, plugins — is written down once, in the{" "}
