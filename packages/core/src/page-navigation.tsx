@@ -21,6 +21,7 @@ import type {
 import { composeClassName } from "./class-names";
 import { useControlsHold } from "./use-controls-hold";
 import {
+  getScrubSpread,
   getSlotPage,
   getSpreadIndex,
   getVisiblePageCount,
@@ -35,16 +36,46 @@ import type {
 
 interface PageProgressState {
   ariaLabel: string;
-  /**
-   * The index a slider inside the progress is being dragged to, or `null`
-   * while no drag is in progress. The other progress primitives read it so
-   * that they follow the thumb before the drag commits its page turn.
-   */
-  scrubIndex: number | null;
-  setScrubIndex: (index: number | null) => void;
 }
 
 const PageProgressContext = createContext<PageProgressState | null>(null);
+
+/**
+ * How long the thumb takes to settle on its spread once a drag is released,
+ * which is how long the page-turn slide the pages settle with takes.
+ */
+const THUMB_SETTLE_DURATION_MS = 260;
+
+/**
+ * Follows the CSS `ease-out` timing function, `cubic-bezier(0, 0, 0.58, 1)`,
+ * that the page-turn slide runs on, so the thumb keeps pace with the pages
+ * all the way rather than only arriving together.
+ */
+const sampleCubicBezier = (t: number, p1: number, p2: number): number =>
+  3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t ** 2 * p2 + t ** 3;
+
+const easeOut = (progress: number): number => {
+  let lower = 0;
+  let upper = 1;
+  let t = progress;
+
+  // The curve is monotonic in x, so bisection finds the parameter whose x is
+  // the elapsed share of the duration.
+  for (let iteration = 0; iteration < 20; iteration += 1) {
+    const x = sampleCubicBezier(t, 0, 0.58);
+    if (Math.abs(x - progress) < 1e-4) {
+      break;
+    }
+    if (x < progress) {
+      lower = t;
+    } else {
+      upper = t;
+    }
+    t = (lower + upper) / 2;
+  }
+
+  return sampleCubicBezier(t, 0, 1);
+};
 
 type PageNavigationButtonProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -271,20 +302,36 @@ const getDefaultPageStatusLabel = (value: PageStatusValue): string => {
 };
 
 /**
- * Returns the index the reading-progress primitives report. A drag in
- * progress moves them to the page under the thumb, which the reading position
- * itself only reaches once the drag is released.
+ * Returns the index the reading-progress primitives report. A scrub in
+ * progress moves them to the spread nearest the thumb, which the reading
+ * position itself only reaches once the scrub is released.
  */
-const useProgressIndex = (currentIndex: number): number => {
-  const pageProgress = useContext(PageProgressContext);
+const useProgressIndex = (): number => {
+  const {
+    currentIndex,
+    maxIndex,
+    minIndex,
+    pages,
+    scrubPosition,
+    spreadStartIndex,
+    viewMode,
+  } = useViewerContext();
 
-  return pageProgress?.scrubIndex ?? currentIndex;
+  return scrubPosition === null
+    ? currentIndex
+    : getScrubSpread(
+        scrubPosition,
+        minIndex,
+        maxIndex,
+        spreadStartIndex,
+        viewMode,
+        pages
+      ).nearestIndex;
 };
 
 /** Announces the current visible page or spread. */
 export const PageStatus = ({ className, format }: PageStatusProps) => {
   const {
-    currentIndex,
     endPages,
     maxIndex,
     pageCount,
@@ -293,7 +340,7 @@ export const PageStatus = ({ className, format }: PageStatusProps) => {
     startPages,
     viewMode,
   } = useViewerContext();
-  const progressIndex = useProgressIndex(currentIndex);
+  const progressIndex = useProgressIndex();
   const value = getPageStatusValue({
     currentIndex: progressIndex,
     endPages,
@@ -333,11 +380,7 @@ export const PageProgress = ({
   children,
   visible = true,
 }: PageProgressProps & PropsWithChildren) => {
-  const [scrubIndex, setScrubIndex] = useState<number | null>(null);
-  const progressValue = useMemo(
-    () => ({ ariaLabel, scrubIndex, setScrubIndex }),
-    [ariaLabel, scrubIndex]
-  );
+  const progressValue = useMemo(() => ({ ariaLabel }), [ariaLabel]);
 
   return (
     <PageProgressContext.Provider value={progressValue}>
@@ -362,15 +405,9 @@ export const PageProgressTrack = ({
   ...props
 }: PageProgressTrackProps) => {
   const pageProgress = useContext(PageProgressContext);
-  const {
-    currentIndex,
-    maxIndex,
-    pageCount,
-    pages,
-    spreadStartIndex,
-    viewMode,
-  } = useViewerContext();
-  const progressIndex = useProgressIndex(currentIndex);
+  const { maxIndex, pageCount, pages, spreadStartIndex, viewMode } =
+    useViewerContext();
+  const progressIndex = useProgressIndex();
   const visiblePageCount = getVisiblePageCount(
     viewMode,
     progressIndex,
@@ -407,10 +444,13 @@ export type PageProgressSliderProps = Omit<
  *
  * It counts in the navigable indices `goTo` takes, from `minIndex` to
  * `maxIndex`, so a start or an end page is a position on it like a page of
- * the document is. A drag carries the progress and the status along with the
- * thumb and turns the page on release alone rather than at every index it
- * passes over, and in double-page mode every value snaps to the page its
- * spread starts from, so a keyboard step moves by a whole spread. It sets
+ * the document is. A drag moves the thumb with the pointer rather than from one
+ * index to the next, and the pages move with it, part of the way into the next
+ * spread where the thumb rests between two of them. The reading position is
+ * committed once, on release, to the spread nearest the thumb, and the thumb
+ * glides to that spread's place as the pages slide there. A keyboard step
+ * commits at once, and in double-page mode every value it lands on snaps to
+ * the page its spread starts from, so it moves by a whole spread. It sets
  * `--pcv-page-progress-fill` to the share of the document the thumb rests at,
  * for a stylesheet that paints its track.
  */
@@ -434,18 +474,18 @@ export const PageProgressSlider = ({
     minIndex,
     pageCount,
     pages,
+    scrubPosition,
+    setScrubPosition,
     spreadStartIndex,
     startPages,
     viewMode,
   } = useViewerContext();
-  const [scrubIndex, setScrubIndex] = useState<number | null>(null);
   const [isScrubbing, setIsScrubbing] = useState(false);
   // A drag ends on an event that arrives from the window rather than through
   // React, and reports its steps before a render carries them into state, so
   // both are read back through refs.
   const isScrubbingRef = useRef(false);
-  const scrubIndexRef = useRef<number | null>(null);
-  const publishScrubIndex = pageProgress?.setScrubIndex;
+  const scrubPositionRef = useRef<number | null>(null);
   const snapToSpread = useCallback(
     (index: number): number =>
       getSpreadIndex(
@@ -458,18 +498,78 @@ export const PageProgressSlider = ({
       ),
     [maxIndex, minIndex, pages, spreadStartIndex, viewMode]
   );
-  const value = snapToSpread(scrubIndex ?? currentIndex);
+  const restingValue = snapToSpread(currentIndex);
+  const restingValueRef = useRef(restingValue);
+  // Where the thumb is on its way from the point a drag was released at to
+  // the spread the pages settle on, or `null` while it is not settling.
+  const [settlingValue, setSettlingValue] = useState<number | null>(null);
+  const settleFrameRef = useRef<number | null>(null);
+  const progressIndex = useProgressIndex();
+  const value =
+    isScrubbing && scrubPosition !== null
+      ? scrubPosition
+      : (settlingValue ?? restingValue);
 
-  // The primitives composed next to the slider follow the drag through the
-  // shared progress state, and a slider that unmounts mid-drag leaves none of
-  // it behind for them.
   useEffect(() => {
-    publishScrubIndex?.(scrubIndex);
+    restingValueRef.current = restingValue;
+  }, [restingValue]);
 
-    return () => {
-      publishScrubIndex?.(null);
+  const cancelSettle = useCallback((): void => {
+    if (settleFrameRef.current !== null) {
+      cancelAnimationFrame(settleFrameRef.current);
+      settleFrameRef.current = null;
+    }
+    setSettlingValue(null);
+  }, []);
+
+  // On release the pages slide from where the drag left them to the spread
+  // nearest the thumb, and the thumb moves with them, from the point it was
+  // released at to that spread's place, over the same time and on the same
+  // curve, instead of jumping there. It heads for the spread the reading
+  // position is at on every frame, which is the committed one, or the one a
+  // controlled host kept instead.
+  const settleThumb = useCallback((from: number): void => {
+    if (
+      typeof requestAnimationFrame !== "function" ||
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    let startTime: number | null = null;
+    const step = (time: number): void => {
+      if (startTime === null) {
+        startTime = time;
+      }
+      const progress = Math.min(
+        (time - startTime) / THUMB_SETTLE_DURATION_MS,
+        1
+      );
+
+      if (progress === 1) {
+        settleFrameRef.current = null;
+        setSettlingValue(null);
+        return;
+      }
+
+      setSettlingValue(
+        from + (restingValueRef.current - from) * easeOut(progress)
+      );
+      settleFrameRef.current = requestAnimationFrame(step);
     };
-  }, [publishScrubIndex, scrubIndex]);
+
+    setSettlingValue(from);
+    settleFrameRef.current = requestAnimationFrame(step);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (settleFrameRef.current !== null) {
+        cancelAnimationFrame(settleFrameRef.current);
+      }
+    },
+    []
+  );
 
   // A finger that leaves the toolbar mid-drag would otherwise let the reader
   // controls hide and turn inert under it, and the event that ends the drag
@@ -482,14 +582,27 @@ export const PageProgressSlider = ({
     holdControls(true);
 
     const endScrub = (): void => {
-      const nextIndex = scrubIndexRef.current;
+      const position = scrubPositionRef.current;
       isScrubbingRef.current = false;
-      scrubIndexRef.current = null;
+      scrubPositionRef.current = null;
       setIsScrubbing(false);
-      setScrubIndex(null);
+      // Dropping the scrub and committing the spread it ends nearest to land
+      // in the same render, so the pages move on from where the thumb left
+      // them rather than from the spread the drag started on.
+      setScrubPosition(null);
 
-      if (nextIndex !== null) {
-        goTo(nextIndex);
+      if (position !== null) {
+        settleThumb(position);
+        goTo(
+          getScrubSpread(
+            position,
+            minIndex,
+            maxIndex,
+            spreadStartIndex,
+            viewMode,
+            pages
+          ).nearestIndex
+        );
       }
     };
 
@@ -501,7 +614,28 @@ export const PageProgressSlider = ({
       window.removeEventListener("pointercancel", endScrub);
       window.removeEventListener("pointerup", endScrub);
     };
-  }, [goTo, holdControls, isScrubbing]);
+  }, [
+    goTo,
+    holdControls,
+    isScrubbing,
+    maxIndex,
+    minIndex,
+    pages,
+    setScrubPosition,
+    settleThumb,
+    spreadStartIndex,
+    viewMode,
+  ]);
+
+  // A slider that unmounts mid-drag leaves no scrub behind in the viewport.
+  useEffect(
+    () => () => {
+      if (isScrubbingRef.current) {
+        setScrubPosition(null);
+      }
+    },
+    [setScrubPosition]
+  );
 
   const handlePointerDown = useCallback(
     (event: PointerEvent<HTMLInputElement>) => {
@@ -510,10 +644,15 @@ export const PageProgressSlider = ({
         return;
       }
 
+      cancelSettle();
       isScrubbingRef.current = true;
+      // The step is lifted before the browser places the thumb under the
+      // pointer, so the thumb follows the pointer rather than jumping from
+      // one index to the next.
+      event.currentTarget.step = "any";
       setIsScrubbing(true);
     },
-    [onPointerDown]
+    [cancelSettle, onPointerDown]
   );
 
   const handleChange = useCallback(
@@ -523,34 +662,39 @@ export const PageProgressSlider = ({
         return;
       }
 
-      const requestedIndex = Number(event.target.value);
-      const snappedIndex = snapToSpread(requestedIndex);
+      const requestedPosition = Number(event.target.value);
 
-      // Turning the page at every index a drag reports would fire a page-turn
-      // transition and a round of page resolution for each of them, so a drag
-      // previews them and commits only the one it is released on.
+      // Committing every position a drag reports would hand each of them to
+      // `onIndexChange` and turn the page for it, so a drag scrubs the
+      // viewport and commits only the spread it is released nearest to.
       if (isScrubbingRef.current) {
-        scrubIndexRef.current = snappedIndex;
-        setScrubIndex(snappedIndex);
+        scrubPositionRef.current = requestedPosition;
+        setScrubPosition(requestedPosition);
         return;
       }
+
+      cancelSettle();
+      const requestedIndex = Math.round(requestedPosition);
+      const snappedIndex = snapToSpread(requestedIndex);
 
       // A keyboard step has no release to wait for. One that lands on the
       // facing page of the spread the reader is already on would snap straight
       // back to it, so it carries on to the next spread it is heading for.
       const isStuckOnTheSameSpread =
-        snappedIndex === value && requestedIndex !== value;
+        snappedIndex === restingValue && requestedIndex !== restingValue;
       goTo(
         isStuckOnTheSameSpread
-          ? snapToSpread(requestedIndex + Math.sign(requestedIndex - value))
+          ? snapToSpread(
+              requestedIndex + Math.sign(requestedIndex - restingValue)
+            )
           : snappedIndex
       );
     },
-    [goTo, onChange, snapToSpread, value]
+    [cancelSettle, goTo, onChange, restingValue, setScrubPosition, snapToSpread]
   );
 
   const statusValue = getPageStatusValue({
-    currentIndex: value,
+    currentIndex: isScrubbing ? progressIndex : restingValue,
     endPages,
     maxIndex,
     pageCount,
@@ -573,7 +717,9 @@ export const PageProgressSlider = ({
       min={minIndex}
       onChange={handleChange}
       onPointerDown={handlePointerDown}
-      step={1}
+      // A value between two indices would be rounded to one of them under a
+      // step of one, so the step stays lifted while the thumb settles too.
+      step={isScrubbing || settlingValue !== null ? "any" : 1}
       style={
         {
           ...style,

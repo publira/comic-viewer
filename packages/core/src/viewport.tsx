@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 
 import { composeClassName } from "./class-names";
@@ -6,7 +6,7 @@ import type { PageLoadError } from "./page-load";
 import { usePageTurn } from "./use-page-turn";
 import { useViewMode } from "./use-view-mode";
 import { useViewportGestures } from "./use-viewport-gestures";
-import { useViewerContext } from "./viewer-context";
+import { getScrubSpread, useViewerContext } from "./viewer-context";
 import type { ViewerPage } from "./viewer-context";
 import type { ViewportChildren } from "./viewport-page";
 import { ViewportRail } from "./viewport-rail";
@@ -59,6 +59,7 @@ export const Viewport = <TPage extends ViewerPage>({
     currentIndex,
     pageFitMode,
     readingDirection,
+    scrubPosition,
     spreadStartIndex,
     startPages,
     goToNext,
@@ -72,6 +73,20 @@ export const Viewport = <TPage extends ViewerPage>({
   const usesPageRail =
     (children === undefined || layoutTemplate !== undefined) &&
     renderPage === undefined;
+  const scrubSpread = useMemo(
+    () =>
+      scrubPosition === null
+        ? null
+        : getScrubSpread(
+            scrubPosition,
+            minIndex,
+            maxIndex,
+            spreadStartIndex,
+            viewMode,
+            pages
+          ),
+    [maxIndex, minIndex, pages, scrubPosition, spreadStartIndex, viewMode]
+  );
   const {
     displayedIndex,
     dragOffset,
@@ -87,6 +102,7 @@ export const Viewport = <TPage extends ViewerPage>({
     slideDirection,
     transitionState,
   } = usePageTurn({
+    containerRef,
     currentIndex,
     imagePreloadSpreads,
     maxIndex,
@@ -96,6 +112,7 @@ export const Viewport = <TPage extends ViewerPage>({
     pages,
     plugins,
     readingDirection,
+    scrubSpread,
     spreadStartIndex,
     usesManagedImageLoading,
     usesPageRail,
@@ -110,7 +127,7 @@ export const Viewport = <TPage extends ViewerPage>({
     viewportProps,
   } = useViewportGestures({
     containerRef,
-    currentIndex,
+    currentIndex: scrubSpread?.nearestIndex ?? currentIndex,
     displayedIndex,
     goToNext,
     goToPrev,
