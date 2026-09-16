@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.8.0...comic-viewer-v0.9.0) (2026-09-16)
+
+
+### Features
+
+* **core:** move the pages with the reading-progress thumb ([#266](https://github.com/publira/comic-viewer/issues/266)) ([94fed3c](https://github.com/publira/comic-viewer/commit/94fed3ce635b62deb3957f97214aa80edaeaa7e2))
+
+
+### Bug Fixes
+
+* **deps:** update react monorepo to v19.3.0 ([#249](https://github.com/publira/comic-viewer/issues/249)) ([b729246](https://github.com/publira/comic-viewer/commit/b729246ae2d0f534228a8c1839202eab2e4a862e))
+
 ## [0.8.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.7.0...comic-viewer-v0.8.0) (2026-09-09)
 
 
