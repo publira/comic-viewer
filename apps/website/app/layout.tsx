@@ -33,8 +33,8 @@ export const metadata: Metadata = {
 
 /**
  * `scheme-light-dark` lets the page follow the reader's preference, which is
- * what the `dark:` utilities and the theme Sugar High paints the snippet with
- * both read.
+ * what the dark values `globals.css` gives the `@publira/design-tokens` roles
+ * and the theme Sugar High paints the snippet with both read.
  */
 const RootLayout = ({
   children,
@@ -42,9 +42,7 @@ const RootLayout = ({
   children: React.ReactNode;
 }>) => (
   <html className="scheme-light-dark" lang="en">
-    <body className="bg-slate-100 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
-      {children}
-    </body>
+    <body className="bg-background text-foreground">{children}</body>
   </html>
 );
 
