@@ -1,6 +1,6 @@
 # Comic Viewer Website
 
-The landing page for `@publira/comic-viewer`, published at the apex domain [comic-viewer.publira.dev](https://comic-viewer.publira.dev/). It is a single statically rendered route, built with Tailwind CSS as the [Tailwind CSS demo](../demo-tw) is.
+The landing page for `@publira/comic-viewer`, published at the apex domain [comic-viewer.publira.dev](https://comic-viewer.publira.dev/). It is a single statically rendered route, built with Tailwind CSS as the [Tailwind CSS demo](../demo-tw) is, and colored with the semantic roles and font stacks of [`@publira/design-tokens`](https://github.com/publira/design-tokens), the theme shared across Publira's web projects. The tokens are light only, so `app/globals.css` gives the roles the page uses their dark values.
 
 The apex is the address that gets shared and typed from memory, so this page answers what the library is, how it is installed, and where the two demos are, rather than dropping a visitor inside one of them.
 

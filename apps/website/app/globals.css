@@ -1,1 +1,21 @@
 @import "tailwindcss";
+@import "@publira/design-tokens/theme.css";
+
+/*
+ * `@publira/design-tokens` defines the light palette only. The page also follows
+ * a dark preference, so the roles it uses are pointed at Tailwind's slate and
+ * sky there, and the markup keeps naming roles alone.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: var(--color-slate-950);
+    --color-foreground: var(--color-slate-100);
+    --color-card: var(--color-slate-900);
+    --color-card-foreground: var(--color-slate-100);
+    --color-muted-foreground: var(--color-slate-300);
+    --color-border: var(--color-slate-700);
+    --color-primary: var(--color-sky-400);
+    --color-accent: var(--color-slate-800);
+    --color-accent-foreground: var(--color-sky-300);
+  }
+}

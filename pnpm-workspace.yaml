@@ -5,3 +5,6 @@ packages:
 
 allowBuilds:
   sharp: true
+
+minimumReleaseAgeExclude:
+  - "@publira/*"

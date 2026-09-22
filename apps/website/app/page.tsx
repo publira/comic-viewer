@@ -85,7 +85,7 @@ const Home = () => (
       <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
         Publira Comic Viewer
       </h1>
-      <p className="text-lg leading-7 text-slate-600 dark:text-slate-300">
+      <p className="text-muted-foreground text-lg leading-7">
         A composable, headless-UI React viewer for comics and manga. It provides
         the viewport, the spreads, and the page pipeline, and leaves the look of
         the reader to the application around it.
@@ -102,13 +102,11 @@ const Home = () => (
       <ul className="grid gap-4 sm:grid-cols-2">
         {features.map((feature) => (
           <li
-            className="rounded-xl border border-slate-300 bg-white p-5 text-sm leading-6 shadow-sm dark:border-slate-700 dark:bg-slate-900"
+            className="border-border bg-card text-card-foreground rounded-xl border p-5 text-sm leading-6 shadow-sm"
             key={feature.title}
           >
             <h3 className="font-semibold">{feature.title}</h3>
-            <p className="mt-2 text-slate-600 dark:text-slate-300">
-              {feature.description}
-            </p>
+            <p className="text-muted-foreground mt-2">{feature.description}</p>
           </li>
         ))}
       </ul>
@@ -118,21 +116,21 @@ const Home = () => (
       <h2 className="text-xl font-semibold tracking-tight" id="install-heading">
         Install it
       </h2>
-      <pre className="overflow-x-auto rounded-xl border border-slate-300 bg-white p-5 text-sm leading-6 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <pre className="border-border bg-card text-card-foreground overflow-x-auto rounded-xl border p-5 text-sm leading-6 shadow-sm">
         <code>{INSTALL_COMMAND}</code>
       </pre>
-      <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+      <p className="text-muted-foreground text-sm leading-6">
         React 19 or later is required as a peer dependency. Compose{" "}
         <code>ComicViewer.Root</code> with the parts the reader needs:
       </p>
-      <TypeScriptCode className="overflow-hidden rounded-xl border border-slate-300 text-sm leading-6 shadow-sm dark:border-slate-700">
+      <TypeScriptCode className="border-border overflow-hidden rounded-xl border text-sm leading-6 shadow-sm">
         {USAGE_SNIPPET}
       </TypeScriptCode>
-      <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+      <p className="text-muted-foreground text-sm leading-6">
         Everything else — theming, controlled navigation, double-page grouping,
         lazy page metadata, plugins — is written down once, in the{" "}
         <a
-          className="font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"
+          className="text-primary hover:text-accent-foreground font-semibold underline underline-offset-2"
           href="https://github.com/publira/comic-viewer/blob/main/packages/core/README.md"
         >
           usage reference
@@ -149,13 +147,13 @@ const Home = () => (
         {demos.map((demo) => (
           <li key={demo.href}>
             <a
-              className="flex h-full flex-col rounded-xl border border-slate-300 bg-white p-5 text-sm leading-6 shadow-sm transition hover:border-sky-500 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-sky-400 dark:hover:bg-slate-800"
+              className="border-border bg-card text-card-foreground hover:border-primary hover:bg-accent hover:text-accent-foreground flex h-full flex-col rounded-xl border p-5 text-sm leading-6 shadow-sm transition"
               href={demo.href}
             >
               <span className="font-semibold">
                 {demo.title} <span aria-hidden="true">↗</span>
               </span>
-              <span className="mt-2 text-slate-600 dark:text-slate-300">
+              <span className="text-muted-foreground mt-2">
                 {demo.description}
               </span>
             </a>
@@ -164,12 +162,12 @@ const Home = () => (
       </ul>
     </section>
 
-    <footer className="border-t border-slate-300 pt-6 text-sm dark:border-slate-700">
+    <footer className="border-border border-t pt-6 text-sm">
       <ul className="flex flex-wrap gap-x-6 gap-y-2">
         {references.map((reference) => (
           <li key={reference.href}>
             <a
-              className="font-semibold text-sky-700 underline underline-offset-2 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300"
+              className="text-primary hover:text-accent-foreground font-semibold underline underline-offset-2"
               href={reference.href}
             >
               {reference.label}

@@ -19,6 +19,7 @@
     "sugar-high": "2.4.1"
   },
   "devDependencies": {
+    "@publira/design-tokens": "1.1.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "24.13.6",
     "@types/react": "19.3.0",

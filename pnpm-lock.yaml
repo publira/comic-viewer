@@ -277,6 +277,9 @@ importers:
         specifier: 2.4.1
         version: 2.4.1
     devDependencies:
+      '@publira/design-tokens':
+        specifier: 1.1.0
+        version: 1.1.0(tailwindcss@4.3.3)
       '@tailwindcss/postcss':
         specifier: 4.3.3
         version: 4.3.3
@@ -946,6 +949,11 @@ packages:
     resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
     engines: {node: '>=20'}
     hasBin: true
+
+  '@publira/design-tokens@1.1.0':
+    resolution: {integrity: sha512-Xsq6Omae/2gaZFR88h8/QMrmRahm7GEMcH5vhaeRZ3Sp/Q6Ss3LV0W56l6pqtVO7XIlkiNKcCJOM8phipAvkRg==}
+    peerDependencies:
+      tailwindcss: ^4.0.0
 
   '@quansync/fs@1.1.0':
     resolution: {integrity: sha512-qAPG/t3HqML1TlN7sY/pTbEjzFVAKsMjNNMGheyDosro+kT4iw2KCUoHcVdmliwWjorm4elZbgNQyU2eD97eDg==}
@@ -2850,6 +2858,10 @@ snapshots:
   '@playwright/test@1.63.0':
     dependencies:
       playwright: 1.63.0
+
+  '@publira/design-tokens@1.1.0(tailwindcss@4.3.3)':
+    dependencies:
+      tailwindcss: 4.3.3
 
   '@quansync/fs@1.1.0':
     dependencies:
