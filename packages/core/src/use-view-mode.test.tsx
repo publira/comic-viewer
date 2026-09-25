@@ -35,10 +35,9 @@ class MockResizeObserver {
 
 const pages = [{ id: "p1", src: "page1.png", title: "Page 1" }];
 
-const makeWrapper = () =>
-  function Wrapper({ children }: { children: React.ReactNode }) {
-    return <ViewerProvider pages={pages}>{children}</ViewerProvider>;
-  };
+const Wrapper = ({ children }: { children: React.ReactNode }) => (
+  <ViewerProvider pages={pages}>{children}</ViewerProvider>
+);
 
 describe(useViewMode, () => {
   beforeEach(() => {
@@ -53,7 +52,7 @@ describe(useViewMode, () => {
         const ref = useRef<HTMLDivElement>(null);
         return useViewMode(ref);
       },
-      { wrapper: makeWrapper() }
+      { wrapper: Wrapper }
     );
 
     expect(result.current).toBe("single");
@@ -65,7 +64,7 @@ describe(useViewMode, () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
         return useViewMode(ref, 768);
       },
-      { wrapper: makeWrapper() }
+      { wrapper: Wrapper }
     );
 
     act(() => {
@@ -81,7 +80,7 @@ describe(useViewMode, () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
         return useViewMode(ref, 768);
       },
-      { wrapper: makeWrapper() }
+      { wrapper: Wrapper }
     );
 
     act(() => {
@@ -101,7 +100,7 @@ describe(useViewMode, () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
         return useViewMode(ref, 768);
       },
-      { wrapper: makeWrapper() }
+      { wrapper: Wrapper }
     );
 
     act(() => {
@@ -119,7 +118,7 @@ describe(useViewMode, () => {
 
         return { setViewMode, viewMode: useViewMode(ref, 768) };
       },
-      { wrapper: makeWrapper() }
+      { wrapper: Wrapper }
     );
 
     act(() => {
@@ -146,7 +145,7 @@ describe(useViewMode, () => {
 
         return useViewerContext().isDoublePageAvailable;
       },
-      { wrapper: makeWrapper() }
+      { wrapper: Wrapper }
     );
 
     act(() => {
@@ -168,7 +167,7 @@ describe(useViewMode, () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
         return useViewMode(ref);
       },
-      { wrapper: makeWrapper() }
+      { wrapper: Wrapper }
     );
 
     unmount();
