@@ -9,6 +9,10 @@ const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${port}`;
 const tailwindBaseURL =
   process.env.E2E_TAILWIND_BASE_URL ?? `http://127.0.0.1:${tailwindPort}`;
 
+// pnpm >= 12.6.0 moves `next start` out of the process group Playwright
+// SIGKILLs, so ask pnpm to forward SIGTERM instead.
+const gracefulShutdown = { signal: "SIGTERM", timeout: 5000 } as const;
+
 export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   fullyParallel: true,
@@ -33,12 +37,14 @@ export default defineConfig({
     {
       command: `pnpm --filter @publira/comic-viewer-demo exec next start --hostname 127.0.0.1 --port ${port}`,
       cwd: workspaceRoot,
+      gracefulShutdown,
       reuseExistingServer: process.env.CI === undefined,
       url: baseURL,
     },
     {
       command: `pnpm --filter @publira/comic-viewer-tailwind-demo exec next start --hostname 127.0.0.1 --port ${tailwindPort}`,
       cwd: workspaceRoot,
+      gracefulShutdown,
       reuseExistingServer: process.env.CI === undefined,
       url: tailwindBaseURL,
     },
