@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.9.0...comic-viewer-v0.10.0) (2026-10-04)
+
+
+### Features
+
+* **core:** let PageProgressSlider format its aria-valuetext ([#336](https://github.com/publira/comic-viewer/issues/336)) ([3afa632](https://github.com/publira/comic-viewer/commit/3afa632a49ac508cac72906a8532f66edad47b1e))
+
 ## [0.9.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.8.0...comic-viewer-v0.9.0) (2026-09-16)
 
 
