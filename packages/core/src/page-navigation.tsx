@@ -354,9 +354,12 @@ export const PageStatus = ({ className, format }: PageStatusProps) => {
   const label = format?.(value) ?? getDefaultPageStatusLabel(value);
 
   return (
+    // The toolbar's `dir` lays out the controls, so the label takes its own
+    // direction from its text rather than reordering a formatted one.
     <output
       aria-live="polite"
       className={composeClassName("pcv-page-status", className)}
+      dir="auto"
     >
       {label}
     </output>
@@ -433,10 +436,17 @@ export const PageProgressTrack = ({
   );
 };
 
-export type PageProgressSliderProps = Omit<
+export interface PageProgressSliderProps extends Omit<
   ComponentPropsWithoutRef<"input">,
   "children" | "defaultValue" | "max" | "min" | "step" | "type" | "value"
->;
+> {
+  /**
+   * Names the page under the thumb in `aria-valuetext`, from the same value
+   * `PageStatus` passes to its own `format`. An explicit `aria-valuetext`
+   * takes precedence.
+   */
+  format?: (value: PageStatusValue) => string;
+}
 
 /**
  * Scrubs the reading position to any page of the document. Compose it inside
@@ -459,6 +469,7 @@ export const PageProgressSlider = ({
   "aria-valuetext": ariaValueText,
   className,
   disabled = false,
+  format,
   onChange,
   onPointerDown,
   style,
@@ -710,7 +721,11 @@ export const PageProgressSlider = ({
     <input
       {...props}
       aria-label={ariaLabel ?? pageProgress?.ariaLabel ?? "Reading progress"}
-      aria-valuetext={ariaValueText ?? getDefaultPageStatusLabel(statusValue)}
+      aria-valuetext={
+        ariaValueText ??
+        format?.(statusValue) ??
+        getDefaultPageStatusLabel(statusValue)
+      }
       className={composeClassName("pcv-page-progress-slider", className)}
       disabled={disabled || maxIndex <= minIndex}
       max={maxIndex}

@@ -11,6 +11,7 @@ import {
   PageStatus,
   PreviousPageButton,
 } from "./page-navigation";
+import type { PageStatusValue } from "./page-navigation";
 import { useViewerContext, ViewerProvider } from "./viewer-context";
 import type { ReadingDirection, ViewMode } from "./viewer-context";
 import { EndPage, StartPage } from "./viewer-slots";
@@ -33,6 +34,16 @@ const ControlsToggle = () => {
     </button>
   );
 };
+
+/** Labels the pages on screen the way a Japanese storefront might. */
+const formatInJapanese = ({
+  firstPage,
+  lastPage,
+  pageCount,
+}: PageStatusValue): string =>
+  firstPage === lastPage
+    ? `${firstPage} / ${pageCount} ページ`
+    : `${firstPage}-${lastPage} / ${pageCount} ページ`;
 
 /** Reports where a scrub rests, as the viewport reads it. */
 const ScrubPositionIndicator = () => {
@@ -107,6 +118,14 @@ describe(PageNavigation, () => {
       "aria-live",
       "polite"
     );
+  });
+
+  it("lets a status label take its direction from its own text", () => {
+    renderPageNavigation();
+
+    // A label starting with digits would otherwise be reordered by the `rtl`
+    // the navigation lays its controls out in.
+    expect(screen.getByText("Page 1 of 5")).toHaveAttribute("dir", "auto");
   });
 
   it("stays hidden until the shared reader controls are revealed", () => {
@@ -249,6 +268,41 @@ describe(PageNavigation, () => {
     expect(slider).toHaveValue("2.4");
     expect(screen.getByTestId("scrub-position")).toHaveTextContent("2.4");
     expect(slider).toHaveAttribute("aria-valuetext", "Pages 3-4 of 5");
+  });
+
+  it("names the page under the thumb through a format function", () => {
+    render(
+      <ViewerProvider pages={pages} initialViewMode="double">
+        <PageProgress>
+          <PageProgressSlider format={formatInJapanese} />
+        </PageProgress>
+      </ViewerProvider>
+    );
+
+    const slider = screen.getByRole("slider");
+
+    expect(slider).toHaveAttribute("aria-valuetext", "1-2 / 5 ページ");
+
+    // A drag names the spread nearest the thumb, the way it does by default.
+    fireEvent.pointerDown(slider);
+    fireEvent.change(slider, { target: { value: "2.4" } });
+
+    expect(slider).toHaveAttribute("aria-valuetext", "3-4 / 5 ページ");
+  });
+
+  it("prefers an explicit aria-valuetext over the format function", () => {
+    render(
+      <ViewerProvider pages={pages}>
+        <PageProgress>
+          <PageProgressSlider aria-valuetext="Custom" format={() => "Format"} />
+        </PageProgress>
+      </ViewerProvider>
+    );
+
+    expect(screen.getByRole("slider")).toHaveAttribute(
+      "aria-valuetext",
+      "Custom"
+    );
   });
 
   it("commits the spread nearest the thumb once the drag is released", () => {

@@ -462,6 +462,24 @@ For a custom arrangement, compose `PreviousPageButton`, `NextPageButton`, `PageP
 
 `PageProgressSlider` is a native `<input type="range">`, so it is operated with the arrow keys, <kbd>Home</kbd>, and <kbd>End</kbd> as well as by dragging its thumb, and it is disabled while a document holds a single reading position. It counts in the navigable indices `goTo` takes, from `minIndex` to `maxIndex`, so [a start or an end page](#start-and-end-pages) is a position on it like a page of the document is, and `aria-valuetext` names the page under the thumb rather than reading out the index. In double-page mode every value it comes to rest on snaps to the page its spread starts from, `spreadStartIndex` included, so the slider lands on the same indices the page-turn controls do.
 
+By default `aria-valuetext` uses the English labels `PageStatus` shows, such as `Page 3 of 10`. Give the slider the `format` function you give `PageStatus` and it announces the page under the thumb in the reader's own words, at rest and during a drag alike. It receives the same `PageStatusValue` and returns a string, since the attribute cannot hold markup; an explicit `aria-valuetext` still takes precedence over it. `PageStatus` sets `dir="auto"`, so a label that starts with a number is laid out in the direction of its own text rather than reordered by the `rtl` the toolbar lays its controls out in.
+
+```tsx
+const formatPageStatus = ({
+  firstPage,
+  lastPage,
+  pageCount,
+}: PageStatusValue) =>
+  firstPage === lastPage
+    ? `${firstPage} / ${pageCount} ページ`
+    : `${firstPage}〜${lastPage} / ${pageCount} ページ`;
+
+<ComicViewer.PageProgress aria-label="読書の進み具合">
+  <ComicViewer.PageProgressSlider format={formatPageStatus} />
+  <ComicViewer.PageStatus format={formatPageStatus} />
+</ComicViewer.PageProgress>;
+```
+
 A drag moves the thumb with the pointer or the finger rather than from one index to the next, and the pages move with it: the rail is dragged the way a swipe drags it, so a thumb resting between two spreads shows the part of the next spread it has moved into, and `PageStatus` and `PageProgressTrack` name the spread nearest the thumb. On release the rail slides on from where the thumb left it to that nearest spread, without waiting for images the drag already had on screen, and the thumb moves to that spread's place along with it, over the same time and on the same curve, rather than jumping there. The reading position is committed once, on release, so `onIndexChange` is called for the page the reader settles on instead of at every position the thumb passes over, and a controlled `currentIndex` does not pull the pages back while the drag lasts. The reader controls stay held for the length of a drag, so a finger that leaves the toolbar mid-drag does not let them hide.
 
 `useViewerContext()` reports the drag as `scrubPosition`, in navigable indices and anywhere between two of them, or `null` while no drag is in progress, and `setScrubPosition` moves it, for a custom scrubbing control that commits the spread it ends nearest to with `goTo` the way the slider does.
