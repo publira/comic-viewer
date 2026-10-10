@@ -35,6 +35,7 @@ Import the optional default stylesheet and assemble the viewer by composing `Com
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
+
 import "@publira/comic-viewer/default.css";
 
 const pages: ViewerPage[] = [
