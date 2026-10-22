@@ -1,7 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "bootstrap-sha": "eac5c2b014f97dd351efa2f35e4f912a65998c8f",
+  "bootstrap-sha": "3458e9b61e0cdb5b264d8705a03c9f5e2c826fcf",
   "bump-minor-pre-major": true,
+  "include-component-in-tag": false,
   "packages": {
     "packages/core": {
       "component": "comic-viewer",
