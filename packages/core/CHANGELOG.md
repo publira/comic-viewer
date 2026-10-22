@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.10.0...comic-viewer-v0.10.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* **deps:** update react monorepo to v19.3.1 ([#401](https://github.com/publira/comic-viewer/issues/401)) ([f66e0e0](https://github.com/publira/comic-viewer/commit/f66e0e0ddf0f2106eb88b1346d9f946f99634078))
+
 ## [0.10.0](https://github.com/publira/comic-viewer/compare/comic-viewer-v0.9.0...comic-viewer-v0.10.0) (2026-10-04)
 
 
