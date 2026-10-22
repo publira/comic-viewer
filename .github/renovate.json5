@@ -1,4 +1,14 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   extends: ["github>publira/.github//renovate.json5"],
+  packageRules: [
+    // The org preset commits updates of the demo apps as chore so that they do
+    // not cut a release of the published package. The landing page is just as
+    // private, but its name is too generic to match across the organization.
+    {
+      description: "Commit updates of the landing page as chore, since it is never published.",
+      matchFileNames: ["apps/website/**"],
+      semanticCommitType: "chore",
+    },
+  ],
 }
