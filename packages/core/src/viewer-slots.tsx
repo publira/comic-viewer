@@ -66,7 +66,7 @@ const useViewerSlot = (
 
   if (context === null || context.slot !== slot) {
     throw new Error(
-      `${componentName} must be written among the children of the viewer, which shows it at the ${slot} of the reading sequence.`
+      `${componentName} must be written among the children of the viewer, which shows it at the ${slot} of the reading sequence. A server component cannot pass it there, so write the viewer and its slot pages in a client component.`
     );
   }
 

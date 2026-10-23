@@ -1,0 +1,16 @@
+{
+  "name": "comic-viewer-types-consumer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "verify": "node check-readme-imports.js && tsc -p tsconfig.bundler.json && tsc -p tsconfig.node16.json"
+  },
+  "dependencies": {
+    "@publira/comic-viewer": "file:../comic-viewer.tgz",
+    "react": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "19.3.0",
+    "typescript": "6.0.3"
+  }
+}

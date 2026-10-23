@@ -311,6 +311,12 @@ describe("viewer slot pages", () => {
     }).toThrow("StartPage must be written among the children of the viewer");
   });
 
+  it("points a slot page written in a server component to a client component", () => {
+    expect(() => {
+      render(<EndPage>Afterword</EndPage>);
+    }).toThrow("write the viewer and its slot pages in a client component");
+  });
+
   it("opens on the first of several start pages", () => {
     renderSlotViewer({ startPageCount: 3 });
 
