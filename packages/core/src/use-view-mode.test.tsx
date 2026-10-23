@@ -75,6 +75,20 @@ describe(useViewMode, () => {
     expect(result.current).toBe("double");
   });
 
+  it("opens in the mode a laid-out width calls for before it is observed", () => {
+    const element = document.createElement("div");
+    vi.spyOn(element, "clientWidth", "get").mockReturnValue(1024);
+    const { result } = renderHook(
+      () => {
+        const ref = useRef<HTMLDivElement>(element);
+        return useViewMode(ref, 768);
+      },
+      { wrapper: Wrapper }
+    );
+
+    expect(result.current).toBe("double");
+  });
+
   it("switches to single when container width falls below the threshold", () => {
     const { result } = renderHook(
       () => {

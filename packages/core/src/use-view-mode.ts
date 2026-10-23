@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { RefObject } from "react";
 
 import { useViewModeSwitch, useViewerContext } from "./viewer-context";
@@ -17,23 +17,34 @@ export const useViewMode = (
   // resizes that leave a spread just as possible as it already was.
   const isDoublePageAvailableRef = useRef<boolean | null>(null);
 
-  useEffect(() => {
+  // A laid-out width is read before paint, so the first spread is shown, and
+  // its page images chosen, in the mode the viewport will keep.
+  useLayoutEffect(() => {
     const el = containerRef.current;
     if (el === null || el === undefined) {
       return;
     }
 
+    const applyWidth = (width: number): void => {
+      const isAvailable = width >= doublePageThreshold;
+      setDoublePageAvailable(isAvailable);
+
+      if (isDoublePageAvailableRef.current === isAvailable) {
+        return;
+      }
+
+      isDoublePageAvailableRef.current = isAvailable;
+      switchViewMode(isAvailable ? "double" : "single");
+    };
+
+    // A viewport with no width yet is left to the observer to report.
+    if (el.clientWidth > 0) {
+      applyWidth(el.clientWidth);
+    }
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const isAvailable = entry.contentRect.width >= doublePageThreshold;
-        setDoublePageAvailable(isAvailable);
-
-        if (isDoublePageAvailableRef.current === isAvailable) {
-          continue;
-        }
-
-        isDoublePageAvailableRef.current = isAvailable;
-        switchViewMode(isAvailable ? "double" : "single");
+        applyWidth(entry.contentRect.width);
       }
     });
 

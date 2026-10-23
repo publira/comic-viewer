@@ -452,6 +452,31 @@ describe("page load state", () => {
     });
   });
 
+  it("chooses the first candidate in the view mode a wide viewport opens in", async () => {
+    const clientWidth = vi
+      .spyOn(HTMLElement.prototype, "clientWidth", "get")
+      .mockReturnValue(1200);
+    const { fetchMock } = renderPageLoad({
+      page: {
+        id: "p1",
+        src: "page1.png",
+        srcset:
+          "page1@400w.png 400w, page1@800w.png 800w, page1@1600w.png 1600w",
+        title: "Page 1",
+      },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("loaded");
+    });
+    clientWidth.mockRestore();
+
+    // The viewport opens in double-page mode, so each half is 600 pixels wide.
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toStrictEqual([
+      "page1@800w.png",
+    ]);
+  });
+
   it("keeps the page proportions when only one dimension is given", async () => {
     vi.mocked(createImageBitmap).mockResolvedValue({
       close: vi.fn<() => void>(),
