@@ -626,12 +626,12 @@ Read `areControlsVisible` and call `toggleControls` from `useViewerContext` to d
 
 ## Plugins
 
-Pass plugins through the `plugins` prop to customize the page data pipeline. Use `ComicViewer.definePlugin` for type inference. Hooks run in registration order:
+Pass plugins through the `plugins` prop to customize the page data pipeline. Use `ComicViewer.definePlugin` for type inference. The `url` a hook receives is the image the viewer chose to load: the `srcset` candidate for the size the page is drawn at, or `src` when the page has no usable `srcset`. When the page slot grows past that candidate, the page is loaded again with a larger one, so the hooks run once more for it. Hooks run in registration order:
 
 - `beforeFetch` receives `{ url, signal, page }` and can replace the page URL.
 - `customFetch` receives `{ url, signal, page }` and `next`, and can supply the page data instead of the built-in `fetch`. Hooks nest in registration order: `next` runs the following plugin's hook, or the built-in `fetch` after the last one, so a returned buffer is used as is and a hook that returns nothing defers to `next`.
 - `afterFetch` receives `{ url, signal, page, buffer }` and can transform the fetched `ArrayBuffer`, for example to decrypt a page. Each returned buffer is passed to the following hook.
-- `afterDecode` receives `{ url, signal, page, image }` and can replace the decoded image. Each returned image is passed to the following hook. Its `url` is the `src` of the page rather than a URL `beforeFetch` replaced.
+- `afterDecode` receives `{ url, signal, page, image }` and can replace the decoded image. Each returned image is passed to the following hook. Its `url` is the chosen candidate rather than a URL `beforeFetch` replaced.
 - `onPageChange` receives the current page index and total number of pages.
 
 Because an earlier `customFetch` wraps the later ones, a caching plugin registered before an authenticated-fetch plugin serves cached pages itself and calls `next()` for the rest, which the authenticated plugin fetches. The chain runs at most once per page load, so a hook that awaits `next()` and returns nothing uses the buffer `next()` produced:

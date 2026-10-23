@@ -49,7 +49,7 @@ const getControlElements = (container: HTMLElement) => {
 describe(useViewportGestures, () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
-    MockResizeObserver.callback = null;
+    MockResizeObserver.reset();
   });
 
   it("handles ArrowLeft and ArrowRight in LTR", () => {

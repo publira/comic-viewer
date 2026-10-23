@@ -2,8 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { closeDecodedImages } from "./page-image";
 import type { DecodedPageImage } from "./page-image";
+import { getPageImageRequest } from "./page-image-request";
+import type { PageImageRequest } from "./page-image-request";
 import { toPageLoadFailure } from "./page-load";
 import type { PageLoadError, PageLoadStage, PageLoadStatus } from "./page-load";
+import type { SrcsetRequirement } from "./page-srcset";
 import { runDataPipeline, runDecodePipeline } from "./plugin";
 import type { ViewerPlugin } from "./plugin";
 import type { ViewerPage } from "./viewer-context";
@@ -121,6 +124,12 @@ export interface ViewportImages<TPage extends ViewerPage = ViewerPage> {
 
 interface UseViewportImagesOptions<TPage extends ViewerPage> {
   cachedIndices: readonly number[];
+  /**
+   * Returns the size the page at an index is about to be drawn at, which its
+   * `srcset` candidate is selected for. No page loads while it is `undefined`,
+   * before the viewport has been measured.
+   */
+  getPageRequirement: ((index: number) => SrcsetRequirement) | undefined;
   keepImages: boolean;
   onPageLoadError?: (error: PageLoadError<TPage>) => void;
   /** An entry is `undefined` while the metadata of that page is unresolved. */
@@ -138,6 +147,7 @@ interface UseViewportImagesOptions<TPage extends ViewerPage> {
 /** Loads, caches, and releases decoded pages for the active viewport rail. */
 export const useViewportImages = <TPage extends ViewerPage>({
   cachedIndices,
+  getPageRequirement,
   keepImages,
   onPageLoadError,
   pages,
@@ -158,6 +168,8 @@ export const useViewportImages = <TPage extends ViewerPage>({
   );
   const cachedImageKeysRef = useRef<ReadonlySet<string>>(new Set());
   const pageLoadControllersRef = useRef(new Map<string, AbortController>());
+  // The candidate each cached page was last asked for, which only grows.
+  const pageImageRequestsRef = useRef(new Map<string, PageImageRequest>());
   const retiredImageBitmapsRef = useRef<DecodedPageImage[]>([]);
   const pagesRef = useRef(pages);
   const onPageLoadErrorRef = useRef(onPageLoadError);
@@ -200,7 +212,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
   );
 
   useEffect(() => {
-    if (!shouldLoadImages) {
+    if (!shouldLoadImages || getPageRequirement === undefined) {
       return;
     }
 
@@ -245,22 +257,39 @@ export const useViewportImages = <TPage extends ViewerPage>({
       }
 
       const imageKey = getPageImageKey(index, page);
+      const previousRequest = pageImageRequestsRef.current.get(imageKey);
+      const request = getPageImageRequest(
+        page,
+        getPageRequirement(index),
+        previousRequest
+      );
+      const { url } = request;
       if (
         // A preload queued behind the rail is dropped when the reader moves
         // away from the page before its load starts.
         !cachedImageKeysRef.current.has(imageKey) ||
-        pageLoadControllersRef.current.has(imageKey) ||
-        // A settled page is reloaded only after an eviction or an explicit retry.
-        pageLoadStatesRef.current.has(imageKey)
+        // A page loading or settled on its candidate is reloaded only after an
+        // eviction or an explicit retry.
+        (previousRequest?.url === url &&
+          (pageLoadControllersRef.current.has(imageKey) ||
+            pageLoadStatesRef.current.has(imageKey)))
       ) {
         return;
       }
 
+      // A larger candidate supersedes a smaller one still on its way.
+      pageLoadControllersRef.current.get(imageKey)?.abort();
       const abortController = new AbortController();
       pageLoadControllersRef.current.set(imageKey, abortController);
-      commitLoadStates((states) => {
-        states.set(imageKey, { status: "loading" });
-      });
+      pageImageRequestsRef.current.set(imageKey, request);
+      // A page already drawn stays loaded while a larger candidate replaces it.
+      const holdsPage = (): boolean =>
+        pageImagesRef.current.get(imageKey)?.placeholder === false;
+      if (!holdsPage()) {
+        commitLoadStates((states) => {
+          states.set(imageKey, { status: "loading" });
+        });
+      }
       const releasePageLoad = (): void => {
         if (pageLoadControllersRef.current.get(imageKey) === abortController) {
           pageLoadControllersRef.current.delete(imageKey);
@@ -294,9 +323,12 @@ export const useViewportImages = <TPage extends ViewerPage>({
           index,
           page,
         };
-        commitLoadStates((states) => {
-          states.set(imageKey, { error: pageLoadError, status: "error" });
-        });
+        // A failed upgrade leaves the page drawn from the image it holds.
+        if (!holdsPage()) {
+          commitLoadStates((states) => {
+            states.set(imageKey, { error: pageLoadError, status: "error" });
+          });
+        }
         onPageLoadErrorRef.current?.(pageLoadError);
       };
 
@@ -306,7 +338,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
         try {
           return {
             buffer: await runDataPipeline(
-              { page, signal: abortController.signal, url: page.src },
+              { page, signal: abortController.signal, url },
               plugins
             ),
           };
@@ -315,7 +347,10 @@ export const useViewportImages = <TPage extends ViewerPage>({
         }
       })();
 
-      if (page.placeholder !== undefined) {
+      if (
+        page.placeholder !== undefined &&
+        !pageImagesRef.current.has(imageKey)
+      ) {
         try {
           const placeholderBuffer = await runDataPipeline(
             { page, signal: abortController.signal, url: page.placeholder },
@@ -348,7 +383,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
 
       let bitmap: DecodedPageImage;
       try {
-        bitmap = await decodeImage(result.buffer, page.src, page.mimeType);
+        bitmap = await decodeImage(result.buffer, url, page.mimeType);
       } catch (error) {
         failPageLoad(error, "decode");
         return;
@@ -362,12 +397,19 @@ export const useViewportImages = <TPage extends ViewerPage>({
             image: bitmap,
             page,
             signal: abortController.signal,
-            url: page.src,
+            url,
           },
           plugins
         );
       } catch (error) {
         failPageLoad(error, "image-transform");
+        return;
+      }
+
+      // A superseded load must not replace the larger image that follows it.
+      if (abortController.signal.aborted) {
+        closeDecodedImages([bitmap]);
+        releasePageLoad();
         return;
       }
 
@@ -391,6 +433,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
   }, [
     cachedIndices,
     commitLoadStates,
+    getPageRequirement,
     pages,
     plugins,
     preloadIndices,
@@ -427,6 +470,12 @@ export const useViewportImages = <TPage extends ViewerPage>({
       }
     }
 
+    for (const key of pageImageRequestsRef.current.keys()) {
+      if (!retainedImageKeys.has(key)) {
+        pageImageRequestsRef.current.delete(key);
+      }
+    }
+
     const nextLoadStates = new Map(pageLoadStatesRef.current);
     for (const key of nextLoadStates.keys()) {
       if (!retainedImageKeys.has(key)) {
@@ -446,12 +495,17 @@ export const useViewportImages = <TPage extends ViewerPage>({
       // oxlint-disable-next-line react/set-state-in-effect -- Pages are evicted only after their transition DOM has unmounted.
       setPageImages(nextImages);
     }
+  }, [cachedIndices, keepImages, pages, preloadIndices, shouldLoadImages]);
 
+  useEffect(() => {
+    // A replaced image is drawn by nothing once its replacement has committed,
+    // so a resize upgrade does not hold both until the next eviction.
     if (retiredImageBitmapsRef.current.length > 0) {
       closeDecodedImages(retiredImageBitmapsRef.current);
       retiredImageBitmapsRef.current = [];
     }
-  }, [cachedIndices, keepImages, pages, preloadIndices, shouldLoadImages]);
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- The images are what retires the ones they replaced.
+  }, [pageImages]);
 
   useEffect(
     () => () => {
@@ -466,6 +520,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
       // React Strict Mode deliberately re-runs effects during development.
       // Its simulated unmount preserves state, so an aborted "loading" entry
       // must not prevent the following effect from starting a fresh request.
+      pageImageRequestsRef.current.clear();
       pageImagesRef.current = new Map();
       pageLoadStatesRef.current = new Map();
       retiredImageBitmapsRef.current = [];

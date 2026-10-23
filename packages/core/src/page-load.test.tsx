@@ -86,7 +86,7 @@ describe("page load state", () => {
 
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
-    MockResizeObserver.callback = null;
+    MockResizeObserver.reset();
     drawImage = vi.fn<() => void>();
     getContext = vi
       .spyOn(HTMLCanvasElement.prototype, "getContext")
@@ -332,30 +332,13 @@ describe("page load state", () => {
     expect(screen.getByTestId("placeholder")).toHaveTextContent("false");
   });
 
-  it("restarts an image load after Strict Mode aborts the initial effect", async () => {
-    const fetchMock = vi.fn<MockFetch>((_input, init) => {
-      const signal = init?.signal;
-
-      // eslint-disable-next-line promise/avoid-new -- The first Strict Mode request must stay pending until it is aborted.
-      return new Promise((resolve, reject) => {
-        if (signal === undefined || signal === null) {
-          reject(
-            new Error("Expected the page request to receive an abort signal.")
-          );
-          return;
-        }
-
-        signal.addEventListener("abort", () => reject(signal.reason), {
-          once: true,
-        });
-        if (fetchMock.mock.calls.length === 2) {
-          resolve({
-            arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
-            ok: true,
-          });
-        }
-      });
-    });
+  it("starts one image load under Strict Mode, once the viewport is measured", async () => {
+    const fetchMock = vi.fn<MockFetch>(() =>
+      Promise.resolve({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
+        ok: true,
+      })
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     render(
@@ -372,7 +355,9 @@ describe("page load state", () => {
       expect(screen.getByTestId("status")).toHaveTextContent("loaded");
     });
 
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // The load waits for the size the page is drawn at, which is measured
+    // after the remount Strict Mode simulates, so nothing is fetched twice.
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("retries a failed page and clears its error once it succeeds", async () => {
@@ -427,6 +412,44 @@ describe("page load state", () => {
 
     expect(screen.getByTestId("stage")).toHaveTextContent("fetch");
     expect(fetchMock).toHaveBeenCalledTimes(failedAttempts);
+  });
+
+  it("fetches a larger srcset candidate as the page slot grows", async () => {
+    const { fetchMock } = renderPageLoad({
+      page: {
+        id: "p1",
+        src: "page1.png",
+        srcset:
+          "page1@400w.png 400w, page1@800w.png 800w, page1@1600w.png 1600w",
+        title: "Page 1",
+      },
+    });
+    const fetchedUrls = () => fetchMock.mock.calls.map(([url]) => String(url));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("loaded");
+    });
+    act(() => {
+      MockResizeObserver.trigger(600);
+    });
+
+    await waitFor(() => {
+      expect(fetchedUrls()).toStrictEqual(["page1@400w.png", "page1@800w.png"]);
+    });
+    expect(screen.getByTestId("status")).toHaveTextContent("loaded");
+
+    // Each half of a double-page spread is 1000 pixels wide.
+    act(() => {
+      MockResizeObserver.trigger(2000);
+    });
+
+    await waitFor(() => {
+      expect(fetchedUrls()).toStrictEqual([
+        "page1@400w.png",
+        "page1@800w.png",
+        "page1@1600w.png",
+      ]);
+    });
   });
 
   it("reports pages rendered outside the managed pipeline as idle", async () => {

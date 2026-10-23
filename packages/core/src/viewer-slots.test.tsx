@@ -77,7 +77,7 @@ const getCurrentPageSet = (container: HTMLElement) => {
 describe("viewer slot pages", () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
-    MockResizeObserver.callback = null;
+    MockResizeObserver.reset();
   });
 
   it("opens on the start page", () => {

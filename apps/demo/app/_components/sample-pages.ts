@@ -74,3 +74,12 @@ export const spreadPageSamplePages: ViewerPage[] = [
   spreadSamplePage,
   ...basicSamplePages.slice(4, 8),
 ];
+
+// Each page offers a rendition half as wide beside the full-size image, and
+// the viewer loads the one nearest the width it draws the page at.
+export const srcsetSamplePages: ViewerPage[] = basicSamplePages
+  .slice(0, 8)
+  .map((page, index) => ({
+    ...page,
+    srcset: `/srcset-pages/page-${index + 1}-400w.jpg 400w, ${page.src} 800w`,
+  }));

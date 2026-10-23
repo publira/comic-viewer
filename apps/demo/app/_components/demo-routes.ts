@@ -25,6 +25,7 @@ export const demoRouteGroups: readonly DemoRouteGroup[] = [
     items: [
       { href: "/features/spreads", label: "Spreads" },
       { href: "/features/spread-page", label: "Spread page" },
+      { href: "/features/srcset", label: "Srcset" },
       { href: "/features/slots", label: "Slots" },
       { href: "/features/ltr", label: "LTR" },
       { href: "/features/controls", label: "Controls" },

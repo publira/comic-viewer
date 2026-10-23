@@ -6,7 +6,10 @@ import type { ViewerPage } from "./viewer-context";
 
 /** Information about the page currently moving through the data pipeline. */
 export interface PageLoadContext {
-  /** The source URL currently being processed by the pipeline. */
+  /**
+   * The source URL currently being processed by the pipeline. It starts as the
+   * `srcset` candidate chosen for the size the page is drawn at, or `src`.
+   */
   url: string;
   /** Cancels work when the page is no longer needed by the viewer. */
   signal: AbortSignal;
@@ -21,7 +24,7 @@ export interface FetchedPageContext extends PageLoadContext {
 
 /**
  * A decoded image together with the context that produced it. Its `url` is
- * the source of the page rather than a URL a `beforeFetch` hook replaced,
+ * the chosen candidate rather than a URL a `beforeFetch` hook replaced,
  * because the data pipeline hands the loader the page data alone.
  */
 export interface DecodedPageContext extends PageLoadContext {

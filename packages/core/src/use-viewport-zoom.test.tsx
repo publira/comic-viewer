@@ -51,7 +51,7 @@ const pinchToDoubleScale = (viewport: HTMLDivElement) => {
 describe(useViewportZoom, () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
-    MockResizeObserver.callback = null;
+    MockResizeObserver.reset();
   });
 
   it("pans an actual-size page with a pointer and keeps it within its bounds", () => {
@@ -267,7 +267,7 @@ const renderZoomableViewport = () => {
 describe("zoom scale on the viewer context", () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
-    MockResizeObserver.callback = null;
+    MockResizeObserver.reset();
   });
 
   it("rests at a scale of 1 before any gesture", () => {
