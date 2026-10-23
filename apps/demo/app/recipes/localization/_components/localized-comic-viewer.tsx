@@ -67,7 +67,7 @@ export const LocalizedComicViewer = ({ pages }: LocalizedComicViewerProps) => (
   // `lang` tells a screen reader which voice to read the labels in.
   <div className={styles.viewer} lang="ja" style={getViewerStyle(pages)}>
     <ComicViewer.Root className={styles.viewerContent} pages={pages}>
-      <ComicViewer.Viewport />
+      <ComicViewer.Viewport aria-label="漫画のページ" />
       <ComicViewer.Toolbar>
         <ComicViewer.PageProgress aria-label="読書の進み具合">
           <ComicViewer.PageProgressSlider format={formatPageStatus} />

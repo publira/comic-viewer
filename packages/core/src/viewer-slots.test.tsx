@@ -262,6 +262,10 @@ describe("viewer slot pages", () => {
 
     expect(onClick).toHaveBeenCalledOnce();
     expect(screen.getByTestId("current-index")).toHaveTextContent("-1");
+    // The surface is a region, so the button keeps its own role inside it.
+    expect(
+      screen.getByRole("region", { name: "Comic pages" })
+    ).toContainElement(screen.getByRole("button", { name: "Read on" }));
   });
 
   it("leaves a swipe that starts on a control on the slot page alone", () => {

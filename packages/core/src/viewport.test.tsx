@@ -921,6 +921,30 @@ describe(Viewport, () => {
     expect(container.querySelector(".pcv-viewport")).not.toBeNull();
   });
 
+  it("is a focusable region named for assistive technology", () => {
+    renderViewport();
+
+    const viewport = screen.getByRole("region", { name: "Comic pages" });
+
+    expect(viewport).toHaveClass("pcv-viewport");
+    expect(viewport).toHaveAttribute("tabindex", "0");
+  });
+
+  it("takes an accessible name of its own", () => {
+    render(
+      <ViewerProvider pages={pages}>
+        <Viewport<TestPage>
+          aria-label="漫画のページ"
+          renderPage={(page) => <div>{page.title}</div>}
+        />
+      </ViewerProvider>
+    );
+
+    expect(screen.getByRole("region", { name: "漫画のページ" })).toHaveClass(
+      "pcv-viewport"
+    );
+  });
+
   it("appends a custom className to the viewport element", () => {
     const { container } = render(
       <ViewerProvider pages={pages}>

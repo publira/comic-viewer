@@ -12,6 +12,9 @@ test("names the controls and the pages on screen in Japanese", async ({
   await revealReaderControls(page);
 
   await expect(page.locator(".pcv-page-status")).toHaveText("1〜2 / 21 ページ");
+  await expect(page.getByRole("region", { name: "漫画のページ" })).toHaveClass(
+    /pcv-viewport/u
+  );
 
   const slider = page.getByRole("slider", { name: "読書の進み具合" });
 

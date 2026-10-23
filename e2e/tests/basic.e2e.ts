@@ -15,6 +15,9 @@ test("renders the basic reader and navigates through a double-page spread", asyn
     "data-view-mode",
     "double"
   );
+  await expect(page.getByRole("region", { name: "Comic pages" })).toHaveClass(
+    /pcv-viewport/u
+  );
   await expect(page.locator(currentPageSet)).toHaveAttribute(
     "data-page-count",
     "2"

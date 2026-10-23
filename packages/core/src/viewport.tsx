@@ -14,6 +14,11 @@ import { getViewportLayoutTemplate } from "./viewport-template";
 
 export interface ViewportProps<TPage extends ViewerPage> {
   /**
+   * The accessible name of the reading surface, which assistive technology
+   * announces as a region. Defaults to "Comic pages".
+   */
+  "aria-label"?: string;
+  /**
    * A page template rendered for each visible page. Use ViewportPage and
    * PageCanvas to style the public page elements without private selectors.
    */
@@ -37,6 +42,7 @@ export interface ViewportProps<TPage extends ViewerPage> {
 
 /** Composes the page rail, its page-turn state, and the viewport gestures. */
 export const Viewport = <TPage extends ViewerPage>({
+  "aria-label": ariaLabel = "Comic pages",
   children,
   onPageLoadError,
   renderPage,
@@ -159,8 +165,12 @@ export const Viewport = <TPage extends ViewerPage>({
       data-panning={isPanning || undefined}
       data-page-fit-mode={pageFitMode}
       {...viewportProps}
-      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- The viewer is a composite widget, not a button.
-      role="button"
+      aria-label={ariaLabel}
+      // The surface holds pages that may carry links and buttons of their own,
+      // which a widget role such as button would flatten away.
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- A `section` would change the element consumers style.
+      role="region"
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- The keyboard turns pages and reveals the controls from here.
       tabIndex={0}
     >
       <ViewportRail

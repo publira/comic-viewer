@@ -81,6 +81,16 @@ export function Reader() {
 
 `initialReadingDirection` defaults to `"rtl"` for right-to-left manga reading. Set it to `"ltr"` for left-to-right comics. The viewport switches between single and double-page display based on its width; use `doublePageThreshold` to change the default 768px breakpoint.
 
+### The viewport element
+
+`Viewport` renders one `div` carrying the `pcv-viewport` class and your `className`. It is a `region` named `Comic pages` by default, and it takes the focus, so a keyboard turns the pages with the arrow keys and reveals the controls with <kbd>Enter</kbd> or <kbd>Space</kbd> from there. It is not a button: the pages it holds, [a start or an end page](#start-and-end-pages) among them, may carry links and buttons of their own, and a region leaves them their roles. Pass `aria-label` to name it in the reader's language, the way the navigation controls are named.
+
+```tsx
+<ComicViewer.Viewport aria-label="漫画のページ" />
+```
+
+The element reports its state through data attributes, which `default.css` and the [Tailwind CSS](#tailwind-css) setup read and a stylesheet of your own can read too: `data-reading-direction` and `data-view-mode` for the reader's direction and whether it shows one page or two, `data-page-fit-mode` for the page size, `data-page-count` for the number of pages on screen, `data-slide-direction` and `data-transition-state` for the page turn in progress, `data-dragging` while a swipe follows the finger, and `data-pannable` and `data-panning` while a zoomed page can be moved and while it is being moved. The role and the name are not part of the styling contract; select the element by its class rather than by `[role]`.
+
 ### Per-viewer theme
 
 When using `default.css`, each viewer root falls back to `#111111` for `--pcv-bg` and `#f3f3f3` for `--pcv-fg`. Add a class to `ComicViewer.Root` and set those properties on that same element to theme viewers independently:
@@ -371,7 +381,7 @@ import * as ComicViewer from "@publira/comic-viewer";
 </ComicViewer.Root>;
 ```
 
-None of this is decoration. The rail is three spreads wide, so `w-[300%]` and the `translateX(…)` transforms are what a page turn moves, and `--pcv-drag-offset` is what follows a finger during one; the transition is limited to `data-[transition-state=active]` so that only a settling turn animates and a drag tracks the pointer. The zoom and pan transform is limited to `data-[rail-slot=current]`, because only the spread the reader is on is zoomed, and `touch-pan-y` leaves vertical scrolling to the browser while a horizontal drag turns the page. The page fit modes are reported on `Viewport`, so `PageCanvas` reads them through the `group/viewport` variants. `Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else, so without `default.css` they would stay on screen permanently and the `aria-hidden` variant, which matches only the hidden state, is what hides them. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. [Reader control visibility](#reader-control-visibility) describes when that state changes.
+None of this is decoration. The rail is three spreads wide, so `w-[300%]` and the `translateX(…)` transforms are what a page turn moves, and `--pcv-drag-offset` is what follows a finger during one; the transition is limited to `data-[transition-state=active]` so that only a settling turn animates and a drag tracks the pointer. The zoom and pan transform is limited to `data-[rail-slot=current]`, because only the spread the reader is on is zoomed, and `touch-pan-y` leaves vertical scrolling to the browser while a horizontal drag turns the page. The page fit modes are reported on `Viewport`, as [the viewport element](#the-viewport-element) describes, so `PageCanvas` reads them through the `group/viewport` variants. `Toolbar` and `PageNavigation` report their shared visibility as `aria-hidden` and `inert`, and nothing else, so without `default.css` they would stay on screen permanently and the `aria-hidden` variant, which matches only the hidden state, is what hides them. `inert` already blocks pointer and keyboard access while hidden, so the utilities only have to cover the visual side. [Reader control visibility](#reader-control-visibility) describes when that state changes.
 
 In double-page mode the rail reports the half of the spread a page takes as `data-page-side="left"` or `data-page-side="right"`, on `ViewportPageSlot` and `ViewportPage`, and on `ViewportPageSet` while it holds a single page. The side follows the parity of the page's offset from `spreadStartIndex`, so an unpaired page keeps the side it would have had in a printed book: with `spreadStartIndex={1}` the cover faces the page after it instead of sharing its side. The attribute is absent in single-page mode, where a page has no facing half. Align each page against the edge of its half that faces the gutter, as the example does, so the two pages of a spread meet at the centre line instead of drifting apart on a viewport wider than the pages.
 
