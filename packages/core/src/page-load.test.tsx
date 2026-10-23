@@ -452,6 +452,26 @@ describe("page load state", () => {
     });
   });
 
+  it("keeps the page proportions when only one dimension is given", async () => {
+    vi.mocked(createImageBitmap).mockResolvedValue({
+      close: vi.fn<() => void>(),
+      height: 500,
+      width: 400,
+    } as unknown as ImageBitmap);
+    renderPageLoad({
+      page: { id: "p1", src: "page1.png", title: "Page 1", width: 800 },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("loaded");
+    });
+
+    // A 400 by 500 rendition of an 800-pixel-wide page is drawn at 800 by 1000.
+    const canvas = document.querySelector("canvas");
+    expect(canvas?.width).toBe(800);
+    expect(canvas?.height).toBe(1000);
+  });
+
   it("reports pages rendered outside the managed pipeline as idle", async () => {
     vi.stubGlobal(
       "fetch",

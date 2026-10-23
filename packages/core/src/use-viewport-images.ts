@@ -360,6 +360,12 @@ export const useViewportImages = <TPage extends ViewerPage>({
             placeholderBuffer,
             page.placeholder
           );
+          // A superseded load must not cover the image a later one has drawn.
+          if (abortController.signal.aborted) {
+            closeDecodedImages([placeholderBitmap]);
+            releasePageLoad();
+            return;
+          }
           if (
             !setPageImage(index, {
               bitmap: placeholderBitmap,

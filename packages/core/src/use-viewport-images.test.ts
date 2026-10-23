@@ -384,4 +384,41 @@ describe("useViewportImages with srcset", () => {
     resize(750);
     expect(fetchedUrls).toStrictEqual(["page0@400w.png", "page0@800w.png"]);
   });
+
+  it("drops the placeholder of a superseded load that decodes late", async () => {
+    mockPageLoading();
+    let finishFirstPlaceholder: (() => void) | undefined;
+    const lateBitmap = { close: vi.fn<() => void>(), height: 1, width: 1 };
+    vi.mocked(createImageBitmap).mockImplementationOnce(
+      () =>
+        // eslint-disable-next-line promise/avoid-new -- The first placeholder decode is held back until the larger load has finished.
+        new Promise((resolve) => {
+          finishFirstPlaceholder = () => {
+            resolve(lateBitmap as unknown as ImageBitmap);
+          };
+        })
+    );
+    const { resize, result } = renderSrcsetImages(300, {
+      pages: [{ ...srcsetPages[0], placeholder: "preview.png" }],
+    });
+
+    await waitFor(() => {
+      expect(finishFirstPlaceholder).toBeDefined();
+    });
+    resize(1200);
+
+    await waitFor(() => {
+      expect(result.current.images.get("0:page0.png")).toMatchObject({
+        placeholder: false,
+      });
+    });
+    finishFirstPlaceholder?.();
+
+    await waitFor(() => {
+      expect(lateBitmap.close).toHaveBeenCalledOnce();
+    });
+    expect(result.current.images.get("0:page0.png")).toMatchObject({
+      placeholder: false,
+    });
+  });
 });

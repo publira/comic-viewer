@@ -129,8 +129,18 @@ export const PageCanvas = ({ className, ...props }: PageCanvasProps) => {
       "naturalHeight" in image ? image.naturalHeight : image.height;
     const imageWidth =
       "naturalWidth" in image ? image.naturalWidth : image.width;
-    canvas.height = page.height ?? imageHeight;
-    canvas.width = page.width ?? imageWidth;
+    // A dimension the page leaves out follows the one it gives at the image's
+    // aspect ratio, since a smaller rendition or a preview has fewer pixels.
+    canvas.height =
+      page.height ??
+      (page.width === undefined
+        ? imageHeight
+        : Math.round((page.width * imageHeight) / imageWidth));
+    canvas.width =
+      page.width ??
+      (page.height === undefined
+        ? imageWidth
+        : Math.round((page.height * imageWidth) / imageHeight));
     context.filter = placeholder ? "blur(16px)" : "none";
     context.drawImage(image, 0, 0, canvas.width, canvas.height);
     context.filter = "none";
