@@ -41,7 +41,7 @@ The stylesheet was named `core.css` before it was renamed to `default.css`. `@pu
 
 ## Basic usage
 
-Import the package namespace and compose `ComicViewer.Root` with `ComicViewer.Viewport`, providing a page list. Each component is an independent named export, so a bundler can omit the ones you never render. A page needs an `id`, `src`, and accessible `title`; `width`, `height`, `layout`, `mimeType`, and `placeholder` are optional.
+Import the package namespace and compose `ComicViewer.Root` with `ComicViewer.Viewport`, providing a page list. Each component is an independent named export, so a bundler can omit the ones you never render. A page needs an `id`, `src`, and accessible `title`; `width`, `height`, `layout`, `mimeType`, `placeholder`, and [`srcset`](#responsive-page-images) are optional.
 
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
@@ -324,6 +324,34 @@ Each of them renders one element carrying `pcv-page` and `pcv-page-slot`, with `
 ```
 
 Links, buttons, form controls, and other interactive elements inside them keep their own clicks and touches: the viewport leaves a gesture that starts on a control alone instead of reading it as an edge click or a swipe.
+
+## Responsive page images
+
+A page can offer its image in several renditions through `srcset`, and the viewer fetches the one nearest the size it is about to draw the page at, so a reader on a phone does not download the image a 4K display needs. The value takes the [`srcset` microsyntax of `<img>`](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/img#srcset), with `w` or `x` descriptors, and is parsed the way a browser parses it. A string already generated for an `<img>` element can be passed as it is.
+
+```tsx
+const pages: ViewerPage[] = [
+  {
+    height: 1800,
+    id: "page-1",
+    src: "https://example.com/pages/1-1200w.jpg",
+    srcset:
+      "https://example.com/pages/1-600w.jpg 600w, https://example.com/pages/1-1200w.jpg 1200w, https://example.com/pages/1-2400w.jpg 2400w",
+    title: "Page 1",
+    width: 1200,
+  },
+];
+```
+
+There is no `sizes`. A browser needs it because it picks a candidate before the layout exists, whereas the viewer measures the viewport before it loads a page and works out the width itself: the width of the page slot, which is half the viewport in double-page mode unless the page is a [spread](#pages-that-are-a-whole-spread), times `devicePixelRatio`. When the page fits its height and has `width` and `height`, the width follows from the slot height and the aspect ratio instead, capped at the slot width. Without them the slot width is used.
+
+The selection follows the browser rule. For `w` candidates the viewer takes the smallest one at least as wide as the required width, or the largest one when none is. For `x` candidates it takes the smallest density at or above `devicePixelRatio`, or the largest one. A list that mixes `w` and `x` is invalid, as in HTML.
+
+The pinch zoom scale is not part of the required width, so zooming in neither reloads a page nor changes its rendition. Resizing does: when the viewport grows, or the view mode or fit mode changes, a page whose rendition is now too small fetches a larger one and keeps drawing the image it has until the larger one is decoded. The selection only moves up. A page that already holds a larger image keeps it and is drawn scaled down, and nothing is fetched again to get a smaller one.
+
+`src` stays required: it is the image loaded when a page has no `srcset` or the list yields no valid candidate. A page `placeholder` is not a rendition. It is drawn while the first image of the page loads and plays no part in the selection or in an upgrade.
+
+The `url` that [plugin hooks](#plugins) receive is the chosen candidate, or `src` when there is none, and an upgrade runs the hooks again for the larger one.
 
 ## Lazy page metadata
 

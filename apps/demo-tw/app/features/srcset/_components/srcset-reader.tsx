@@ -35,17 +35,22 @@ const PageNavigation = () => {
   );
 };
 
+const srcsetPageUrl = (pageNumber: number, width: number): string =>
+  `/srcset-pages/page-${pageNumber}-${width}w.jpg`;
+
 /**
- * Each page lists a rendition half as wide beside the full-size image, in the
- * `srcset` microsyntax of `<img>`. The viewer fetches the smallest one that
- * covers the width it draws the page at, and a larger one once the page grows
- * past it.
+ * Each page lists three widths in the `srcset` microsyntax of `<img>`, with
+ * `src` as the fallback. The viewer fetches the smallest one that covers the
+ * width it draws the page at, and a larger one once the page grows past it.
  */
 const srcsetDocument: ViewerPage[] = basicSamplePages
   .slice(0, 8)
   .map((page, index) => ({
     ...page,
-    srcset: `/srcset-pages/page-${index + 1}-400w.jpg 400w, ${page.src} 800w`,
+    src: srcsetPageUrl(index + 1, 800),
+    srcset: [400, 800, 1600]
+      .map((width) => `${srcsetPageUrl(index + 1, width)} ${width}w`)
+      .join(", "),
   }));
 
 /**
