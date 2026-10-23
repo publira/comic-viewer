@@ -49,17 +49,9 @@ const getHorizontalDirection = (key: string): "left" | "right" | undefined => {
   return key === "ArrowRight" ? "right" : undefined;
 };
 
-const isInteractiveTarget = (
-  target: EventTarget | null,
-  viewport: HTMLElement | null
-): boolean => {
-  if (!(target instanceof Element)) {
-    return false;
-  }
-
-  const interactiveElement = target.closest(INTERACTIVE_ELEMENT_SELECTOR);
-  return interactiveElement !== null && interactiveElement !== viewport;
-};
+const isInteractiveTarget = (target: EventTarget | null): boolean =>
+  target instanceof Element &&
+  target.closest(INTERACTIVE_ELEMENT_SELECTOR) !== null;
 
 interface UseViewportGesturesOptions {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -166,10 +158,7 @@ export const useViewportGestures = ({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
       const direction = getHorizontalDirection(event.key);
-      if (
-        direction === undefined ||
-        isInteractiveTarget(event.target, containerRef.current)
-      ) {
+      if (direction === undefined || isInteractiveTarget(event.target)) {
         return;
       }
 
@@ -181,16 +170,13 @@ export const useViewportGestures = ({
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [containerRef, goByHorizontalDirection]);
+  }, [goByHorizontalDirection]);
 
   const beginTouch = useCallback(
     (touches: TouchInput, target: EventTarget | null): void => {
       // A control inside a page, such as a link on a slot page, keeps the
       // touch to itself instead of dragging the rail out from under it.
-      if (
-        isTransitioning ||
-        isInteractiveTarget(target, containerRef.current)
-      ) {
+      if (isTransitioning || isInteractiveTarget(target)) {
         return;
       }
 
@@ -219,14 +205,7 @@ export const useViewportGestures = ({
       };
       setIsDragging(usesPageRail);
     },
-    [
-      beginPan,
-      beginPinch,
-      containerRef,
-      isPannable,
-      isTransitioning,
-      usesPageRail,
-    ]
+    [beginPan, beginPinch, isPannable, isTransitioning, usesPageRail]
   );
 
   const moveTouch = useCallback(
@@ -374,7 +353,7 @@ export const useViewportGestures = ({
 
     // A link or a button inside a page, such as the ones a slot page holds,
     // takes the click instead of turning the page or revealing the controls.
-    if (isInteractiveTarget(event.target, event.currentTarget)) {
+    if (isInteractiveTarget(event.target)) {
       return;
     }
     const rect = event.currentTarget.getBoundingClientRect();
@@ -395,7 +374,7 @@ export const useViewportGestures = ({
   };
 
   const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>): void => {
-    if (isInteractiveTarget(event.target, event.currentTarget)) {
+    if (isInteractiveTarget(event.target)) {
       return;
     }
 

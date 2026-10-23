@@ -66,6 +66,13 @@ test("pairs the first end page with the last page of an odd chapter", async ({
     "aria-label",
     "Page 7"
   );
+  // The viewport is a region rather than a button, so the link the end page
+  // holds keeps its own role for assistive technology.
+  await expect(
+    page
+      .getByRole("region", { name: "Comic pages" })
+      .getByRole("link", { name: "Back to the first chapter" })
+  ).toBeVisible();
 
   // The end page that follows opens a spread of its own, and is the last
   // screen the reader can reach.
