@@ -222,10 +222,39 @@ export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
   initialIndex?: number;
   /** Called when navigation requests a different zero-based page index. */
   onIndexChange?: (index: number) => void;
+  /**
+   * The controlled view mode. When omitted, the viewer manages its own mode,
+   * starting from `initialViewMode`. A controlled mode is not switched as the
+   * viewport crosses its double-page threshold; a `"double"` one is shown as
+   * single pages while a spread does not fit.
+   */
+  viewMode?: ViewMode;
   initialViewMode?: ViewMode;
+  /** Called when a control or `setViewMode` requests a different view mode. */
+  onViewModeChange?: (mode: ViewMode) => void;
+  /**
+   * The controlled page sizing mode. When omitted, the viewer manages its own
+   * mode, starting from `initialPageFitMode`.
+   */
+  pageFitMode?: PageFitMode;
   /** The initial page sizing mode. Defaults to fit-to-height. */
   initialPageFitMode?: PageFitMode;
+  /**
+   * Called when a control, a gesture, or `setPageFitMode` requests a different
+   * page sizing mode.
+   */
+  onPageFitModeChange?: (mode: PageFitMode) => void;
+  /**
+   * The controlled reading direction. When omitted, the viewer manages its own
+   * direction, starting from `initialReadingDirection`.
+   */
+  readingDirection?: ReadingDirection;
   initialReadingDirection?: ReadingDirection;
+  /**
+   * Called when a control or `setReadingDirection` requests a different
+   * reading direction.
+   */
+  onReadingDirectionChange?: (direction: ReadingDirection) => void;
   /**
    * The page every double-page spread is counted from. Every page before it is
    * shown on its own. The lowest value it takes is `minIndex`, the first start
@@ -289,6 +318,52 @@ export const useViewportZoomStore = (): ViewportZoomStore => {
   }
 
   return store;
+};
+
+// Only an uncontrolled mode follows the viewport width, so the switch
+// `useViewMode` makes writes the local state and reports nothing.
+const ViewModeSwitchContext = createContext<Dispatch<
+  SetStateAction<ViewMode>
+> | null>(null);
+
+/** Reads the setter `useViewMode` switches an uncontrolled view mode with. */
+export const useViewModeSwitch = (): Dispatch<SetStateAction<ViewMode>> => {
+  const switchViewMode = useContext(ViewModeSwitchContext);
+
+  if (switchViewMode === null) {
+    throw new Error("useViewMode must be used within a ViewerProvider");
+  }
+
+  return switchViewMode;
+};
+
+/**
+ * Holds a reader setting that the application may control, the way
+ * `currentIndex` is held: a controlled value is mirrored, and the setter
+ * reports a change instead of writing it.
+ */
+const useControllableSetting = <TValue,>(
+  controlledValue: TValue | undefined,
+  initialValue: TValue,
+  onChange: ((value: TValue) => void) | undefined
+) => {
+  const [uncontrolledValue, setUncontrolledValue] = useState(initialValue);
+  const value = controlledValue ?? uncontrolledValue;
+  const setValue = useCallback(
+    (nextValue: TValue) => {
+      if (nextValue === value) {
+        return;
+      }
+
+      if (controlledValue === undefined) {
+        setUncontrolledValue(nextValue);
+      }
+      onChange?.(nextValue);
+    },
+    [controlledValue, onChange, value]
+  );
+
+  return { setUncontrolledValue, setValue, value };
 };
 
 const EMPTY_PAGES: readonly never[] = [];
@@ -537,9 +612,15 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   currentIndex: controlledIndex,
   initialIndex,
   onIndexChange,
+  viewMode: controlledViewMode,
   initialViewMode = "single",
+  onViewModeChange,
+  pageFitMode: controlledPageFitMode,
   initialPageFitMode = "height",
+  onPageFitModeChange,
+  readingDirection: controlledReadingDirection,
   initialReadingDirection = "rtl",
+  onReadingDirectionChange,
   spreadStartIndex = 0,
 }: ViewerProviderProps<TPage>) => {
   // A StartPage or an EndPage written among the children belongs to the
@@ -600,18 +681,40 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     Number.MAX_SAFE_INTEGER
   );
 
-  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode);
+  const {
+    setUncontrolledValue: switchViewMode,
+    setValue: setViewMode,
+    value: requestedViewMode,
+  } = useControllableSetting(
+    controlledViewMode,
+    initialViewMode,
+    onViewModeChange
+  );
 
   // Nothing has measured the viewport yet, so a spread is taken to be within
   // reach until a hook that watches the width says otherwise.
   const [isDoublePageAvailable, setIsDoublePageAvailable] = useState(true);
 
-  const [pageFitMode, setPageFitMode] =
-    useState<PageFitMode>(initialPageFitMode);
+  // A controlled mode is never rewritten for the width, so the fallback to
+  // single pages happens here instead.
+  const viewMode: ViewMode =
+    controlledViewMode === "double" && !isDoublePageAvailable
+      ? "single"
+      : requestedViewMode;
 
-  const [readingDirection, setReadingDirection] = useState<ReadingDirection>(
-    initialReadingDirection
-  );
+  const { setValue: setPageFitMode, value: pageFitMode } =
+    useControllableSetting(
+      controlledPageFitMode,
+      initialPageFitMode,
+      onPageFitModeChange
+    );
+
+  const { setValue: setReadingDirection, value: readingDirection } =
+    useControllableSetting(
+      controlledReadingDirection,
+      initialReadingDirection,
+      onReadingDirectionChange
+    );
 
   // The viewport gestures write the zoom state, but it lives here so that the
   // context can carry the scale and offer the reset a consumer builds on.
@@ -787,6 +890,9 @@ export const ViewerProvider = <TPage extends ViewerPage>({
       viewMode,
       pageFitMode,
       readingDirection,
+      setPageFitMode,
+      setReadingDirection,
+      setViewMode,
       goTo,
       goToNext,
       goToPrev,
@@ -797,9 +903,11 @@ export const ViewerProvider = <TPage extends ViewerPage>({
 
   return (
     <ViewerContext.Provider value={value}>
-      <ViewportZoomContext.Provider value={zoomStore}>
-        {viewerChildren}
-      </ViewportZoomContext.Provider>
+      <ViewModeSwitchContext.Provider value={switchViewMode}>
+        <ViewportZoomContext.Provider value={zoomStore}>
+          {viewerChildren}
+        </ViewportZoomContext.Provider>
+      </ViewModeSwitchContext.Provider>
     </ViewerContext.Provider>
   );
 };

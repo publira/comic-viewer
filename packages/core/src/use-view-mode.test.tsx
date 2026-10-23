@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useViewMode } from "./use-view-mode";
 import { useViewerContext, ViewerProvider } from "./viewer-context";
+import type { ViewMode } from "./viewer-context";
 
 // eslint-disable-next-line eslint-plugin-promise/prefer-await-to-callbacks
 class MockResizeObserver {
@@ -159,6 +160,76 @@ describe(useViewMode, () => {
     });
 
     expect(result.current).toBeTruthy();
+  });
+
+  it("shows a controlled double-page mode as single pages while a spread does not fit", () => {
+    const onViewModeChange = vi.fn<(mode: ViewMode) => void>();
+    const { result } = renderHook(
+      () => {
+        const ref = useRef<HTMLDivElement>(document.createElement("div"));
+        const viewMode = useViewMode(ref, 768);
+
+        return {
+          isDoublePageAvailable: useViewerContext().isDoublePageAvailable,
+          viewMode,
+        };
+      },
+      {
+        wrapper: ({ children }) => (
+          <ViewerProvider
+            onViewModeChange={onViewModeChange}
+            pages={pages}
+            viewMode="double"
+          >
+            {children}
+          </ViewerProvider>
+        ),
+      }
+    );
+
+    act(() => {
+      MockResizeObserver.trigger(600);
+    });
+
+    expect(result.current).toStrictEqual({
+      isDoublePageAvailable: false,
+      viewMode: "single",
+    });
+
+    act(() => {
+      MockResizeObserver.trigger(1024);
+    });
+
+    expect(result.current.viewMode).toBe("double");
+    expect(onViewModeChange).not.toHaveBeenCalled();
+  });
+
+  it("keeps a controlled single-page mode when the container widens", () => {
+    const onViewModeChange = vi.fn<(mode: ViewMode) => void>();
+    const { result } = renderHook(
+      () => {
+        const ref = useRef<HTMLDivElement>(document.createElement("div"));
+        return useViewMode(ref, 768);
+      },
+      {
+        wrapper: ({ children }) => (
+          <ViewerProvider
+            onViewModeChange={onViewModeChange}
+            pages={pages}
+            viewMode="single"
+          >
+            {children}
+          </ViewerProvider>
+        ),
+      }
+    );
+
+    act(() => {
+      MockResizeObserver.trigger(1024);
+    });
+
+    expect(result.current).toBe("single");
+    expect(onViewModeChange).not.toHaveBeenCalled();
   });
 
   it("disconnects ResizeObserver on unmount", () => {

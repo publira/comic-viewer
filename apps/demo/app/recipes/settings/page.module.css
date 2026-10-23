@@ -1,0 +1,102 @@
+.main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  gap: 20px;
+}
+
+.viewer {
+  width: 100%;
+  aspect-ratio: var(--demo-double-page-aspect-ratio);
+  overflow: hidden;
+  border: 1px solid var(--demo-viewer-border);
+  border-radius: 8px;
+  background-color: var(--demo-viewer-background);
+}
+
+.viewerContent {
+  height: 100%;
+}
+
+.toolbar {
+  justify-content: center;
+}
+
+.settings {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.setting {
+  flex: 1 1 14rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0.6rem 0.85rem 0.75rem;
+  border: 1px solid var(--demo-border);
+  border-radius: 8px;
+  background: var(--demo-panel-background);
+}
+
+.settingLegend {
+  padding: 0 0.25rem;
+  color: var(--demo-description-foreground);
+  font-size: 0.8rem;
+}
+
+.settingOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.settingOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.settingOption input {
+  margin: 0;
+  accent-color: var(--demo-accent);
+}
+
+.description {
+  padding: 0.25rem 0;
+}
+
+.description h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.description p {
+  color: var(--demo-description-foreground);
+  line-height: 1.5;
+}
+
+.description p + p {
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .viewer {
+    aspect-ratio: var(--demo-single-page-aspect-ratio);
+    border-radius: 4px;
+  }
+
+  .description h2 {
+    font-size: 1.3rem;
+  }
+}
