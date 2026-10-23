@@ -48,6 +48,13 @@ export interface ViewerPage {
   placeholder?: string;
   title: string;
   src: string;
+  /**
+   * Further renditions of the page image, in the HTML `srcset` microsyntax
+   * with `w` or `x` descriptors, such as `"p@800w.jpg 800w, p@1600w.jpg
+   * 1600w"`. The viewer picks the candidate nearest the size it draws the
+   * page at, and falls back to `src` when the list is absent or yields none.
+   */
+  srcset?: string;
   width?: number;
 }
 
