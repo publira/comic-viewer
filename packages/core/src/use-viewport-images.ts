@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { readImageSize } from "./image-size";
 import { closeDecodedImages } from "./page-image";
 import type { DecodedPageImage } from "./page-image";
 import { getPageImageRequest } from "./page-image-request";
@@ -68,24 +69,73 @@ const decodeWithImageElement = async (
   return image;
 };
 
+interface DecodedImage {
+  image: DecodedPageImage;
+  /** The width an image that came out narrower than its file was asked for. */
+  resizedWidth?: number;
+}
+
+/**
+ * Decodes an image no wider than `maxWidth`, or at its natural size when that
+ * is narrower already, so a page is never held at more pixels than it is drawn.
+ */
 const decodeImage = async (
   buffer: ArrayBuffer,
   sourceUrl: string,
-  mimeType?: string
-): Promise<DecodedPageImage> => {
+  mimeType?: string,
+  maxWidth?: number
+): Promise<DecodedImage> => {
   const imageMimeType = getImageMimeTypeOrFallback(sourceUrl, mimeType);
   const blob = new Blob([buffer], { type: imageMimeType });
+  const naturalWidth =
+    maxWidth === undefined ? undefined : readImageSize(buffer)?.width;
 
   if (typeof createImageBitmap === "function") {
     try {
-      return await createImageBitmap(blob);
+      if (
+        maxWidth !== undefined &&
+        naturalWidth !== undefined &&
+        maxWidth < naturalWidth
+      ) {
+        const image = await createImageBitmap(blob, {
+          resizeQuality: "high",
+          resizeWidth: maxWidth,
+        });
+        // A browser that ignores the resize options decodes the full size.
+        return image.width < naturalWidth
+          ? { image, resizedWidth: maxWidth }
+          : { image };
+      }
+
+      return { image: await createImageBitmap(blob) };
     } catch {
       // Some browsers cannot decode every image format with createImageBitmap.
     }
   }
 
-  return decodeWithImageElement(buffer, imageMimeType);
+  return { image: await decodeWithImageElement(buffer, imageMimeType) };
 };
+
+/** Returns the width to decode a page at, or `undefined` for its full size. */
+const getDecodeWidth = ({ width }: SrcsetRequirement): number | undefined =>
+  Number.isFinite(width) ? Math.max(1, Math.ceil(width)) : undefined;
+
+/** The data of a page decoded narrower than its file, kept to decode it wider. */
+interface PageSource {
+  buffer: ArrayBuffer;
+  url: string;
+  width: number;
+}
+
+/** Returns the data to decode a page from again, once it is drawn wider. */
+const getWiderSourceBuffer = (
+  source: PageSource | undefined,
+  { requirement, url }: PageImageRequest
+): ArrayBuffer | undefined =>
+  source?.url === url &&
+  (getDecodeWidth(requirement) ?? Number.POSITIVE_INFINITY) > source.width
+    ? source.buffer
+    : undefined;
 
 const waitForAnimationFrame = (): Promise<void> =>
   // eslint-disable-next-line promise/avoid-new -- The browser exposes a paint boundary through this callback API.
@@ -170,6 +220,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
   const pageLoadControllersRef = useRef(new Map<string, AbortController>());
   // The candidate each cached page was last asked for, which only grows.
   const pageImageRequestsRef = useRef(new Map<string, PageImageRequest>());
+  const pageSourcesRef = useRef(new Map<string, PageSource>());
   const retiredImageBitmapsRef = useRef<DecodedPageImage[]>([]);
   const pagesRef = useRef(pages);
   const onPageLoadErrorRef = useRef(onPageLoadError);
@@ -264,16 +315,27 @@ export const useViewportImages = <TPage extends ViewerPage>({
         previousRequest
       );
       const { url } = request;
+      // A preload queued behind the rail is dropped when the reader moves away
+      // from the page before its load starts.
+      if (!cachedImageKeysRef.current.has(imageKey)) {
+        return;
+      }
+
+      // A page decoded narrower than its file is decoded wider from its data.
+      const sourceBuffer = getWiderSourceBuffer(
+        pageSourcesRef.current.get(imageKey),
+        request
+      );
+      // A page loading or settled on its candidate is reloaded only after an
+      // eviction or an explicit retry.
       if (
-        // A preload queued behind the rail is dropped when the reader moves
-        // away from the page before its load starts.
-        !cachedImageKeysRef.current.has(imageKey) ||
-        // A page loading or settled on its candidate is reloaded only after an
-        // eviction or an explicit retry.
-        (previousRequest?.url === url &&
-          (pageLoadControllersRef.current.has(imageKey) ||
-            pageLoadStatesRef.current.has(imageKey)))
+        sourceBuffer === undefined &&
+        previousRequest?.url === url &&
+        (pageLoadControllersRef.current.has(imageKey) ||
+          pageLoadStatesRef.current.has(imageKey))
       ) {
+        // A load on its way reads the grown requirement once it starts decoding.
+        pageImageRequestsRef.current.set(imageKey, request);
         return;
       }
 
@@ -282,6 +344,8 @@ export const useViewportImages = <TPage extends ViewerPage>({
       const abortController = new AbortController();
       pageLoadControllersRef.current.set(imageKey, abortController);
       pageImageRequestsRef.current.set(imageKey, request);
+      // The load takes the kept data, so a decode that fails is not retried.
+      pageSourcesRef.current.delete(imageKey);
       // A page already drawn stays loaded while a larger candidate replaces it.
       const holdsPage = (): boolean =>
         pageImagesRef.current.get(imageKey)?.placeholder === false;
@@ -332,9 +396,37 @@ export const useViewportImages = <TPage extends ViewerPage>({
         onPageLoadErrorRef.current?.(pageLoadError);
       };
 
+      /** Reads the width to decode at as the slot stands when decoding starts. */
+      const getLatestDecodeWidth = (): number | undefined =>
+        getDecodeWidth(
+          (pageImageRequestsRef.current.get(imageKey) ?? request).requirement
+        );
+      /** Keeps the data of a page decoded narrower than its file. */
+      const keepPageSource = (
+        buffer: ArrayBuffer,
+        resizedWidth: number | undefined
+      ): void => {
+        if (resizedWidth === undefined) {
+          pageSourcesRef.current.delete(imageKey);
+          return;
+        }
+
+        pageSourcesRef.current.set(imageKey, {
+          buffer,
+          url,
+          width: resizedWidth,
+        });
+        // The slot may have grown while the page was being decoded.
+        void loadPage(index);
+      };
+
       const bufferPromise = (async (): Promise<
         { buffer: ArrayBuffer } | { error: unknown }
       > => {
+        if (sourceBuffer !== undefined) {
+          return { buffer: sourceBuffer };
+        }
+
         try {
           return {
             buffer: await runDataPipeline(
@@ -356,7 +448,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
             { page, signal: abortController.signal, url: page.placeholder },
             []
           );
-          const placeholderBitmap = await decodeImage(
+          const { image: placeholderBitmap } = await decodeImage(
             placeholderBuffer,
             page.placeholder
           );
@@ -388,8 +480,14 @@ export const useViewportImages = <TPage extends ViewerPage>({
       }
 
       let bitmap: DecodedPageImage;
+      let resizedWidth: number | undefined;
       try {
-        bitmap = await decodeImage(result.buffer, url, page.mimeType);
+        ({ image: bitmap, resizedWidth } = await decodeImage(
+          result.buffer,
+          url,
+          page.mimeType,
+          getLatestDecodeWidth()
+        ));
       } catch (error) {
         failPageLoad(error, "decode");
         return;
@@ -424,6 +522,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
           states.set(imageKey, { status: "loaded" });
         });
         releasePageLoad();
+        keepPageSource(result.buffer, resizedWidth);
         return;
       }
 
@@ -479,6 +578,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
     for (const key of pageImageRequestsRef.current.keys()) {
       if (!retainedImageKeys.has(key)) {
         pageImageRequestsRef.current.delete(key);
+        pageSourcesRef.current.delete(key);
       }
     }
 
@@ -527,6 +627,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
       // Its simulated unmount preserves state, so an aborted "loading" entry
       // must not prevent the following effect from starting a fresh request.
       pageImageRequestsRef.current.clear();
+      pageSourcesRef.current.clear();
       pageImagesRef.current = new Map();
       pageLoadStatesRef.current = new Map();
       retiredImageBitmapsRef.current = [];

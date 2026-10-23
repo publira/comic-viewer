@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -420,5 +420,248 @@ describe("useViewportImages with srcset", () => {
     expect(result.current.images.get("0:page0.png")).toMatchObject({
       placeholder: false,
     });
+  });
+});
+
+/** The bytes of a PNG up to its size, which is all the loader reads. */
+const pngHeader = (width: number, height: number): ArrayBuffer => {
+  const bytes = new Uint8Array(24);
+  const view = new DataView(bytes.buffer);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  view.setUint32(8, 13);
+  bytes.set([0x49, 0x48, 0x44, 0x52], 12);
+  view.setUint32(16, width);
+  view.setUint32(20, height);
+  return bytes.buffer;
+};
+
+/** Serves a page as wide as `naturalWidth`, decoded at the width asked for. */
+const mockSizedPageLoading = (naturalWidth: number) => {
+  const fetchedUrls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((input: RequestInfo | URL) => {
+      fetchedUrls.push(String(input));
+
+      return Promise.resolve({
+        arrayBuffer: () =>
+          Promise.resolve(pngHeader(naturalWidth, naturalWidth * 1.5)),
+        ok: true,
+      });
+    })
+  );
+  const decode = vi.fn<
+    (image: Blob, options?: ImageBitmapOptions) => Promise<ImageBitmap>
+  >((_image, options) =>
+    Promise.resolve({
+      close: vi.fn<() => void>(),
+      height: 1,
+      width: options?.resizeWidth ?? naturalWidth,
+    } as unknown as ImageBitmap)
+  );
+  vi.stubGlobal("createImageBitmap", decode);
+
+  return { decode, fetchedUrls };
+};
+
+/** Lets the loads a render started run as far as they can. */
+const settle = () =>
+  act(
+    () =>
+      // eslint-disable-next-line promise/avoid-new -- A task boundary lets every pending decode start first.
+      new Promise<void>((resolve) => {
+        setTimeout(resolve, 0);
+      })
+  );
+
+const singleSourcePages: ViewerPage[] = [
+  { id: "p0", src: "page0.png", title: "Page 0" },
+];
+
+describe("useViewportImages decoding at the drawn size", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("decodes a page no wider than the width it is drawn at", async () => {
+    const { decode } = mockSizedPageLoading(4000);
+    const { result } = renderSrcsetImages(390.5, { pages: singleSourcePages });
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toBeDefined();
+    });
+
+    expect(decode).toHaveBeenCalledExactlyOnceWith(expect.any(Blob), {
+      resizeQuality: "high",
+      resizeWidth: 391,
+    });
+    expect(getHeldImage(result)).toMatchObject({ width: 391 });
+  });
+
+  it("decodes a page narrower than its slot at its own size", async () => {
+    const { decode } = mockSizedPageLoading(800);
+    const { result } = renderSrcsetImages(1200, { pages: singleSourcePages });
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toBeDefined();
+    });
+
+    expect(decode).toHaveBeenCalledExactlyOnceWith(expect.any(Blob));
+  });
+
+  it("decodes a page of no known width at its own size", async () => {
+    const { decode } = mockSizedPageLoading(4000);
+    const { result } = renderSrcsetImages(Number.POSITIVE_INFINITY, {
+      pages: singleSourcePages,
+    });
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toBeDefined();
+    });
+
+    expect(decode).toHaveBeenCalledExactlyOnceWith(expect.any(Blob));
+  });
+
+  it("leaves the placeholder at its own size", async () => {
+    const { decode } = mockSizedPageLoading(4000);
+    const { result } = renderSrcsetImages(400, {
+      pages: [{ ...singleSourcePages[0], placeholder: "preview.png" }],
+    });
+
+    await waitFor(() => {
+      expect(result.current.images.get("0:page0.png")).toMatchObject({
+        placeholder: false,
+      });
+    });
+
+    expect(decode.mock.calls).toStrictEqual([
+      [expect.any(Blob)],
+      [expect.any(Blob), { resizeQuality: "high", resizeWidth: 400 }],
+    ]);
+  });
+
+  it("decodes the page wider from the data it kept as the slot grows", async () => {
+    const { decode, fetchedUrls } = mockSizedPageLoading(4000);
+    const hookWidths: number[] = [];
+    const { resize, result } = renderSrcsetImages(400, {
+      pages: singleSourcePages,
+      plugins: [
+        {
+          afterDecode: ({ image }) => {
+            hookWidths.push(image.width);
+          },
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toBeDefined();
+    });
+    const narrowImage = getHeldImage(result) as ImageBitmap;
+
+    resize(1200);
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toMatchObject({ width: 1200 });
+    });
+    expect(fetchedUrls).toStrictEqual(["page0.png"]);
+    expect(decode).toHaveBeenLastCalledWith(expect.any(Blob), {
+      resizeQuality: "high",
+      resizeWidth: 1200,
+    });
+    // The hooks see the image the page is drawn from each time.
+    expect(hookWidths).toStrictEqual([400, 1200]);
+    expect(narrowImage.close).toHaveBeenCalledOnce();
+    expect(result.current.loadStates.get("0:page0.png")?.status).toBe("loaded");
+  });
+
+  it("keeps the wider image when the slot shrinks", async () => {
+    const { decode } = mockSizedPageLoading(4000);
+    const { resize, result } = renderSrcsetImages(1200, {
+      pages: singleSourcePages,
+    });
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toBeDefined();
+    });
+    const wideImage = getHeldImage(result);
+
+    resize(400);
+    resize(1000);
+    await settle();
+
+    expect(getHeldImage(result)).toBe(wideImage);
+    expect(decode).toHaveBeenCalledOnce();
+  });
+
+  it("stops at the file's own size as the slot outgrows it", async () => {
+    const { decode, fetchedUrls } = mockSizedPageLoading(1000);
+    const { resize, result } = renderSrcsetImages(400, {
+      pages: singleSourcePages,
+    });
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toBeDefined();
+    });
+
+    resize(1200);
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toMatchObject({ width: 1000 });
+    });
+    expect(decode).toHaveBeenLastCalledWith(expect.any(Blob));
+
+    resize(1600);
+    await settle();
+    expect(decode).toHaveBeenCalledTimes(2);
+    expect(fetchedUrls).toStrictEqual(["page0.png"]);
+  });
+
+  it("fetches a larger candidate rather than decoding a smaller one wider", async () => {
+    const { decode, fetchedUrls } = mockSizedPageLoading(1600);
+    const { resize, result } = renderSrcsetImages(700);
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toBeDefined();
+    });
+
+    resize(1200);
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toMatchObject({ width: 1200 });
+    });
+    expect(fetchedUrls).toStrictEqual(["page0@800w.png", "page0@1600w.png"]);
+    expect(decode).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not decode again after a wider decode fails", async () => {
+    const { decode } = mockSizedPageLoading(4000);
+    const onPageLoadError = vi.fn<(error: PageLoadError) => void>();
+    const { resize, result } = renderSrcsetImages(400, {
+      onPageLoadError,
+      pages: singleSourcePages,
+    });
+
+    await waitFor(() => {
+      expect(getHeldImage(result)).toBeDefined();
+    });
+    const narrowImage = getHeldImage(result);
+
+    // jsdom has no image element decoder to fall back on either.
+    decode.mockRejectedValueOnce(new Error("out of memory"));
+    resize(1200);
+
+    await waitFor(() => {
+      expect(onPageLoadError).toHaveBeenCalledOnce();
+    });
+    expect(onPageLoadError.mock.calls[0]?.[0]).toMatchObject({
+      stage: "decode",
+    });
+    expect(getHeldImage(result)).toBe(narrowImage);
+    expect(result.current.loadStates.get("0:page0.png")?.status).toBe("loaded");
+
+    resize(1300);
+    await settle();
+    expect(decode).toHaveBeenCalledTimes(2);
   });
 });

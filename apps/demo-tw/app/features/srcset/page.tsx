@@ -33,6 +33,12 @@ const SrcsetPage = async () => {
             until it arrives. Narrowing the window again fetches nothing: a page
             keeps the larger image and is drawn scaled down.
           </p>
+          <p className="mt-2 text-slate-600 dark:text-slate-300">
+            The rendition is then decoded no wider than the page is drawn,
+            rather than at the size of the file, so a page never holds more
+            pixels in memory than the screen shows. A rendition that is narrower
+            already is decoded at its own size.
+          </p>
         </section>
         <SourceCodePanel name={source.path}>{source.code}</SourceCodePanel>
       </div>
