@@ -21,8 +21,9 @@
     },
     "test:package": {
       "cache": false,
-      "dependsOn": ["build"],
-      "outputs": []
+      "dependsOn": ["@publira/comic-viewer#build"],
+      "outputs": [],
+      "passThroughEnv": ["KEEP_WORK_DIR"]
     },
     "test:e2e": {
       "cache": false,

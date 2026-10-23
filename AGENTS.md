@@ -17,7 +17,7 @@ This repository is a monorepo configured with Turborepo and managed via `pnpm`.
 
 - `pnpm build`: Build all workspace packages and applications.
 - `pnpm test`: Run test suites.
-- `pnpm test:package`: Pack `packages/core` and check the tarball from the TypeScript, Next.js, and Vite projects in `packages/core/consumers/`, installed with npm outside the workspace (needs network access).
+- `pnpm test:package`: Pack `packages/core` and check the tarball from the TypeScript, Next.js, and Vite projects in `e2e/consumers/`, installed with npm outside the workspace (needs network access).
 - `pnpm typecheck`: Run TypeScript type checking across packages.
 - `pnpm check`: Run linter and formatter checks.
 - `pnpm fix`: Automatically fix linting and formatting issues.

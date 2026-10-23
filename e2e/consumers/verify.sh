@@ -5,7 +5,7 @@
 set -euo pipefail
 
 consumers_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-package_dir=$(dirname "$consumers_dir")
+package_dir=$(cd "$consumers_dir/../../packages/core" && pwd)
 work_dir=$(mktemp -d)
 
 if [[ "${KEEP_WORK_DIR:-}" == 1 ]]; then

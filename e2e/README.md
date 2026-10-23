@@ -16,6 +16,20 @@ The specs mirror the route groups of the demos, so a demo and its coverage are n
 
 Selectors and page helpers shared between specs live in `helpers/` and are imported through the `#helpers/*` subpath, so a spec reads the same however deeply it is nested.
 
+## Packed Package
+
+`consumers/` holds three projects that check the package the way npm ships it, outside the workspace: `types` typechecks every import the README shows under the `bundler` and `node16` resolutions, `next` prerenders the viewer from a server component and a client component, and `vite` builds a client-rendered viewer. Run them from the repository root, which packs `packages/core`, installs the tarball into a copy of each project with npm, and needs network access:
+
+```bash
+pnpm test:package
+```
+
+Name consumers to check only those, and set `KEEP_WORK_DIR=1` to keep the installed copies for inspection:
+
+```bash
+KEEP_WORK_DIR=1 pnpm test:package -- next
+```
+
 ## Run Locally
 
 Install Chromium once, then run the suite from the repository root:

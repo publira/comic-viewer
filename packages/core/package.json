@@ -32,7 +32,6 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:package": "./consumers/verify.sh",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
