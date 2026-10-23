@@ -2,11 +2,13 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import type { RefObject, TransitionEvent as ReactTransitionEvent } from "react";
 
+import { getPageRequirement } from "./page-image-request";
 import type { PageLoadError } from "./page-load";
 import { runPageChangeHooks } from "./plugin";
 import type { ViewerPlugin } from "./plugin";
@@ -18,8 +20,14 @@ import {
   useViewportLayout,
 } from "./use-viewport-layout";
 import type { PageTurnDirection } from "./use-viewport-layout";
+import { useViewportSize } from "./use-viewport-size";
 import { getPreviousSpreadIndex } from "./viewer-context";
-import type { ScrubSpread, ViewerPage, ViewMode } from "./viewer-context";
+import type {
+  PageFitMode,
+  ScrubSpread,
+  ViewerPage,
+  ViewMode,
+} from "./viewer-context";
 
 const PAGE_TURN_FALLBACK_DURATION_MS = 320;
 const PAGE_TURN_IMAGE_WAIT_TIMEOUT_MS = 1200;
@@ -45,6 +53,8 @@ interface UsePageTurnOptions<TPage extends ViewerPage> {
   minIndex: number;
   onPageLoadError?: (error: PageLoadError<TPage>) => void;
   pageCount: number;
+  /** How the pages are fitted, which decides the width they are drawn at. */
+  pageFitMode: PageFitMode;
   pages: readonly (TPage | undefined)[];
   plugins: readonly ViewerPlugin[];
   readingDirection: "rtl" | "ltr";
@@ -72,6 +82,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
   minIndex,
   onPageLoadError,
   pageCount,
+  pageFitMode,
   pages,
   plugins,
   readingDirection,
@@ -116,12 +127,30 @@ export const usePageTurn = <TPage extends ViewerPage>({
     usesPageRail,
     viewMode,
   });
+  const viewportSize = useViewportSize(containerRef);
+  // The rail and the preload window share one measure, so a turn onto a
+  // preloaded spread draws the image already fetched for it.
+  const getRequirement = useMemo(
+    () =>
+      viewportSize === null
+        ? undefined
+        : (index: number) =>
+            getPageRequirement(
+              index,
+              pages,
+              viewportSize,
+              pageFitMode,
+              viewMode
+            ),
+    [pageFitMode, pages, viewMode, viewportSize]
+  );
   const {
     images: pageImages,
     loadStates: pageLoadStates,
     retryPage,
   } = useViewportImages({
     cachedIndices,
+    getPageRequirement: getRequirement,
     keepImages: pageTurnTransition !== null,
     onPageLoadError,
     pages,

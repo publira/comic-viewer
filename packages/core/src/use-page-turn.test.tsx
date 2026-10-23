@@ -63,7 +63,7 @@ const renderScrubbedViewport = (position: number) => {
 describe(usePageTurn, () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
-    MockResizeObserver.callback = null;
+    MockResizeObserver.reset();
   });
 
   it("waits for the incoming page image before starting a slide", async () => {

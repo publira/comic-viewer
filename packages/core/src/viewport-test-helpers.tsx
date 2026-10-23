@@ -12,29 +12,41 @@ export type MockFetch = (
   init?: RequestInit
 ) => Promise<unknown>;
 
+/** Stands in for every ResizeObserver the viewport creates until disconnected. */
 // eslint-disable-next-line eslint-plugin-promise/prefer-await-to-callbacks
 export class MockResizeObserver {
-  static callback: ResizeObserverCallback | null = null;
+  static callbacks = new Set<ResizeObserverCallback>();
+
+  readonly #callback: ResizeObserverCallback;
 
   // eslint-disable-next-line promise/prefer-await-to-callbacks
   constructor(callback: ResizeObserverCallback) {
-    MockResizeObserver.callback = callback;
+    this.#callback = callback;
+    MockResizeObserver.callbacks.add(callback);
   }
 
   observe = vi.fn<() => void>();
-  disconnect = vi.fn<() => void>();
+  disconnect = vi.fn<() => void>(() => {
+    MockResizeObserver.callbacks.delete(this.#callback);
+  });
   unobserve = vi.fn<() => void>();
 
-  static trigger(width: number) {
-    MockResizeObserver.callback?.(
-      [
-        {
-          contentRect: { width } as DOMRectReadOnly,
-        } as ResizeObserverEntry,
-      ],
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      null as any
-    );
+  static reset() {
+    MockResizeObserver.callbacks.clear();
+  }
+
+  static trigger(width: number, height = 100) {
+    for (const notify of MockResizeObserver.callbacks) {
+      notify(
+        [
+          {
+            contentRect: { height, width } as DOMRectReadOnly,
+          } as ResizeObserverEntry,
+        ],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        null as any
+      );
+    }
   }
 }
 

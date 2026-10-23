@@ -78,7 +78,7 @@ const RerenderingViewport = () => {
 describe(Viewport, () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
-    MockResizeObserver.callback = null;
+    MockResizeObserver.reset();
   });
 
   it("renders public page templates without private selectors", () => {

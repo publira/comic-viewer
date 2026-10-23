@@ -1,0 +1,35 @@
+.main {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  gap: 20px;
+}
+
+.description {
+  padding: 0.25rem 0;
+}
+
+.description h2 {
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.description p {
+  color: var(--demo-description-foreground);
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .description h2 {
+    font-size: 1.3rem;
+  }
+}
