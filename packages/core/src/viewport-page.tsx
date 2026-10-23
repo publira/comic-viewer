@@ -162,22 +162,34 @@ export type ViewportPendingPageProps = Omit<
   "data-page-side"?: PageSide;
 };
 
+const ViewportPendingPageContext = createContext<"pending" | "error">(
+  "pending"
+);
+
+/** Tells the pending page rendered for an unresolved index how it stands. */
+export const ViewportPendingPageProvider = ViewportPendingPageContext.Provider;
+
 /**
  * Stands in for a page whose metadata is still being resolved, so the spread
- * keeps its shape while the viewer waits. Pass `renderPendingPage` to Viewport
- * to render a skeleton of your own instead.
+ * keeps its shape while the viewer waits. Once the resolver rejects for the
+ * page it reads as failed rather than busy. Pass `renderPendingPage` to
+ * Viewport to render a skeleton of your own instead.
  */
 export const ViewportPendingPage = ({
   className,
   ...props
-}: ViewportPendingPageProps) => (
-  <div
-    {...props}
-    aria-busy="true"
-    className={composeClassName("pcv-page pcv-page-pending", className)}
-    data-page-status="pending"
-  />
-);
+}: ViewportPendingPageProps) => {
+  const failed = useContext(ViewportPendingPageContext) === "error";
+
+  return (
+    <div
+      {...props}
+      aria-busy={failed ? undefined : "true"}
+      className={composeClassName("pcv-page pcv-page-pending", className)}
+      data-page-status={failed ? "error" : "pending"}
+    />
+  );
+};
 
 export type ViewportPageProps = Omit<
   ComponentPropsWithoutRef<"div">,

@@ -67,3 +67,38 @@ test("appends the next chapter as the reader reaches the end of the loaded pages
     page.locator(`${currentPageSet} canvas[aria-label="Page 5"]`)
   ).toHaveAttribute("data-page-status", "loaded");
 });
+
+test("offers a retry for a page whose metadata request failed", async ({
+  page,
+}) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/recipes/lazy");
+
+  await expect(
+    page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`)
+  ).toHaveAttribute("data-page-status", "loaded");
+
+  await page.getByLabel("Fail page-metadata requests").check();
+  // Every page asked for from here on fails, page 6 among them.
+  await turnToNextScreen(page, "Pages 3-4 of 7");
+  await turnToNextScreen(page, "Pages 5-6 of 14");
+
+  const failedPage = page.locator(
+    `${currentPageSet} .pcv-page-pending[data-page-status="error"]`
+  );
+  await expect(failedPage.getByRole("alert")).toHaveText(
+    /Page 6 could not be resolved\./u
+  );
+  await expect(failedPage).not.toHaveAttribute("aria-busy");
+
+  await page.getByLabel("Fail page-metadata requests").uncheck();
+  await failedPage.getByRole("button", { name: "Try again" }).click();
+
+  // The page is asked for once more and takes its place in the spread.
+  await expect(
+    page.locator(`${currentPageSet} canvas[aria-label="Page 6"]`)
+  ).toHaveAttribute("data-page-status", "loaded");
+  await expect(page.locator(`${currentPageSet} .pcv-page-pending`)).toHaveCount(
+    0
+  );
+});

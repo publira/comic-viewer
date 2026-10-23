@@ -14,7 +14,11 @@ import type {
   SetStateAction,
 } from "react";
 
-import { DEFAULT_PAGE_RESOLVE_OVERSCAN, usePageSource } from "./page-source";
+import {
+  DEFAULT_PAGE_RESOLVE_OVERSCAN,
+  PageResolveStoreProvider,
+  usePageSource,
+} from "./page-source";
 import type { PageResolveError, PageResolver } from "./page-source";
 import { isSpreadPage, startsPageSet } from "./page-spread";
 import type { SpreadPageList } from "./page-spread";
@@ -203,7 +207,10 @@ export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
    * page the reader is waiting for.
    */
   imagePreloadSpreads?: number;
-  /** Called when `resolvePage` rejects for a page. */
+  /**
+   * Called when `resolvePage` rejects for a page. The page stays unresolved
+   * until `usePageResolveState(index).retry` asks for it again.
+   */
   onPageResolveError?: (error: PageResolveError) => void;
   /**
    * Called once the current page comes within `endReachedThreshold` pages of
@@ -666,7 +673,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
   const scrubbedIndex =
     clampedScrubPosition === null ? null : Math.round(clampedScrubPosition);
   const viewIndex = scrubbedIndex ?? clampedCurrentIndex;
-  const sourcePages = usePageSource({
+  const { pages: sourcePages, resolveStore } = usePageSource({
     currentIndex: viewIndex,
     onPageResolveError,
     overscan: clamp(pageResolveOverscan, 0, Number.MAX_SAFE_INTEGER),
@@ -905,7 +912,9 @@ export const ViewerProvider = <TPage extends ViewerPage>({
     <ViewerContext.Provider value={value}>
       <ViewModeSwitchContext.Provider value={switchViewMode}>
         <ViewportZoomContext.Provider value={zoomStore}>
-          {viewerChildren}
+          <PageResolveStoreProvider value={resolveStore}>
+            {viewerChildren}
+          </PageResolveStoreProvider>
         </ViewportZoomContext.Provider>
       </ViewModeSwitchContext.Provider>
     </ViewerContext.Provider>

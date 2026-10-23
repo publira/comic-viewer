@@ -5,6 +5,8 @@ import type {
   TransitionEvent as ReactTransitionEvent,
 } from "react";
 
+import { getPageResolveStatus, usePageResolveStore } from "./page-source";
+import type { PageResolveStatus } from "./page-source";
 import { isSpreadPage } from "./page-spread";
 import { getPageImageKey } from "./use-viewport-images";
 import type { PageImage, PageLoadEntry } from "./use-viewport-images";
@@ -13,7 +15,11 @@ import type { PageSide, PageTurnDirection } from "./use-viewport-layout";
 import { getSlotPage } from "./viewer-context";
 import type { ViewerPage } from "./viewer-context";
 import { ViewerSlotProvider } from "./viewer-slots";
-import { ViewportPageInstance, ViewportPendingPage } from "./viewport-page";
+import {
+  ViewportPageInstance,
+  ViewportPendingPage,
+  ViewportPendingPageProvider,
+} from "./viewport-page";
 import type { ViewportChildren } from "./viewport-page";
 import { ViewportPageSet, ViewportTrack } from "./viewport-template";
 import type {
@@ -28,6 +34,11 @@ const getRailSlotName = (slot: number): "previous" | "current" | "next" => {
 
   return slot === 1 ? "current" : "next";
 };
+
+/** A page without metadata reads as failed once its resolver rejected. */
+const getPendingPageStatus = (
+  status: PageResolveStatus
+): "pending" | "error" => (status === "error" ? "error" : "pending");
 
 interface ViewportRailProps<TPage extends ViewerPage> {
   activePan: { x: number; y: number };
@@ -81,6 +92,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
   transitionState,
   viewMode,
 }: ViewportRailProps<TPage>) => {
+  const resolveStore = usePageResolveStore("Viewport");
   const trackTemplate = layoutTemplate?.track;
   const pageSetTemplate = layoutTemplate?.pageSet;
   const pageSlotTemplate = layoutTemplate?.pageSlot;
@@ -129,6 +141,12 @@ export const ViewportRail = <TPage extends ViewerPage>({
               endPages,
               startPages,
             });
+            const pendingStatus =
+              slotPage === undefined && page === undefined
+                ? getPendingPageStatus(
+                    getPageResolveStatus(resolveStore, index)
+                  )
+                : undefined;
             let pageInstance: ReactNode;
 
             if (slotPage !== undefined) {
@@ -147,12 +165,15 @@ export const ViewportRail = <TPage extends ViewerPage>({
             } else if (page === undefined) {
               // The page keeps its place in the spread while its metadata is
               // still being resolved.
-              pageInstance =
-                renderPendingPage === undefined ? (
-                  <ViewportPendingPage data-page-side={side} />
-                ) : (
-                  renderPendingPage(index)
-                );
+              pageInstance = (
+                <ViewportPendingPageProvider value={pendingStatus ?? "pending"}>
+                  {renderPendingPage === undefined ? (
+                    <ViewportPendingPage data-page-side={side} />
+                  ) : (
+                    renderPendingPage(index)
+                  )}
+                </ViewportPendingPageProvider>
+              );
             } else {
               const imageKey = getPageImageKey(index, page);
               const loadState = pageLoadStates.get(imageKey);
@@ -184,10 +205,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
                 "data-page-layout": layout,
                 "data-page-side": side,
                 "data-page-slot": slotPage?.slot,
-                "data-page-status":
-                  slotPage === undefined && page === undefined
-                    ? "pending"
-                    : undefined,
+                "data-page-status": pendingStatus,
                 "data-slot-page": slotPage?.position,
                 "data-slot-page-count": slotPage?.count,
                 "data-view-mode": viewMode,

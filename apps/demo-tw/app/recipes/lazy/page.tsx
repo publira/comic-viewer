@@ -47,6 +47,16 @@ const LazyPage = async () => {
             viewport holds without the current one waiting for them.
           </p>
           <p className="mt-2 text-slate-600 dark:text-slate-300">
+            A request that fails is not made again on its own, so a failing
+            endpoint cannot turn into a request loop. Turn on{" "}
+            <em>Fail page-metadata requests</em> and move a few spreads ahead:
+            the pages asked for from then on report the failure through{" "}
+            <code>usePageResolveState</code>, and the pending page this demo
+            passes as <code>renderPendingPage</code> offers to try again. Turn
+            the switch off and press <em>Try again</em>, and the page is asked
+            for once more and drawn where it stood.
+          </p>
+          <p className="mt-2 text-slate-600 dark:text-slate-300">
             The document also grows as it is read. It starts as the first
             chapter of seven pages, and <code>onEndReached</code> appends the
             next chapter once the reader comes within two pages of the end,

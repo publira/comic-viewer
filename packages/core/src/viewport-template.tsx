@@ -52,8 +52,11 @@ export interface ViewportPageSlotProps extends ComponentPropsWithoutRef<"div"> {
   "data-page-side"?: PageSide;
   /** The end of the reading sequence an extra page held by the slot sits at. */
   "data-page-slot"?: ViewerSlot;
-  /** Present while the page held by the slot is still being resolved. */
-  "data-page-status"?: "pending";
+  /**
+   * Present while the page held by the slot is unresolved: `"pending"` while
+   * its metadata is on its way, and `"error"` once the resolver rejected.
+   */
+  "data-page-status"?: "pending" | "error";
   /** The one-based position an extra page takes among the pages of its slot. */
   "data-slot-page"?: number;
   /** How many pages the slot an extra page belongs to holds. */

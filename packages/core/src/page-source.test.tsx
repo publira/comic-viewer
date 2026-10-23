@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
 
+import { usePageResolveState } from "./page-source";
 import type { PageResolveError, PageResolver } from "./page-source";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
 import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
@@ -22,6 +23,15 @@ const makeWrapper = (props: ViewerProviderProps) =>
 
 const renderViewerContext = (props: ViewerProviderProps) =>
   renderHook(() => useViewerContext(), { wrapper: makeWrapper(props) });
+
+const renderResolveState = (index: number, props: ViewerProviderProps) =>
+  renderHook(
+    () => ({
+      resolveState: usePageResolveState(index),
+      viewer: useViewerContext(),
+    }),
+    { wrapper: makeWrapper(props) }
+  );
 
 /** The page indices asked for, in the order the viewer asked for them. */
 const resolvedIndices = (resolvePage: Mock<PageResolver>): number[] =>
@@ -185,6 +195,124 @@ describe("lazy page metadata", () => {
 
     expect(resolvePage).toHaveBeenCalledOnce();
     expect(result.current.pages[0]).toBeUndefined();
+  });
+
+  it("resolves a failed page again once a retry is asked for", async () => {
+    const cause = new Error("The page metadata request failed.");
+    const resolvePage = vi
+      .fn<PageResolver>()
+      .mockRejectedValueOnce(cause)
+      .mockImplementation((index) => makePage(index));
+    const { result } = renderResolveState(0, { pageCount: 1, resolvePage });
+
+    await waitFor(() => {
+      expect(result.current.resolveState.status).toBe("error");
+    });
+
+    expect(result.current.resolveState.error).toStrictEqual({
+      cause,
+      index: 0,
+    });
+
+    act(() => {
+      result.current.resolveState.retry();
+    });
+
+    // The failure stays visible while the retry is on its way.
+    expect(result.current.resolveState).toMatchObject({
+      error: { cause },
+      status: "resolving",
+    });
+
+    await waitFor(() => {
+      expect(result.current.resolveState.status).toBe("resolved");
+    });
+
+    expect(resolvePage).toHaveBeenCalledTimes(2);
+    expect(result.current.resolveState.error).toBeUndefined();
+    expect(result.current.viewer.pages[0]).toStrictEqual(makePage(0));
+  });
+
+  it("reports a failed retry and waits for the next one", async () => {
+    const resolvePage = vi.fn<PageResolver>(() =>
+      Promise.reject(new Error("The page metadata request failed."))
+    );
+    const onPageResolveError = vi.fn<(error: PageResolveError) => void>();
+    const { result } = renderResolveState(0, {
+      onPageResolveError,
+      pageCount: 1,
+      resolvePage,
+    });
+
+    await waitFor(() => {
+      expect(result.current.resolveState.status).toBe("error");
+    });
+
+    act(() => {
+      result.current.resolveState.retry();
+    });
+
+    await waitFor(() => {
+      expect(onPageResolveError).toHaveBeenCalledTimes(2);
+    });
+
+    expect(result.current.resolveState.status).toBe("error");
+    expect(resolvePage).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not retry a page that has not failed", async () => {
+    // A mock without an implementation answers `undefined` for every page.
+    const resolvePage = vi.fn<PageResolver>();
+    const { result } = renderResolveState(0, { pageCount: 1, resolvePage });
+
+    // A resolver that returns `undefined` has nothing to offer yet, which is
+    // not a failure a retry could recover from.
+    await waitFor(() => {
+      expect(result.current.resolveState.status).toBe("idle");
+    });
+
+    expect(resolvePage).toHaveBeenCalledOnce();
+
+    act(() => {
+      result.current.resolveState.retry();
+    });
+
+    expect(resolvePage).toHaveBeenCalledOnce();
+  });
+
+  it("forgets a failure once the page leaves the window", async () => {
+    const resolvePage = vi
+      .fn<PageResolver>()
+      .mockRejectedValueOnce(new Error("The page metadata request failed."))
+      .mockImplementation((index) => makePage(index));
+    const { result } = renderResolveState(0, {
+      pageCount: 20,
+      pageResolveOverscan: 1,
+      resolvePage,
+    });
+
+    await waitFor(() => {
+      expect(result.current.resolveState.status).toBe("error");
+    });
+
+    act(() => {
+      result.current.viewer.goTo(10);
+    });
+
+    expect(result.current.resolveState).toMatchObject({
+      error: undefined,
+      status: "idle",
+    });
+  });
+
+  it("reports a resolved status for a statically provided page", () => {
+    const { result } = renderResolveState(0, {
+      pageCount: 2,
+      pages: [makePage(0)],
+      resolvePage: vi.fn<PageResolver>(),
+    });
+
+    expect(result.current.resolveState.status).toBe("resolved");
   });
 
   it("counts unresolved pages in the navigation state", () => {

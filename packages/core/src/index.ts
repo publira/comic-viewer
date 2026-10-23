@@ -29,10 +29,13 @@ export {
   type ViewportPageProps,
   type ViewportPendingPageProps,
 } from "./viewport-page";
-export type {
-  PageResolveContext,
-  PageResolveError,
-  PageResolver,
+export {
+  usePageResolveState,
+  type PageResolveContext,
+  type PageResolveError,
+  type PageResolveState,
+  type PageResolveStatus,
+  type PageResolver,
 } from "./page-source";
 export type {
   PageLoadError,

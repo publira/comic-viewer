@@ -10,6 +10,23 @@ import { useCallback, useState } from "react";
 
 const CHAPTER_LENGTH = 7;
 
+const PendingPage = ({ index }) => {
+  const { retry, status } = ComicViewer.usePageResolveState(index);
+
+  return (
+    <ComicViewer.ViewportPendingPage>
+      {status === "error" && (
+        <div role="alert">
+          <p>Page {index + 1} could not be resolved.</p>
+          <button onClick={retry} type="button">
+            Try again
+          </button>
+        </div>
+      )}
+    </ComicViewer.ViewportPendingPage>
+  );
+};
+
 export const Reader = () => {
   const [pageCount, setPageCount] = useState(CHAPTER_LENGTH);
 
@@ -32,7 +49,9 @@ export const Reader = () => {
       pageCount={pageCount}
       resolvePage={resolvePage}
     >
-      <ComicViewer.Viewport />
+      <ComicViewer.Viewport
+        renderPendingPage={(index) => <PendingPage index={index} />}
+      />
       <ComicViewer.Toolbar />
       <ComicViewer.PageNavigation />
     </ComicViewer.Root>
@@ -72,6 +91,16 @@ const LazyPage = () => (
           and dropped when the reader moves away from them, so the count of
           decoded pages runs ahead of the three spreads the viewport holds
           without the current one waiting for them.
+        </p>
+        <p>
+          A request that fails is not made again on its own, so a failing
+          endpoint cannot turn into a request loop. Turn on{" "}
+          <em>Fail page-metadata requests</em> and move a few spreads ahead: the
+          pages asked for from then on report the failure through{" "}
+          <code>usePageResolveState</code>, and the pending page this demo
+          passes as <code>renderPendingPage</code> offers to try again. Turn the
+          switch off and press <em>Try again</em>, and the page is asked for
+          once more and drawn where it stood.
         </p>
         <p>
           The document also grows as it is read. It starts as the first chapter

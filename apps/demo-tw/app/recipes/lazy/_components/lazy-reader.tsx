@@ -31,6 +31,8 @@ const wait = (delayMs: number, signal?: AbortSignal): Promise<void> =>
 export interface LazyChapters {
   /** How many chapters the whole document holds. */
   chapterCount: number;
+  /** Whether the imaginary endpoint fails every page-metadata request. */
+  failsRequests: boolean;
   isLoadingChapter: boolean;
   /** How many chapters have been appended to the viewer so far. */
   loadedChapterCount: number;
@@ -44,6 +46,8 @@ export interface LazyChapters {
     index: number,
     context: PageResolveContext
   ) => Promise<ViewerPage | undefined>;
+  /** Takes the imaginary endpoint offline, or brings it back. */
+  setFailsRequests: (failsRequests: boolean) => void;
 }
 
 /**
@@ -57,6 +61,7 @@ export const useLazyChapters = (pages: readonly ViewerPage[]): LazyChapters => {
   );
   const [isLoadingChapter, setIsLoadingChapter] = useState(false);
   const [requestCount, setRequestCount] = useState(0);
+  const [failsRequests, setFailsRequests] = useState(false);
 
   const resolvePage = useCallback(
     async (
@@ -66,11 +71,15 @@ export const useLazyChapters = (pages: readonly ViewerPage[]): LazyChapters => {
       await wait(PAGE_RESOLVE_DELAY_MS, signal);
       setRequestCount((count) => count + 1);
 
+      if (failsRequests) {
+        throw new Error("The page metadata endpoint is unreachable.");
+      }
+
       // An endpoint that signs its URLs would sign this one here, which is why
       // the viewer asks again for a page the reader comes back to much later.
       return pages[index];
     },
-    [pages]
+    [failsRequests, pages]
   );
 
   const loadNextChapter = useCallback(() => {
@@ -88,12 +97,14 @@ export const useLazyChapters = (pages: readonly ViewerPage[]): LazyChapters => {
 
   return {
     chapterCount: Math.ceil(pages.length / CHAPTER_LENGTH),
+    failsRequests,
     isLoadingChapter,
     loadNextChapter,
     loadedChapterCount: Math.ceil(pageCount / CHAPTER_LENGTH),
     pageCount,
     requestCount,
     resolvePage,
+    setFailsRequests,
   };
 };
 
@@ -143,11 +154,36 @@ const PageNavigation = () => {
   );
 };
 
-// Lazily resolved metadata is what this demo is about, so the page standing in
-// for one still on its way is styled here like every other part of the reader.
-const renderPendingPage = () => (
-  <ComicViewer.ViewportPendingPage className="h-full w-full animate-pulse bg-slate-900" />
-);
+/**
+ * Stands in for a page whose metadata is on its way, and offers a retry once
+ * the endpoint has failed for it. Lazily resolved metadata is what this demo
+ * is about, so it is styled here like every other part of the reader.
+ */
+const PendingPage = ({ index }: { index: number }) => {
+  const { retry, status } = ComicViewer.usePageResolveState(index);
+
+  return (
+    <ComicViewer.ViewportPendingPage className="flex h-full w-full animate-pulse items-center justify-center bg-slate-900 data-[page-status=error]:animate-none">
+      {status === "error" && (
+        <div
+          className="flex flex-col items-center gap-3 p-4 text-center text-sm text-slate-100"
+          role="alert"
+        >
+          <p>Page {index + 1} could not be resolved.</p>
+          <button
+            className="cursor-pointer rounded-full bg-white/20 px-3.5 py-1.5 outline-offset-2 outline-slate-100 hover:bg-white/30 focus-visible:outline-2"
+            onClick={retry}
+            type="button"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+    </ComicViewer.ViewportPendingPage>
+  );
+};
+
+const renderPendingPage = (index: number) => <PendingPage index={index} />;
 
 /** How many spreads beyond the viewport this demo loads ahead of the reader. */
 const IMAGE_PRELOAD_SPREADS = 1;
@@ -174,12 +210,14 @@ export const LazyReader = ({ pages }: LazyReaderProps) => {
   );
   const {
     chapterCount,
+    failsRequests,
     isLoadingChapter,
     loadNextChapter,
     loadedChapterCount,
     pageCount,
     requestCount,
     resolvePage,
+    setFailsRequests,
   } = useLazyChapters(pages);
 
   return (
@@ -250,6 +288,17 @@ export const LazyReader = ({ pages }: LazyReaderProps) => {
           }
         />
       </div>
+      <label className="flex cursor-pointer items-center gap-2 self-start text-sm text-slate-600 dark:text-slate-300">
+        <input
+          checked={failsRequests}
+          className="size-4 accent-sky-600"
+          onChange={(event) => {
+            setFailsRequests(event.target.checked);
+          }}
+          type="checkbox"
+        />
+        Fail page-metadata requests
+      </label>
     </>
   );
 };
