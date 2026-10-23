@@ -351,7 +351,7 @@ How long a resolved page keeps its metadata is a second, wider window. A page ke
 
 Past that window the metadata is dropped and an unfinished request for the page is aborted through the `AbortSignal` the resolver was given. A page returned to much later is therefore resolved again instead of reused, and a signed URL that has expired in the meantime is reissued rather than failing to load.
 
-A resolver that returns `undefined` leaves the page unresolved, and one that rejects reports the failure through `onPageResolveError`. Neither is asked again until the page leaves that window and comes back into it, so a failing page cannot become a request loop.
+A resolver that returns `undefined` leaves the page unresolved, and one that rejects reports the failure through `onPageResolveError`. Neither is asked again on its own until the page leaves that window and comes back into it, so a failing page cannot become a request loop. A rejected page can also be asked for again on request, through the `retry` that `usePageResolveState` returns for it, which is how a [pending page](#pending-pages) recovers from a transient network error without the reader having to move away and back.
 
 `pages` and `resolvePage` work together: an entry given in `pages` is used as it is, and the resolver is asked only for the indices it leaves out, which is enough to serve the first pages from the document that rendered the viewer and resolve the rest.
 
@@ -380,6 +380,35 @@ A page whose metadata is still being resolved keeps its place in the spread. `Vi
   renderPendingPage={(index) => <PageSkeleton pageNumber={index + 1} />}
 />
 ```
+
+`usePageResolveState(index)` reports where a page stands in metadata resolution: its `status` (`"idle"`, `"resolving"`, `"resolved"`, or `"error"`), the last failure as `error`, and a `retry` function. `"idle"` covers a page not asked for yet as well as one the resolver returned `undefined` for, and only an `"error"` page can be retried: `retry` asks the resolver again, keeps the previous `error` while the request is on its way, and does nothing for a page in any other state. A retry is never made automatically, so a page that keeps failing waits for the next call.
+
+```tsx
+import * as ComicViewer from "@publira/comic-viewer";
+
+function PendingPage({ index }: { index: number }) {
+  const { retry, status } = ComicViewer.usePageResolveState(index);
+
+  return (
+    <ComicViewer.ViewportPendingPage>
+      {status === "error" && (
+        <div role="alert">
+          <p>Page {index + 1} could not be loaded.</p>
+          <button onClick={retry} type="button">
+            Try again
+          </button>
+        </div>
+      )}
+    </ComicViewer.ViewportPendingPage>
+  );
+}
+
+<ComicViewer.Viewport
+  renderPendingPage={(index) => <PendingPage index={index} />}
+/>;
+```
+
+The hook reads the state of any page of the viewer, so it works anywhere inside `ComicViewer.Root`, but call it from a component of its own as above rather than from the `renderPendingPage` callback itself. A failed page leaves `ViewportPendingPage` with `data-page-status="error"` in place of `"pending"` and without `aria-busy`, and `ViewportPageSlot` carries the same `data-page-status`, so a failed page can be styled apart from one still on its way.
 
 ### Growing the page list
 

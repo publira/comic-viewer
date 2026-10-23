@@ -8,10 +8,11 @@ import {
 import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { usePageResolveState } from "./page-source";
 import { definePlugin } from "./plugin";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
 import { Viewport } from "./viewport";
-import { PageCanvas, ViewportPage } from "./viewport-page";
+import { PageCanvas, ViewportPage, ViewportPendingPage } from "./viewport-page";
 import {
   ViewportPageSet,
   ViewportPageSlot,
@@ -36,6 +37,21 @@ const GoToIndexButton = ({ index }: { index: number }) => {
     <button onClick={() => goTo(index)} type="button">
       Go to index
     </button>
+  );
+};
+
+/** A pending page template offering a retry once its resolver rejects. */
+const RetryablePendingPage = ({ index }: { index: number }) => {
+  const { retry, status } = usePageResolveState(index);
+
+  return (
+    <ViewportPendingPage>
+      {status === "error" && (
+        <button onClick={retry} type="button">
+          Try again
+        </button>
+      )}
+    </ViewportPendingPage>
   );
 };
 
@@ -479,6 +495,78 @@ describe(Viewport, () => {
       );
 
       expect(screen.getByTestId("pending-0")).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("marks a pending page as failed once its resolver rejects", async () => {
+    const { restore } = mockPageImages();
+
+    try {
+      const { container } = render(
+        <ViewerProvider<TestPage>
+          pageCount={1}
+          resolvePage={() => Promise.reject(new Error("Offline"))}
+        >
+          <Viewport<TestPage>>
+            <ViewportTrack>
+              <ViewportPageSet>
+                <ViewportPageSlot>
+                  <ViewportPage />
+                </ViewportPageSlot>
+              </ViewportPageSet>
+            </ViewportTrack>
+          </Viewport>
+        </ViewerProvider>
+      );
+      const pendingPage = container.querySelector(
+        "[data-rail-slot='current'] .pcv-page-pending"
+      );
+
+      expect(pendingPage).toHaveAttribute("aria-busy", "true");
+
+      await waitFor(() => {
+        expect(pendingPage).toHaveAttribute("data-page-status", "error");
+      });
+
+      expect(pendingPage).not.toHaveAttribute("aria-busy");
+      expect(
+        container.querySelector(
+          "[data-rail-slot='current'] .pcv-viewport-page-slot"
+        )
+      ).toHaveAttribute("data-page-status", "error");
+    } finally {
+      restore();
+    }
+  });
+
+  it("retries a failed page from the pending page template", async () => {
+    const { restore } = mockPageImages();
+    const resolvePage = vi
+      .fn<() => Promise<TestPage>>()
+      .mockRejectedValueOnce(new Error("Offline"))
+      .mockResolvedValue(pages[0]);
+
+    try {
+      const { container } = render(
+        <ViewerProvider<TestPage> pageCount={1} resolvePage={resolvePage}>
+          <Viewport<TestPage>
+            renderPendingPage={(index) => (
+              <RetryablePendingPage index={index} />
+            )}
+          />
+        </ViewerProvider>
+      );
+
+      fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+
+      await waitFor(() => {
+        expect(container.querySelector("canvas")).not.toBeNull();
+      });
+
+      expect(resolvePage).toHaveBeenCalledTimes(2);
+      expect(container.querySelector(".pcv-page-pending")).toBeNull();
     } finally {
       restore();
     }

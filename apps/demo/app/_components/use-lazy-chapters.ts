@@ -29,6 +29,8 @@ const wait = (delayMs: number, signal?: AbortSignal): Promise<void> =>
 export interface LazyChapters {
   /** How many chapters the whole document holds. */
   chapterCount: number;
+  /** Whether the imaginary endpoint fails every page-metadata request. */
+  failsRequests: boolean;
   isLoadingChapter: boolean;
   /** How many chapters have been appended to the viewer so far. */
   loadedChapterCount: number;
@@ -42,6 +44,8 @@ export interface LazyChapters {
     index: number,
     context: PageResolveContext
   ) => Promise<ViewerPage | undefined>;
+  /** Takes the imaginary endpoint offline, or brings it back. */
+  setFailsRequests: (failsRequests: boolean) => void;
 }
 
 /**
@@ -55,6 +59,7 @@ export const useLazyChapters = (pages: readonly ViewerPage[]): LazyChapters => {
   );
   const [isLoadingChapter, setIsLoadingChapter] = useState(false);
   const [requestCount, setRequestCount] = useState(0);
+  const [failsRequests, setFailsRequests] = useState(false);
 
   const resolvePage = useCallback(
     async (
@@ -64,11 +69,15 @@ export const useLazyChapters = (pages: readonly ViewerPage[]): LazyChapters => {
       await wait(PAGE_RESOLVE_DELAY_MS, signal);
       setRequestCount((count) => count + 1);
 
+      if (failsRequests) {
+        throw new Error("The page metadata endpoint is unreachable.");
+      }
+
       // An endpoint that signs its URLs would sign this one here, which is why
       // the viewer asks again for a page the reader comes back to much later.
       return pages[index];
     },
-    [pages]
+    [failsRequests, pages]
   );
 
   const loadNextChapter = useCallback(() => {
@@ -86,11 +95,13 @@ export const useLazyChapters = (pages: readonly ViewerPage[]): LazyChapters => {
 
   return {
     chapterCount: Math.ceil(pages.length / CHAPTER_LENGTH),
+    failsRequests,
     isLoadingChapter,
     loadNextChapter,
     loadedChapterCount: Math.ceil(pageCount / CHAPTER_LENGTH),
     pageCount,
     requestCount,
     resolvePage,
+    setFailsRequests,
   };
 };

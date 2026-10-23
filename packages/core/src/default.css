@@ -130,6 +130,11 @@
   animation: pcv-page-pending-pulse 1.4s ease-in-out infinite;
 }
 
+/* A page whose resolver rejected is no longer on its way, so it stops pulsing. */
+.pcv-page-pending[data-page-status="error"] {
+  animation: none;
+}
+
 @keyframes pcv-page-pending-pulse {
   0%,
   100% {

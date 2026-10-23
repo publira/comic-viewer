@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import type { ViewerPage } from "./viewer-context";
 
@@ -11,7 +19,8 @@ export interface PageResolveContext {
 /**
  * Resolves the metadata of a single page on demand, so a viewer can be given a
  * `pageCount` instead of the whole page list. Returning `undefined` leaves the
- * page unresolved until it enters the resolve window again.
+ * page unresolved until it enters the resolve window again, and rejecting
+ * leaves it failed until a retry is asked for through `usePageResolveState`.
  */
 export type PageResolver<TPage extends ViewerPage = ViewerPage> = (
   index: number,
@@ -25,6 +34,78 @@ export interface PageResolveError {
   /** The zero-based index of the page within the viewer page list. */
   index: number;
 }
+
+/**
+ * Where a page stands in metadata resolution. `"idle"` is a page not asked for
+ * yet or one the resolver returned `undefined` for, and `"error"` is one whose
+ * resolver rejected.
+ */
+export type PageResolveStatus = "idle" | "resolving" | "resolved" | "error";
+
+/** The metadata resolution state of a single page. */
+export interface PageResolveState {
+  /** The last failure for this page, kept until a retry settles. */
+  error?: PageResolveError;
+  index: number;
+  /** Asks the resolver again for a failed page. Does nothing otherwise. */
+  retry: () => void;
+  status: PageResolveStatus;
+}
+
+/** A page with a request in flight or a failure to report. */
+interface PageRequestState {
+  error?: PageResolveError;
+  status: "resolving" | "error";
+}
+
+/** What `usePageResolveState` reads from the provider. */
+export interface PageResolveStore {
+  pages: readonly (ViewerPage | undefined)[];
+  requestStates: ReadonlyMap<number, PageRequestState>;
+  retryPageResolution: (index: number) => void;
+}
+
+const PageResolveStoreContext = createContext<PageResolveStore | null>(null);
+
+export const PageResolveStoreProvider = PageResolveStoreContext.Provider;
+
+/** Reads the store of the enclosing ViewerProvider. */
+export const usePageResolveStore = (consumerName: string): PageResolveStore => {
+  const store = useContext(PageResolveStoreContext);
+  if (store === null) {
+    throw new Error(`${consumerName} must be used within a ViewerProvider`);
+  }
+
+  return store;
+};
+
+export const getPageResolveStatus = (
+  store: PageResolveStore,
+  index: number
+): PageResolveStatus =>
+  store.pages[index] === undefined
+    ? (store.requestStates.get(index)?.status ?? "idle")
+    : "resolved";
+
+/**
+ * Reads where the page at `index` stands in metadata resolution, so a pending
+ * page can tell a page on its way from one that failed and offer a retry.
+ */
+export const usePageResolveState = (index: number): PageResolveState => {
+  const store = usePageResolveStore("usePageResolveState");
+  const { retryPageResolution } = store;
+  const status = getPageResolveStatus(store, index);
+  const error =
+    status === "resolved" ? undefined : store.requestStates.get(index)?.error;
+  const retry = useCallback(() => {
+    retryPageResolution(index);
+  }, [index, retryPageResolution]);
+
+  return useMemo(
+    () => ({ error, index, retry, status }),
+    [error, index, retry, status]
+  );
+};
 
 /**
  * How many pages on either side of the current one are resolved ahead of the
@@ -54,6 +135,11 @@ interface UsePageSourceOptions<TPage extends ViewerPage> {
   resolvePage?: PageResolver<TPage>;
 }
 
+interface PageSource<TPage extends ViewerPage> {
+  pages: readonly (TPage | undefined)[];
+  resolveStore: PageResolveStore;
+}
+
 /**
  * Merges the statically provided pages with the ones a resolver produces on
  * demand, into a list of `pageCount` entries where an unresolved page reads as
@@ -72,22 +158,31 @@ export const usePageSource = <TPage extends ViewerPage>({
   pageCount,
   pages,
   resolvePage,
-}: UsePageSourceOptions<TPage>): readonly (TPage | undefined)[] => {
+}: UsePageSourceOptions<TPage>): PageSource<TPage> => {
   const [resolvedPages, setResolvedPages] = useState<
     ReadonlyMap<number, TPage>
   >(() => new Map());
   const resolvedPagesRef = useRef<ReadonlyMap<number, TPage>>(new Map());
+  const [requestStates, setRequestStates] = useState<
+    ReadonlyMap<number, PageRequestState>
+  >(() => new Map());
+  const requestStatesRef = useRef<ReadonlyMap<number, PageRequestState>>(
+    new Map()
+  );
   const pageRequestsRef = useRef(new Map<number, AbortController>());
   // An index that failed, or that the resolver declined, is not asked again
-  // until it leaves the resolve window, so a failure cannot become a loop.
+  // until it leaves the resolve window or a retry is asked for, so a failure
+  // cannot become a loop.
   const settledIndicesRef = useRef(new Set<number>());
   const onPageResolveErrorRef = useRef(onPageResolveError);
+  const pagesRef = useRef(pages);
   const resolvePageRef = useRef(resolvePage);
 
   useEffect(() => {
     onPageResolveErrorRef.current = onPageResolveError;
+    pagesRef.current = pages;
     resolvePageRef.current = resolvePage;
-  }, [onPageResolveError, resolvePage]);
+  }, [onPageResolveError, pages, resolvePage]);
 
   const commitResolvedPages = useCallback(
     (update: (nextPages: Map<number, TPage>) => void): void => {
@@ -97,6 +192,83 @@ export const usePageSource = <TPage extends ViewerPage>({
       setResolvedPages(nextPages);
     },
     []
+  );
+
+  const commitRequestStates = useCallback(
+    (update: (nextStates: Map<number, PageRequestState>) => void): void => {
+      const nextStates = new Map(requestStatesRef.current);
+      update(nextStates);
+      requestStatesRef.current = nextStates;
+      setRequestStates(nextStates);
+    },
+    []
+  );
+
+  const resolvePageAt = useCallback(
+    async (index: number): Promise<void> => {
+      const controller = new AbortController();
+      pageRequestsRef.current.set(index, controller);
+      // A retry keeps the failure it follows until it settles.
+      const previousError = requestStatesRef.current.get(index)?.error;
+      commitRequestStates((nextStates) => {
+        nextStates.set(
+          index,
+          previousError === undefined
+            ? { status: "resolving" }
+            : { error: previousError, status: "resolving" }
+        );
+      });
+
+      try {
+        const page = await resolvePageRef.current?.(index, {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        pageRequestsRef.current.delete(index);
+        commitRequestStates((nextStates) => {
+          nextStates.delete(index);
+        });
+        if (page === undefined) {
+          settledIndicesRef.current.add(index);
+          return;
+        }
+
+        commitResolvedPages((nextPages) => {
+          nextPages.set(index, page);
+        });
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        const resolveError = { cause: error, index };
+        pageRequestsRef.current.delete(index);
+        settledIndicesRef.current.add(index);
+        commitRequestStates((nextStates) => {
+          nextStates.set(index, { error: resolveError, status: "error" });
+        });
+        onPageResolveErrorRef.current?.(resolveError);
+      }
+    },
+    [commitRequestStates, commitResolvedPages]
+  );
+
+  const retryPageResolution = useCallback(
+    (index: number): void => {
+      if (
+        requestStatesRef.current.get(index)?.status !== "error" ||
+        pagesRef.current[index] !== undefined
+      ) {
+        return;
+      }
+
+      settledIndicesRef.current.delete(index);
+      void resolvePageAt(index);
+    },
+    [resolvePageAt]
   );
 
   const hasResolver = resolvePage !== undefined;
@@ -141,6 +313,18 @@ export const usePageSource = <TPage extends ViewerPage>({
       }
     }
 
+    const leftRequestIndices = [...requestStatesRef.current.keys()].filter(
+      (index) => !retainedWindow.has(index)
+    );
+    if (leftRequestIndices.length > 0) {
+      // oxlint-disable-next-line react/set-state-in-effect -- A page leaving the window forgets its failure along with the request it aborts.
+      commitRequestStates((nextStates) => {
+        for (const index of leftRequestIndices) {
+          nextStates.delete(index);
+        }
+      });
+    }
+
     const expiredIndices = [...resolvedPagesRef.current.keys()].filter(
       (index) => !retainedWindow.has(index)
     );
@@ -153,38 +337,6 @@ export const usePageSource = <TPage extends ViewerPage>({
       });
     }
 
-    const resolvePageAt = async (index: number): Promise<void> => {
-      const controller = new AbortController();
-      pageRequestsRef.current.set(index, controller);
-
-      try {
-        const page = await resolvePageRef.current?.(index, {
-          signal: controller.signal,
-        });
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        pageRequestsRef.current.delete(index);
-        if (page === undefined) {
-          settledIndicesRef.current.add(index);
-          return;
-        }
-
-        commitResolvedPages((nextPages) => {
-          nextPages.set(index, page);
-        });
-      } catch (error) {
-        if (controller.signal.aborted) {
-          return;
-        }
-
-        pageRequestsRef.current.delete(index);
-        settledIndicesRef.current.add(index);
-        onPageResolveErrorRef.current?.({ cause: error, index });
-      }
-    };
-
     const pendingIndices = [...resolveWindow].filter(
       (index) =>
         pages[index] === undefined &&
@@ -195,12 +347,14 @@ export const usePageSource = <TPage extends ViewerPage>({
 
     void Promise.all(pendingIndices.map(resolvePageAt));
   }, [
+    commitRequestStates,
     commitResolvedPages,
     currentIndex,
     hasResolver,
     overscan,
     pageCount,
     pages,
+    resolvePageAt,
   ]);
 
   useEffect(
@@ -214,7 +368,7 @@ export const usePageSource = <TPage extends ViewerPage>({
     []
   );
 
-  return useMemo(() => {
+  const sourcePages = useMemo(() => {
     if (!hasResolver && pageCount === pages.length) {
       return pages;
     }
@@ -228,4 +382,11 @@ export const usePageSource = <TPage extends ViewerPage>({
       (_, index) => pages[index] ?? resolvedPages.get(index)
     );
   }, [hasResolver, pageCount, pages, resolvedPages]);
+
+  const resolveStore = useMemo(
+    () => ({ pages: sourcePages, requestStates, retryPageResolution }),
+    [requestStates, retryPageResolution, sourcePages]
+  );
+
+  return { pages: sourcePages, resolveStore };
 };

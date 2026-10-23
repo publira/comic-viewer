@@ -13,6 +13,29 @@ interface LazyComicViewerProps {
   pages: readonly ViewerPage[];
 }
 
+/**
+ * Stands in for a page whose metadata is on its way, and offers a retry once
+ * the endpoint has failed for it.
+ */
+const PendingPage = ({ index }: { index: number }) => {
+  const { retry, status } = ComicViewer.usePageResolveState(index);
+
+  return (
+    <ComicViewer.ViewportPendingPage>
+      {status === "error" && (
+        <div className={styles.pendingError} role="alert">
+          <p>Page {index + 1} could not be resolved.</p>
+          <button className={styles.retryButton} onClick={retry} type="button">
+            Try again
+          </button>
+        </div>
+      )}
+    </ComicViewer.ViewportPendingPage>
+  );
+};
+
+const renderPendingPage = (index: number) => <PendingPage index={index} />;
+
 /** How many spreads beyond the viewport this demo loads ahead of the reader. */
 const IMAGE_PRELOAD_SPREADS = 1;
 
@@ -34,12 +57,14 @@ export const LazyComicViewer = ({ pages }: LazyComicViewerProps) => {
   );
   const {
     chapterCount,
+    failsRequests,
     isLoadingChapter,
     loadNextChapter,
     loadedChapterCount,
     pageCount,
     requestCount,
     resolvePage,
+    setFailsRequests,
   } = useLazyChapters(pages);
 
   return (
@@ -55,7 +80,7 @@ export const LazyComicViewer = ({ pages }: LazyComicViewerProps) => {
           plugins={plugins}
           resolvePage={resolvePage}
         >
-          <ComicViewer.Viewport />
+          <ComicViewer.Viewport renderPendingPage={renderPendingPage} />
           <ComicViewer.Toolbar />
           <ComicViewer.PageNavigation />
         </ComicViewer.Root>
@@ -88,6 +113,16 @@ export const LazyComicViewer = ({ pages }: LazyComicViewerProps) => {
           </output>
         </div>
       </div>
+      <label className={styles.failureSwitch}>
+        <input
+          checked={failsRequests}
+          onChange={(event) => {
+            setFailsRequests(event.target.checked);
+          }}
+          type="checkbox"
+        />
+        Fail page-metadata requests
+      </label>
     </>
   );
 };
