@@ -181,6 +181,33 @@ Navigation steps over the spread as one unit in both modes, and it is one entry 
 
 Both the page slot and the page carry `data-page-layout="spread"`, which is what `default.css` and the [Tailwind CSS](#tailwind-css) setup size it from. The attribute is absent for an ordinary page.
 
+## React Server Components
+
+The package starts with a `"use client"` directive, so every export a server component imports is a client reference. A server component can render the viewer itself as long as everything it passes can be serialized:
+
+```tsx
+// app/chapter/page.tsx, a server component
+import * as ComicViewer from "@publira/comic-viewer";
+
+export default async function ChapterPage() {
+  const pages = await loadPages();
+
+  return (
+    <ComicViewer.Root pages={pages}>
+      <ComicViewer.Viewport />
+      <ComicViewer.Toolbar />
+      <ComicViewer.PageNavigation />
+    </ComicViewer.Root>
+  );
+}
+```
+
+A client component of your own that reads the viewer context, such as a custom toolbar button, can still be written among those children. Render the viewer from a client component instead when it needs any of the following:
+
+- Function props such as `resolvePage`, `onIndexChange`, `plugins`, `renderPendingPage`, or `format`, because a function cannot be passed from the server to the client.
+- The hooks, `definePlugin`, or `START_PAGE_INDEX`, which are client references on the server rather than the functions and value they hold.
+- [`StartPage` and `EndPage`](#start-and-end-pages), or a `ViewportTrack` template from the [Tailwind CSS](#tailwind-css) setup. The viewer recognizes them by component, and a server component passes them as client references instead, so a slot page throws an error that asks for a client component, and a track is not taken as a template.
+
 ## Start and end pages
 
 `StartPage` and `EndPage` hold content of your own at the two ends of the reading sequence: a notice before the chapter, a cover card, a link to the chapter that follows. Write them among the children of the viewer root, wherever they read best; the root takes them out of the tree and hands them to the viewport.

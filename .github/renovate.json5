@@ -10,5 +10,12 @@
       matchFileNames: ["apps/website/**"],
       semanticCommitType: "chore",
     },
+    // The consumer projects that check the packed tarball are never published
+    // either, though they sit inside the published package's directory.
+    {
+      description: "Commit updates of the tarball consumer projects as chore, since they are never published.",
+      matchFileNames: ["packages/core/consumers/**"],
+      semanticCommitType: "chore",
+    },
   ],
 }
