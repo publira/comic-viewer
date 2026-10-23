@@ -76,6 +76,7 @@ export { useViewMode } from "./use-view-mode";
 export {
   definePlugin,
   type DecodedPageContext,
+  type FetchNext,
   type FetchedPageContext,
   type PageLoadContext,
   type ViewerPlugin,

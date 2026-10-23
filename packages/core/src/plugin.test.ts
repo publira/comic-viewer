@@ -93,10 +93,101 @@ describe("plugin pipeline", () => {
       "before-1:page.jpg:page-1:true",
       "before-2:secure/page.jpg",
       "custom-1:secure/page.jpg:page-1:true",
-      "custom-2:secure/page.jpg",
       "after-1:secure/page.jpg:1:page-1:true",
       "after-2:secure/page.jpg:2",
     ]);
+  });
+
+  it("lets an earlier custom fetch wrap the later ones through next", async () => {
+    const events: string[] = [];
+    const innerBuffer = new ArrayBuffer(1);
+    const outerBuffer = new ArrayBuffer(2);
+    const fetchMock = vi.fn<() => Promise<unknown>>();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await runDataPipeline(
+      {
+        page: decodedPage,
+        signal: new AbortController().signal,
+        url: "page.jpg",
+      },
+      [
+        definePlugin({
+          customFetch: async ({ url }, next) => {
+            events.push(`outer-start:${url}`);
+            // eslint-disable-next-line node/callback-return -- `next` is a middleware continuation, not a Node callback.
+            const buffer = await next();
+            events.push(`outer-end:${buffer.byteLength}`);
+            return outerBuffer;
+          },
+        }),
+        definePlugin({
+          customFetch: ({ url }) => {
+            events.push(`inner:${url}`);
+            return innerBuffer;
+          },
+        }),
+      ]
+    );
+
+    expect(result).toBe(outerBuffer);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(events).toStrictEqual([
+      "outer-start:page.jpg",
+      "inner:page.jpg",
+      "outer-end:1",
+    ]);
+  });
+
+  it("skips the later custom fetches when an earlier one returns without calling next", async () => {
+    const cachedBuffer = new ArrayBuffer(1);
+    const innerFetch = vi.fn<() => ArrayBuffer>(() => new ArrayBuffer(2));
+    const fetchMock = vi.fn<() => Promise<unknown>>();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      runDataPipeline(
+        {
+          page: decodedPage,
+          signal: new AbortController().signal,
+          url: "page.jpg",
+        },
+        [
+          definePlugin({ customFetch: () => cachedBuffer }),
+          definePlugin({ customFetch: innerFetch }),
+        ]
+      )
+    ).resolves.toBe(cachedBuffer);
+    expect(innerFetch).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("runs the rest of the chain once when a hook calls next and returns nothing", async () => {
+    const buffer = new ArrayBuffer(4);
+    const fetchMock = vi.fn<() => Promise<unknown>>().mockResolvedValue({
+      arrayBuffer: () => Promise.resolve(buffer),
+      ok: true,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      runDataPipeline(
+        {
+          page: decodedPage,
+          signal: new AbortController().signal,
+          url: "page.jpg",
+        },
+        [
+          definePlugin({
+            customFetch: async (_context, next) => {
+              // eslint-disable-next-line node/callback-return -- `next` is a middleware continuation, not a Node callback.
+              await next();
+            },
+          }),
+        ]
+      )
+    ).resolves.toBe(buffer);
+    expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("uses the built-in fetch when no custom fetch returns a buffer", async () => {
