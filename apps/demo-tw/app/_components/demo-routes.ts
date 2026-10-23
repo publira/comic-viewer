@@ -37,6 +37,7 @@ export const demoRouteGroups: readonly DemoRouteGroup[] = [
     items: [
       { href: "/recipes/fullscreen", label: "Fullscreen" },
       { href: "/recipes/progress", label: "Progress" },
+      { href: "/recipes/settings", label: "Settings" },
       { href: "/recipes/lazy", label: "Lazy" },
       { href: "/recipes/localization", label: "Localization" },
     ],

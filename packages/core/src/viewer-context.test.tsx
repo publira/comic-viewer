@@ -507,6 +507,112 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.readingDirection).toBe("ltr");
   });
 
+  describe.each([
+    {
+      callbackName: "onViewModeChange",
+      initialName: "initialViewMode",
+      name: "viewMode",
+      setterName: "setViewMode",
+      values: ["single", "double"],
+    },
+    {
+      callbackName: "onPageFitModeChange",
+      initialName: "initialPageFitMode",
+      name: "pageFitMode",
+      setterName: "setPageFitMode",
+      values: ["height", "width"],
+    },
+    {
+      callbackName: "onReadingDirectionChange",
+      initialName: "initialReadingDirection",
+      name: "readingDirection",
+      setterName: "setReadingDirection",
+      values: ["rtl", "ltr"],
+    },
+  ] as const)(
+    "controlled $name",
+    ({
+      callbackName,
+      initialName,
+      name,
+      setterName,
+      values: [first, second],
+    }) => {
+      const SettingOutput = () => (
+        <output data-testid="setting">{useViewerContext()[name]}</output>
+      );
+
+      it("mirrors the controlled value and reports only changes", () => {
+        const onChange = vi.fn<(value: string) => void>();
+        const { result } = renderHook(() => useViewerContext(), {
+          wrapper: makeWrapper({ [callbackName]: onChange, [name]: first }),
+        });
+
+        expect(result.current[name]).toBe(first);
+
+        act(() => {
+          (result.current[setterName] as (value: string) => void)(second);
+        });
+
+        expect(result.current[name]).toBe(first);
+        expect(onChange).toHaveBeenCalledExactlyOnceWith(second);
+
+        act(() => {
+          (result.current[setterName] as (value: string) => void)(first);
+        });
+
+        expect(onChange).toHaveBeenCalledOnce();
+      });
+
+      it("updates from the latest prop and ignores the initial value", () => {
+        const { rerender } = render(
+          <ViewerProvider
+            pages={pages}
+            {...{ [initialName]: second, [name]: first }}
+          >
+            <SettingOutput />
+          </ViewerProvider>
+        );
+
+        expect(screen.getByTestId("setting")).toHaveTextContent(first);
+
+        rerender(
+          <ViewerProvider
+            pages={pages}
+            {...{ [initialName]: second, [name]: second }}
+          >
+            <SettingOutput />
+          </ViewerProvider>
+        );
+
+        expect(screen.getByTestId("setting")).toHaveTextContent(second);
+      });
+
+      it("reports uncontrolled changes without duplicate callbacks", () => {
+        const onChange = vi.fn<(value: string) => void>();
+        const { result } = renderHook(() => useViewerContext(), {
+          wrapper: makeWrapper({
+            [callbackName]: onChange,
+            [initialName]: first,
+          }),
+        });
+
+        act(() => {
+          (result.current[setterName] as (value: string) => void)(second);
+        });
+
+        expect(result.current[name]).toBe(second);
+        expect(onChange).toHaveBeenCalledExactlyOnceWith(second);
+
+        act(() => {
+          (result.current[setterName] as (value: string) => void)(second);
+        });
+
+        expect(onChange).toHaveBeenCalledOnce();
+      });
+    }
+  );
+
   it("throws when called outside of ViewerProvider", () => {
     expect(() => {
       renderHook(() => useViewerContext());

@@ -146,6 +146,30 @@ const [currentIndex, setCurrentIndex] = useState(0);
 </ComicViewer.Root>;
 ```
 
+The reader settings follow the same pattern. `readingDirection`, `viewMode`, and `pageFitMode` each take a controlled value and a change callback, in place of `initialReadingDirection`, `initialViewMode`, and `initialPageFitMode`. The callbacks are called when a setting changes through `ReadingDirectionToggle`, `ViewModeToggle`, `PageFitModeToggle`, a double tap that resets the page to fit-to-width, or the setters on `useViewerContext()`. Hold them in the application to remember a reader's preferred direction across documents, or to drive the settings from a panel outside the viewer.
+
+```tsx
+const [readingDirection, setReadingDirection] =
+  useState<ReadingDirection>("rtl");
+const [viewMode, setViewMode] = useState<ViewMode>("double");
+const [pageFitMode, setPageFitMode] = useState<PageFitMode>("height");
+
+<ComicViewer.Root
+  onPageFitModeChange={setPageFitMode}
+  onReadingDirectionChange={setReadingDirection}
+  onViewModeChange={setViewMode}
+  pageFitMode={pageFitMode}
+  pages={pages}
+  readingDirection={readingDirection}
+  viewMode={viewMode}
+>
+  <ComicViewer.Viewport />
+  <ComicViewer.Toolbar />
+</ComicViewer.Root>;
+```
+
+An uncontrolled view mode follows the viewport width as it crosses `doublePageThreshold`, but a controlled one belongs to the application and is not rewritten for it. A controlled `viewMode="double"` is shown as single pages while the viewport is too narrow for a spread, and `isDoublePageAvailable` reports that. Navigation steps one page at a time until a spread fits again. `onViewModeChange` is not called for that fallback, so a stored preference for spreads survives a narrow window.
+
 ### Double-page grouping
 
 Use `spreadStartIndex` to leave leading pages unpaired before double-page spreads. The value is a zero-based page index: every page before it is shown individually in double-page mode, and that page begins pairing with the following page. For example, `spreadStartIndex={1}` renders page 1 as a cover and then pairs pages 2–3, 4–5, and so on. `spreadStartIndex={2}` renders pages 1 and 2 individually before pairing pages 3–4. This grouping and the navigation controls work the same way for both RTL and LTR readers. The default is `0`, which preserves the existing behavior of pairing from the first page. A page shown individually still takes the side its position in the spread gives it, so a cover sits opposite the page that follows it rather than on the same side.
