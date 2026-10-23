@@ -539,10 +539,36 @@ Read `areControlsVisible` and call `toggleControls` from `useViewerContext` to d
 Pass plugins through the `plugins` prop to customize the page data pipeline. Use `ComicViewer.definePlugin` for type inference. Hooks run in registration order:
 
 - `beforeFetch` receives `{ url, signal, page }` and can replace the page URL.
-- `customFetch` receives `{ url, signal, page }` and can supply the page data instead of the built-in `fetch`; if several return a buffer, the last buffer is used.
+- `customFetch` receives `{ url, signal, page }` and `next`, and can supply the page data instead of the built-in `fetch`. Hooks nest in registration order: `next` runs the following plugin's hook, or the built-in `fetch` after the last one, so a returned buffer is used as is and a hook that returns nothing defers to `next`.
 - `afterFetch` receives `{ url, signal, page, buffer }` and can transform the fetched `ArrayBuffer`, for example to decrypt a page. Each returned buffer is passed to the following hook.
 - `afterDecode` receives `{ url, signal, page, image }` and can replace the decoded image. Each returned image is passed to the following hook. Its `url` is the `src` of the page rather than a URL `beforeFetch` replaced.
 - `onPageChange` receives the current page index and total number of pages.
+
+Because an earlier `customFetch` wraps the later ones, a caching plugin registered before an authenticated-fetch plugin serves cached pages itself and calls `next()` for the rest, which the authenticated plugin fetches. The chain runs at most once per page load, so a hook that awaits `next()` and returns nothing uses the buffer `next()` produced:
+
+```tsx
+const cachePlugin = ComicViewer.definePlugin({
+  name: "cache",
+  customFetch: async ({ url }, next) => {
+    const cached = await cache.get(url);
+    if (cached) return cached;
+
+    const buffer = await next();
+    await cache.set(url, buffer);
+    return buffer;
+  },
+});
+
+const authPlugin = ComicViewer.definePlugin({
+  name: "auth",
+  customFetch: async ({ signal, url }) => {
+    const response = await fetch(url, { headers: authHeaders, signal });
+    return response.arrayBuffer();
+  },
+});
+
+<ComicViewer.Root pages={pages} plugins={[cachePlugin, authPlugin]} />;
+```
 
 `afterDecode` runs after the viewer has decoded the page, so a plugin that draws on a page or reads its pixels does not decode it a second time. A hook that returns nothing leaves the image as it was, which is what an analysis hook wants; one that returns an image hands the viewer the image it drew, without the lossy re-encode that transforming the buffer would need:
 

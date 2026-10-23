@@ -32,6 +32,16 @@ type PipelineHook<TContext, TResult> =
   | ((context: TContext) => TResult | Promise<TResult | undefined> | undefined)
   | ((context: TContext) => void | Promise<void>);
 
+/** Runs the next `customFetch` hook, or the built-in fetch after the last one. */
+export type FetchNext = () => Promise<ArrayBuffer>;
+
+type FetchHook =
+  | ((
+      context: PageLoadContext,
+      next: FetchNext
+    ) => ArrayBuffer | Promise<ArrayBuffer | undefined> | undefined)
+  | ((context: PageLoadContext, next: FetchNext) => void | Promise<void>);
+
 type PageChangeHook =
   | ((index: number, total: number) => void)
   | ((index: number, total: number) => Promise<void>);
@@ -46,10 +56,12 @@ export interface ViewerPlugin {
   beforeFetch?: PipelineHook<PageLoadContext, string>;
   /**
    * Optionally fetches a page instead of the built-in fetch implementation.
-   * When multiple plugins provide this hook, they run in order and the last
-   * returned buffer is used.
+   * Hooks nest in registration order: `next` runs the following plugin's hook,
+   * or the built-in fetch after the last one, so an earlier plugin wraps the
+   * later ones. Returning a buffer supplies the page data; returning nothing
+   * uses what `next` produces.
    */
-  customFetch?: PipelineHook<PageLoadContext, ArrayBuffer>;
+  customFetch?: FetchHook;
   /**
    * Runs after a page has been fetched. Returning a buffer passes it to the
    * next hook; returning nothing leaves the current buffer unchanged.
@@ -126,18 +138,24 @@ export const runDataPipeline = async (
     return { ...initialContext, url: currentUrl };
   });
 
-  const fetched = await runStage("fetch", async () => {
-    let buffer: ArrayBuffer | undefined;
+  const fetched = await runStage("fetch", () => {
+    const hooks = plugins.flatMap((plugin) => plugin.customFetch ?? []);
 
-    for (const plugin of plugins) {
-      // eslint-disable-next-line no-await-in-loop -- Custom fetchers run in plugin registration order.
-      const customBuffer = await plugin.customFetch?.(context);
-      if (customBuffer instanceof ArrayBuffer) {
-        buffer = customBuffer;
+    const runFetcher = async (index: number): Promise<ArrayBuffer> => {
+      const hook = hooks[index];
+      if (!hook) {
+        return fetchPage(context);
       }
-    }
 
-    return buffer ?? (await fetchPage(context));
+      // Memoized so a hook that calls `next` and returns nothing fetches once.
+      let rest: Promise<ArrayBuffer> | undefined;
+      const next: FetchNext = () => (rest ??= runFetcher(index + 1));
+      const buffer = await hook(context, next);
+
+      return buffer instanceof ArrayBuffer ? buffer : next();
+    };
+
+    return runFetcher(0);
   });
 
   return runStage("transform", async () => {
