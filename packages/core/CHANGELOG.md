@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.11.0](https://github.com/publira/comic-viewer/compare/v0.10.2...v0.11.0) (2026-10-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** compose customFetch hooks as middleware ([#442](https://github.com/publira/comic-viewer/issues/442))
+
+### Features
+
+* **core:** compose customFetch hooks as middleware ([#442](https://github.com/publira/comic-viewer/issues/442)) ([a056e3b](https://github.com/publira/comic-viewer/commit/a056e3bb6e84d645caef198a3c3e13198a37e854)), closes [#428](https://github.com/publira/comic-viewer/issues/428)
+* **core:** decode page images at the size they are drawn ([#452](https://github.com/publira/comic-viewer/issues/452)) ([1b45c12](https://github.com/publira/comic-viewer/commit/1b45c1242c4886aa2f622ef1f1c91277174bdd4a))
+* **core:** fetch the srcset candidate the page slot needs ([#449](https://github.com/publira/comic-viewer/issues/449)) ([e3ee8f9](https://github.com/publira/comic-viewer/commit/e3ee8f94f014ab0ac5c4d30f29b7fba63cc625e4))
+* **core:** let a page whose resolvePage call failed be resolved again ([#450](https://github.com/publira/comic-viewer/issues/450)) ([de2b928](https://github.com/publira/comic-viewer/commit/de2b928b36b9ad6cecc0f19c52cda95e26aeb840))
+* **core:** make the viewport a named region instead of a button ([#444](https://github.com/publira/comic-viewer/issues/444)) ([b9f1543](https://github.com/publira/comic-viewer/commit/b9f1543a142856b0569ff2720a2443745c7b832e))
+* **core:** offer controlled props for the reader settings ([#447](https://github.com/publira/comic-viewer/issues/447)) ([d491f93](https://github.com/publira/comic-viewer/commit/d491f9301cc25a2fc77b8b0f5ad17f48c8698d5b))
+* **core:** parse srcset on ViewerPage and select a candidate ([#443](https://github.com/publira/comic-viewer/issues/443)) ([ab224cb](https://github.com/publira/comic-viewer/commit/ab224cbe5dff995d74ece376852053c6ed5dd382))
+* **core:** ship a use client directive and check the packed tarball in consumers ([#448](https://github.com/publira/comic-viewer/issues/448)) ([af20610](https://github.com/publira/comic-viewer/commit/af20610da928d5f73679c6099b80767c76ad7125))
+
 ## [0.10.2](https://github.com/publira/comic-viewer/compare/v0.10.1...v0.10.2) (2026-10-22)
 
 
