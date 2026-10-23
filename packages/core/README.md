@@ -353,6 +353,8 @@ The pinch zoom scale is not part of the required width, so zooming in neither re
 
 The `url` that [plugin hooks](#plugins) receive is the chosen candidate, or `src` when there is none, and an upgrade runs the hooks again for the larger one.
 
+Whichever image is fetched, it is decoded no wider than the required width rather than at the size of the file, because the decoded bitmaps, not the downloaded bytes, are what runs a phone out of memory. A page that has only a 4000-pixel `src` is held as a bitmap as wide as its slot on a phone, not as a 4000-pixel one. An image narrower than the required width is decoded at its own size and never scaled up. The viewer reads the width from the header of a JPEG, PNG, GIF, WebP, or AVIF file; an image in another format, or one the browser can decode only through an image element, is decoded at its full size. When the slot grows past the decoded width, the page is decoded again from the data it already has, without a new request, unless the larger slot selects a larger candidate, which is fetched instead. A slot that shrinks keeps the wider bitmap.
+
 ## Lazy page metadata
 
 Pass the whole `pages` array when the list is short and its URLs are stable. For a long document, for URLs that expire, or for a list that grows as the reader advances, give the viewer a `pageCount` and a `resolvePage` function instead: it then asks for the metadata of a page only as the reader approaches it.
@@ -709,6 +711,8 @@ const watermarkPlugin = ComicViewer.definePlugin({
 ```
 
 The image is an `ImageBitmap` wherever the browser can decode the page with `createImageBitmap`, and an `HTMLImageElement` where it falls back to an image element, which is what `DecodedPageImage` covers and why the size is read through `naturalWidth` when it is there. Both are drawable by `drawImage`, so a hook that only draws needs no branch of its own.
+
+The image is [decoded at the size the page is drawn at](#responsive-page-images), not at the size of the file, so a hook that reads pixels or draws at pixel coordinates works in the drawn resolution. Its width is the one to measure against, as the example above does. When the page is decoded again for a larger slot, `afterDecode` runs again on the wider image, while the fetch hooks do not run, since the data is not fetched again.
 
 The viewer owns the decoded image. It releases the image a hook replaces, so a hook must not keep drawing from an image it has handed back a replacement for, and it releases the replacement in turn once the page leaves the cache. A hook that throws reports the failure as the `"image-transform"` stage of [a page load error](#page-loading-state-and-errors), and the viewer releases the image it was holding.
 

@@ -76,6 +76,9 @@ export interface ViewerPlugin {
    * Returning an image passes it to the next hook; returning nothing leaves
    * the current image unchanged.
    *
+   * The image is decoded no wider than the page is drawn, so its pixels are
+   * those of the drawn resolution rather than of the file.
+   *
    * The viewer owns the decoded image: it releases the image a hook replaces,
    * so a hook must not keep drawing from an image it has replaced, and it
    * takes ownership of the image the hook returns.

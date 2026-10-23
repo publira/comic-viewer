@@ -49,6 +49,12 @@ const SrcsetPage = () => (
           arrives. Narrowing the window again fetches nothing: a page keeps the
           larger image and is drawn scaled down.
         </p>
+        <p>
+          The rendition is then decoded no wider than the page is drawn, rather
+          than at the size of the file, so a page never holds more pixels in
+          memory than the screen shows. A rendition that is narrower already is
+          decoded at its own size.
+        </p>
       </section>
       <SourceCodePanel code={sourceCode} />
     </div>
