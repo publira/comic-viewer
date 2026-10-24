@@ -128,6 +128,21 @@ describe("ViewerProvider / useViewerContext", () => {
     expect(result.current.zoomScale).toBe(1);
   });
 
+  it("reports the zoom limits and leaves the scale alone without a viewport", () => {
+    const { result } = renderHook(() => useViewerContext(), {
+      wrapper: makeWrapper(),
+    });
+
+    expect(result.current.minZoomScale).toBe(0.5);
+    expect(result.current.maxZoomScale).toBe(4);
+
+    act(() => {
+      result.current.setZoomScale(2);
+    });
+
+    expect(result.current.zoomScale).toBe(1);
+  });
+
   it("clamps initialIndex to the valid range", () => {
     const { result } = renderHook(() => useViewerContext(), {
       wrapper: makeWrapper({ initialIndex: 100 }),

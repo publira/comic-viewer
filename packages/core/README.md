@@ -116,18 +116,41 @@ When using `default.css`, each viewer root falls back to `#111111` for `--pcv-bg
 
 Pages initially fit their height. Pinch with two fingers to zoom and move the page; once zoomed, drag with one pointer to pan. A single-finger double tap resets the page to fit-to-width. These gestures take priority over page navigation, so they cannot accidentally turn the page.
 
-The viewer ships no zoom UI of its own, but it reports the scale so that you can build one. `useViewerContext()` carries a read-only `zoomScale`, which is `1` while the spread rests at the size its fit mode gives it, and `resetZoom()`, which returns the spread to that resting position by clearing both the scale and the pan offset. The scale belongs to the spread rather than to the reader, so turning the page or changing the fit mode returns it to `1` on its own. Zooming in and out programmatically is left to the gestures.
+The viewer ships no zoom UI of its own, but it reports the scale and lets you change it, so that you can build one for readers without a touch screen. `useViewerContext()` carries `zoomScale`, which is `1` while the spread rests at the size its fit mode gives it, and three things to build on:
+
+- `setZoomScale(scale, focalPoint?)` zooms the current spread to `scale`. The point at `focalPoint`, given in client coordinates such as a wheel event's `clientX` and `clientY`, stays where it is on screen, and the centre of the viewport does without one. The pan offset stays within the bounds a pinch keeps it in. A call made while a scrub of `PageProgressSlider` is in progress is ignored.
+- `minZoomScale` and `maxZoomScale` are the limits a pinch and `setZoomScale` hold the scale within, so a control can disable itself at either end.
+- `resetZoom()` returns the spread to its resting position by clearing both the scale and the pan offset.
+
+The scale belongs to the spread rather than to the reader, so turning the page or changing the fit mode returns it to `1` on its own.
 
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
 
-const ZoomStatus = () => {
-  const { resetZoom, zoomScale } = ComicViewer.useViewerContext();
+const ZoomControls = () => {
+  const { maxZoomScale, minZoomScale, resetZoom, setZoomScale, zoomScale } =
+    ComicViewer.useViewerContext();
 
   return (
-    <button disabled={zoomScale === 1} onClick={resetZoom} type="button">
-      {Math.round(zoomScale * 100)}%
-    </button>
+    <div>
+      <button
+        disabled={zoomScale <= minZoomScale}
+        onClick={() => setZoomScale(zoomScale - 0.5)}
+        type="button"
+      >
+        Zoom out
+      </button>
+      <button disabled={zoomScale === 1} onClick={resetZoom} type="button">
+        {Math.round(zoomScale * 100)}%
+      </button>
+      <button
+        disabled={zoomScale >= maxZoomScale}
+        onClick={() => setZoomScale(zoomScale + 0.5)}
+        type="button"
+      >
+        Zoom in
+      </button>
+    </div>
   );
 };
 ```

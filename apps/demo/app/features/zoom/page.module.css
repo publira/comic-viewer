@@ -27,9 +27,9 @@
   height: 100%;
 }
 
-/* The zoom readout and its reset button belong to the demo rather than to the
-   viewer, so they wear the pill the toolbar controls share by hand. */
-.zoomStatus {
+/* The zoom controls belong to the demo rather than to the viewer, so they wear
+   the pill the toolbar controls share by hand. */
+.zoomControls {
   display: flex;
   align-items: center;
   flex: 0 0 auto;
@@ -45,7 +45,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.resetZoomButton {
+.zoomButton {
   flex: 0 0 auto;
   padding: 0.25rem 0.625rem;
   border: 0;
@@ -57,7 +57,7 @@
   cursor: pointer;
 }
 
-.resetZoomButton:disabled {
+.zoomButton:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
@@ -88,6 +88,18 @@
 }
 
 @media (max-width: 768px) {
+  /* The controls outgrow a phone-width toolbar, so the slider takes a row of
+     its own and the buttons wrap below it. */
+  .viewerContent .toolbar {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .viewerContent .pageProgress {
+    flex-basis: 100%;
+    order: -1;
+  }
+
   .viewer {
     aspect-ratio: var(--demo-single-page-aspect-ratio);
     border-radius: 4px;

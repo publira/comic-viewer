@@ -102,3 +102,33 @@ test("drops the zoom scale of the spread the reader turns away from", async ({
   await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 21");
   await expect(zoomScale).toHaveText("100%");
 });
+
+test("zooms the spread in and out through setZoomScale", async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/features/zoom");
+
+  const zoomInButton = await revealReaderControl(page, "Zoom in");
+  const zoomOutButton = page.getByRole("button", { name: "Zoom out" });
+  const zoomScale = page.getByRole("status", { name: "Zoom scale" });
+
+  await zoomInButton.click();
+
+  await expect(zoomScale).toHaveText("150%");
+  await expect(page.locator(viewport)).toHaveAttribute("data-pannable", "true");
+
+  await zoomInButton.click();
+  await zoomInButton.click();
+  await zoomInButton.click();
+  await zoomInButton.click();
+  await zoomInButton.click();
+
+  await expect(zoomScale).toHaveText("400%");
+  await expect(zoomInButton).toBeDisabled();
+
+  await page.getByRole("button", { name: "Reset zoom" }).click();
+  await zoomOutButton.click();
+
+  await expect(zoomScale).toHaveText("50%");
+  await expect(zoomOutButton).toBeDisabled();
+  await expect(page.locator(viewport)).not.toHaveAttribute("data-pannable");
+});

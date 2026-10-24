@@ -7,21 +7,42 @@ import { getViewerStyle } from "#components/viewer-layout";
 
 import styles from "../page.module.css";
 
+const ZOOM_STEP = 0.5;
+
 /**
- * Reports the zoom scale the viewer context carries and offers the reset it
- * exposes. Neither the readout nor the button is part of the library: both are
- * built from `zoomScale` and `resetZoom` alone.
+ * Zooms the spread in and out, reads the scale back, and resets it. None of
+ * these controls is part of the library: they are built from `zoomScale`, its
+ * limits, `setZoomScale`, and `resetZoom` alone.
  */
-const ZoomStatus = () => {
-  const { resetZoom, zoomScale } = ComicViewer.useViewerContext();
+const ZoomControls = () => {
+  const { maxZoomScale, minZoomScale, resetZoom, setZoomScale, zoomScale } =
+    ComicViewer.useViewerContext();
 
   return (
-    <div className={styles.zoomStatus}>
+    <div className={styles.zoomControls}>
+      <button
+        aria-label="Zoom out"
+        className={styles.zoomButton}
+        disabled={zoomScale <= minZoomScale}
+        onClick={() => setZoomScale(zoomScale - ZOOM_STEP)}
+        type="button"
+      >
+        −
+      </button>
       <output aria-label="Zoom scale" className={styles.zoomScale}>
         {Math.round(zoomScale * 100)}%
       </output>
       <button
-        className={styles.resetZoomButton}
+        aria-label="Zoom in"
+        className={styles.zoomButton}
+        disabled={zoomScale >= maxZoomScale}
+        onClick={() => setZoomScale(zoomScale + ZOOM_STEP)}
+        type="button"
+      >
+        +
+      </button>
+      <button
+        className={styles.zoomButton}
         disabled={zoomScale === 1}
         onClick={resetZoom}
         type="button"
@@ -36,14 +57,14 @@ interface ZoomComicViewerProps {
   pages: readonly ViewerPage[];
 }
 
-/** Renders a reader whose toolbar reads the zoom scale back out of the viewer. */
+/** Renders a reader whose toolbar zooms the spread through the viewer context. */
 export const ZoomComicViewer = ({ pages }: ZoomComicViewerProps) => (
   <div className={styles.viewer} style={getViewerStyle(pages)}>
     <ComicViewer.Root className={styles.viewerContent} pages={pages}>
       <ComicViewer.Viewport />
-      <ComicViewer.Toolbar>
-        <ZoomStatus />
-        <ComicViewer.PageProgress>
+      <ComicViewer.Toolbar className={styles.toolbar}>
+        <ZoomControls />
+        <ComicViewer.PageProgress className={styles.pageProgress}>
           <ComicViewer.PageProgressSlider />
           <ComicViewer.PageStatus />
         </ComicViewer.PageProgress>
