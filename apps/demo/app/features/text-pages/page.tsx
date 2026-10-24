@@ -26,8 +26,8 @@ const pages: TextPage[] = [
   // …
 ];
 
-// Given renderPage alone, the viewport loads no images, so the pages need no
-// src. ViewportPage still places each one in its half of the spread.
+// Given renderPage, the viewport loads no images, so the pages need no src.
+// ViewportPage still places each one in its half of the spread.
 export const Reader = () => (
   <ComicViewer.Root initialReadingDirection="ltr" pages={pages}>
     <ComicViewer.Viewport
@@ -63,11 +63,12 @@ const TextPagesPage = () => (
         </p>
         <p>
           <code>Viewport</code> accepts such pages only when it is given{" "}
-          <code>renderPage</code> and no page template, the one form in which it
+          <code>renderPage</code> and no page template, the form in which it
           loads nothing. Without <code>renderPage</code> it loads the image of
           each page, so TypeScript asks for <code>src</code> there. Each page is
           wrapped in <code>ViewportPage</code>, which places it in its half of
-          the spread exactly as an image page is placed.
+          the spread exactly as an image page is placed, and the pages slide on
+          a turn and follow the finger during a swipe as image pages do.
         </p>
       </section>
       <SourceCodePanel code={sourceCode} />

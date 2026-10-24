@@ -1,5 +1,5 @@
 import { useMemo, useRef } from "react";
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 import { composeClassName } from "./class-names";
 import type { PageLoadError } from "./page-load";
@@ -12,6 +12,7 @@ import type { PageMetadata, ViewerPage } from "./viewer-context";
 import type { ViewportChildren } from "./viewport-page";
 import { ViewportRail } from "./viewport-rail";
 import { getViewportLayoutTemplate } from "./viewport-template";
+import type { ViewportTrackProps } from "./viewport-template";
 
 interface ViewportBaseProps {
   /**
@@ -60,11 +61,15 @@ export interface ViewportProps<
 export interface CustomPageViewportProps<
   TPage extends PageMetadata,
 > extends ViewportBaseProps {
-  children?: undefined;
+  /**
+   * An optional layout template whose ViewportPageSlot holds no page template,
+   * since `renderPage` draws the page inside each slot.
+   */
+  children?: ReactElement<ViewportTrackProps>;
   renderPage: (page: TPage, index: number) => ReactNode;
 }
 
-/** Viewport takes pages without `src` only in the form that loads nothing. */
+/** Viewport takes pages without `src` only in the forms that load nothing. */
 interface ViewportComponent {
   <TPage extends PageMetadata = ViewerPage>(
     props: CustomPageViewportProps<TPage>
@@ -76,8 +81,8 @@ interface ViewportComponent {
 
 /**
  * Composes the page rail, its page-turn state, and the viewport gestures.
- * Given `renderPage` and no `children`, it draws each page itself and accepts
- * pages without `src`; otherwise it loads the image of each page.
+ * Given `renderPage`, alone or with a layout template, it draws each page itself
+ * and accepts pages without `src`; otherwise it loads the image of each page.
  */
 export const Viewport = (<TPage extends ViewerPage>({
   "aria-label": ariaLabel = "Comic pages",
@@ -92,6 +97,12 @@ export const Viewport = (<TPage extends ViewerPage>({
   const layoutTemplate = getViewportLayoutTemplate(children);
   const pageTemplate =
     layoutTemplate === undefined ? children : layoutTemplate.pageTemplate;
+  if (renderPage !== undefined && pageTemplate !== undefined) {
+    throw new Error(
+      "Viewport takes either renderPage or a page template, not both."
+    );
+  }
+
   const containerRef = useRef<HTMLDivElement>(null);
   const {
     endPages,
@@ -113,11 +124,8 @@ export const Viewport = (<TPage extends ViewerPage>({
     toggleControls,
   } = useViewerContext<TPage>();
   const viewMode = useViewMode(containerRef, doublePageThreshold);
-  const usesManagedImageLoading =
-    children !== undefined || renderPage === undefined;
-  const usesPageRail =
-    (children === undefined || layoutTemplate !== undefined) &&
-    renderPage === undefined;
+  const usesManagedImageLoading = renderPage === undefined;
+  const usesPageRail = children === undefined || layoutTemplate !== undefined;
   const scrubSpread = useMemo(
     () =>
       scrubPosition === null

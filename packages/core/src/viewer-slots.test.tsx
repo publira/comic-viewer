@@ -13,6 +13,7 @@ import {
   pages,
   pressViewportKey,
   setViewportRect,
+  withinCurrentPageSet,
 } from "./viewport-test-helpers";
 
 const renderPage = (page: TestPage) => (
@@ -78,6 +79,8 @@ const getCurrentPageSet = (container: HTMLElement) => {
 describe("viewer slot pages", () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
+    // Reduced motion lets the rail settle on each turn without a transition.
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
     MockResizeObserver.reset();
   });
 
@@ -85,8 +88,10 @@ describe("viewer slot pages", () => {
     renderSlotViewer();
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("-1");
-    expect(screen.getByText("Cover notice")).toBeInTheDocument();
-    expect(screen.queryByTestId("p1")).not.toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Cover notice")
+    ).toBeInTheDocument();
+    expect(withinCurrentPageSet().queryByTestId("p1")).not.toBeInTheDocument();
   });
 
   it("turns from the start page onto the first page", () => {
@@ -95,8 +100,10 @@ describe("viewer slot pages", () => {
     pressViewportKey("ArrowLeft");
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
-    expect(screen.getByTestId("p1")).toBeInTheDocument();
-    expect(screen.queryByText("Cover notice")).not.toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p1")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().queryByText("Cover notice")
+    ).not.toBeInTheDocument();
   });
 
   it("opens on the page an explicit initialIndex names", () => {
@@ -107,7 +114,9 @@ describe("viewer slot pages", () => {
     pressViewportKey("ArrowRight");
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("-1");
-    expect(screen.getByText("Cover notice")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Cover notice")
+    ).toBeInTheDocument();
   });
 
   it("turns from the last page onto the end page", () => {
@@ -116,7 +125,9 @@ describe("viewer slot pages", () => {
     pressViewportKey("ArrowLeft");
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("4");
-    expect(screen.getByText("Next chapter")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Next chapter")
+    ).toBeInTheDocument();
 
     // The end page is the last one the reader can reach.
     pressViewportKey("ArrowLeft");
@@ -181,8 +192,10 @@ describe("viewer slot pages", () => {
     const currentPageSet = getCurrentPageSet(container);
 
     expect(currentPageSet).toHaveAttribute("data-page-count", "2");
-    expect(screen.getByTestId("p3")).toBeInTheDocument();
-    expect(screen.getByText("Next chapter")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p3")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Next chapter")
+    ).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Page 3 of 3");
   });
 
@@ -216,8 +229,10 @@ describe("viewer slot pages", () => {
       "data-page-count",
       "2"
     );
-    expect(screen.getByText("Cover notice")).toBeInTheDocument();
-    expect(screen.getByTestId("p1")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Cover notice")
+    ).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p1")).toBeInTheDocument();
   });
 
   it("takes the slot pages written among the children of the viewer", () => {
@@ -231,7 +246,7 @@ describe("viewer slot pages", () => {
     );
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("-1");
-    expect(screen.getByText("Cover notice")).toHaveClass(
+    expect(withinCurrentPageSet().getByText("Cover notice")).toHaveClass(
       "pcv-page",
       "pcv-page-slot",
       "notice"
@@ -322,7 +337,9 @@ describe("viewer slot pages", () => {
     renderSlotViewer({ startPageCount: 3 });
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("-3");
-    expect(screen.getByText("Cover notice")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Cover notice")
+    ).toBeInTheDocument();
   });
 
   it("turns through the start pages one at a time and on into the document", () => {
@@ -331,14 +348,18 @@ describe("viewer slot pages", () => {
     // The start pages take the indexes below the page list in the order they
     // are written, so the reading order runs -3, -2, -1, and then page 1.
     pressViewportKey("ArrowLeft");
-    expect(screen.getByText("Publisher card")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Publisher card")
+    ).toBeInTheDocument();
 
     pressViewportKey("ArrowLeft");
-    expect(screen.getByText("Chapter title")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Chapter title")
+    ).toBeInTheDocument();
 
     pressViewportKey("ArrowLeft");
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
-    expect(screen.getByTestId("p1")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p1")).toBeInTheDocument();
   });
 
   it("turns through the end pages after the last page of the document", () => {
@@ -347,14 +368,18 @@ describe("viewer slot pages", () => {
     // The end pages take the indexes above the page list in the order they are
     // written, so the reading order runs 4, 5, and then 6.
     pressViewportKey("ArrowLeft");
-    expect(screen.getByText("Next chapter")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Next chapter")
+    ).toBeInTheDocument();
 
     pressViewportKey("ArrowLeft");
-    expect(screen.getByText("Afterword")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByText("Afterword")).toBeInTheDocument();
 
     pressViewportKey("ArrowLeft");
     expect(screen.getByTestId("current-index")).toHaveTextContent("6");
-    expect(screen.getByText("Recommendations")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Recommendations")
+    ).toBeInTheDocument();
 
     // The last end page is the last one the reader can reach.
     pressViewportKey("ArrowLeft");
@@ -391,7 +416,7 @@ describe("viewer slot pages", () => {
 
   it("hands each extra page its position within the slot", () => {
     const { container } = renderSlotViewer({ startPageCount: 3 });
-    const startPage = container.querySelector(
+    const startPage = getCurrentPageSet(container).querySelector(
       '.pcv-page-slot[data-page-slot="start"]'
     );
 
@@ -411,14 +436,18 @@ describe("viewer slot pages", () => {
       "data-page-count",
       "1"
     );
-    expect(screen.getByText("Cover notice")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Cover notice")
+    ).toBeInTheDocument();
 
     pressViewportKey("ArrowLeft");
     expect(getCurrentPageSet(container)).toHaveAttribute(
       "data-page-count",
       "1"
     );
-    expect(screen.getByText("Publisher card")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Publisher card")
+    ).toBeInTheDocument();
   });
 
   it("pairs the start pages with each other from a negative spread start", () => {
@@ -432,13 +461,17 @@ describe("viewer slot pages", () => {
       "data-page-count",
       "2"
     );
-    expect(screen.getByText("Cover notice")).toBeInTheDocument();
-    expect(screen.getByText("Publisher card")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Cover notice")
+    ).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Publisher card")
+    ).toBeInTheDocument();
 
     // The spread that follows holds the first two pages of the document.
     pressViewportKey("ArrowLeft");
-    expect(screen.getByTestId("p1")).toBeInTheDocument();
-    expect(screen.getByTestId("p2")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p1")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p2")).toBeInTheDocument();
   });
 
   it("reports a spread of two start pages as the range it covers", () => {
@@ -473,11 +506,13 @@ describe("viewer slot pages", () => {
       "data-page-count",
       "2"
     );
-    expect(screen.getByTestId("p3")).toBeInTheDocument();
-    expect(screen.getByText("Next chapter")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p3")).toBeInTheDocument();
+    expect(
+      withinCurrentPageSet().getByText("Next chapter")
+    ).toBeInTheDocument();
 
     pressViewportKey("ArrowLeft");
-    expect(screen.getByText("Afterword")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByText("Afterword")).toBeInTheDocument();
     expect(getCurrentPageSet(container)).toHaveAttribute(
       "data-page-count",
       "1"
@@ -497,14 +532,13 @@ describe("viewer slot pages", () => {
         startPageCount: 2,
       });
 
-      expect(screen.getByText("Cover notice")).toHaveAttribute(
+      expect(withinCurrentPageSet().getByText("Cover notice")).toHaveAttribute(
         "data-page-side",
         side
       );
-      expect(screen.getByText("Publisher card")).toHaveAttribute(
-        "data-page-side",
-        side === "right" ? "left" : "right"
-      );
+      expect(
+        withinCurrentPageSet().getByText("Publisher card")
+      ).toHaveAttribute("data-page-side", side === "right" ? "left" : "right");
     }
   );
 
@@ -521,10 +555,12 @@ describe("viewer slot pages", () => {
         initialReadingDirection === "rtl" ? "ArrowLeft" : "ArrowRight";
 
       pressViewportKey(forwardKey);
-      expect(screen.getByText("Next chapter")).toBeInTheDocument();
+      expect(
+        withinCurrentPageSet().getByText("Next chapter")
+      ).toBeInTheDocument();
 
       pressViewportKey(forwardKey);
-      expect(screen.getByText("Afterword")).toBeInTheDocument();
+      expect(withinCurrentPageSet().getByText("Afterword")).toBeInTheDocument();
     }
   );
 

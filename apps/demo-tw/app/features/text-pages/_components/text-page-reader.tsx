@@ -88,10 +88,9 @@ const PageNavigation = () => {
 
 /**
  * A reader whose pages are drawn from text by the application. Given
- * renderPage alone, the viewport loads no images, so the pages need no src.
- * Such a viewport takes no layout template, so its track and page sets are
- * styled through their public `pcv-*` classes; nothing animates a page turn
- * there, so no transition is needed.
+ * renderPage, the viewport loads no images, so the pages need no src. The
+ * layout template styles the rail as it does for image pages, and its page slot
+ * holds no page template, since renderPage draws the page inside it.
  */
 export const TextPageReader = () => (
   <ComicViewer.Root
@@ -100,11 +99,11 @@ export const TextPageReader = () => (
     pages={textPages}
   >
     <ComicViewer.Viewport
-      className="group/viewport relative flex min-h-0 min-w-0 flex-1 overflow-hidden [&_.pcv-viewport-page-set]:flex [&_.pcv-viewport-page-set]:h-full [&_.pcv-viewport-page-set]:min-w-0 [&_.pcv-viewport-page-set]:shrink-0 [&_.pcv-viewport-page-set]:basis-1/3 [&_.pcv-viewport-page-set[data-page-side=left]]:justify-start [&_.pcv-viewport-page-set[data-page-side=right]]:justify-end [&_.pcv-viewport-track]:flex [&_.pcv-viewport-track]:h-full [&_.pcv-viewport-track]:w-[300%] [&_.pcv-viewport-track]:shrink-0 [&_.pcv-viewport-track]:-translate-x-1/3"
+      className="group/viewport relative flex min-h-0 min-w-0 flex-1 touch-pan-y overflow-hidden data-[pannable]:cursor-grab data-[pannable]:touch-none data-[panning]:cursor-grabbing"
       renderPage={(page: TextPage) => (
         // ViewportPage reports the half of the spread the page takes, so each
         // page meets its facing page at the gutter.
-        <ComicViewer.ViewportPage className="flex h-full min-w-0 flex-1 items-center justify-center group-data-[view-mode=double]/viewport:max-w-1/2 group-data-[view-mode=double]/viewport:basis-1/2 data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
+        <ComicViewer.ViewportPage className="flex h-full w-full min-w-0 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start">
           <article
             aria-label={page.title}
             className="flex aspect-[4/5] h-full max-w-full flex-col gap-3 overflow-auto bg-[#f4efe4] px-[9%] py-[8%] font-serif text-[clamp(0.75rem,1.6vw,1rem)] leading-relaxed text-stone-800 shadow-[inset_0_0_0_1px_rgb(0_0_0/0.08)] max-md:text-[clamp(0.75rem,3.6vw,1rem)]"
@@ -116,7 +115,14 @@ export const TextPageReader = () => (
           </article>
         </ComicViewer.ViewportPage>
       )}
-    />
+    >
+      <ComicViewer.ViewportTrack className="flex h-full w-[300%] shrink-0 basis-[300%] [transform:translateX(calc(-33.3333%_+_var(--pcv-drag-offset)))] data-[dragging]:transition-none data-[transition-state=active]:transition-transform data-[transition-state=active]:duration-[260ms] data-[transition-state=active]:ease-out data-[transition-state=active]:data-[slide-direction=left]:[transform:translateX(calc(-66.6667%_+_var(--pcv-drag-offset)))] data-[transition-state=active]:data-[slide-direction=right]:[transform:translateX(var(--pcv-drag-offset))]">
+        {/* The pan and the zoom of a pinch gesture apply to the spread on screen. */}
+        <ComicViewer.ViewportPageSet className="flex h-full min-w-0 shrink-0 basis-1/3 data-[page-side=left]:justify-start data-[page-side=right]:justify-end data-[rail-slot=current]:[transform:translate(var(--pcv-pan-x,0),var(--pcv-pan-y,0))_scale(var(--pcv-zoom-scale,1))]">
+          <ComicViewer.ViewportPageSlot className="flex min-w-0 flex-1 items-center justify-center data-[page-side=left]:justify-end data-[page-side=right]:justify-start data-[view-mode=double]:max-w-1/2 data-[view-mode=double]:basis-1/2" />
+        </ComicViewer.ViewportPageSet>
+      </ComicViewer.ViewportTrack>
+    </ComicViewer.Viewport>
     {/* The toolbar slides out of sight with the `aria-hidden` the viewer sets
         on it while the reader controls are at rest. */}
     <ComicViewer.Toolbar className="absolute inset-x-0 bottom-0 z-10 flex items-center gap-2 bg-linear-to-t from-black/80 via-black/55 to-transparent px-3 pt-8 pb-3 transition duration-150 ease-out aria-hidden:translate-y-2 aria-hidden:opacity-0">

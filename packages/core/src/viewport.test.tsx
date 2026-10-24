@@ -26,6 +26,7 @@ import {
   pages,
   pressViewportKey,
   renderViewport,
+  withinCurrentPageSet,
 } from "./viewport-test-helpers";
 
 // The third page is a whole two-page spread delivered as one landscape image.
@@ -472,6 +473,100 @@ describe(Viewport, () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("draws pages without a source into a layout template through renderPage", async () => {
+    const fetchMock = vi.fn<MockFetch>(() =>
+      Promise.reject(new Error("should not fetch"))
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const textPages: TextPage[] = [
+      { body: "Once upon a time", id: "t1", title: "Text 1" },
+      { body: "The end", id: "t2", title: "Text 2" },
+    ];
+
+    const { container } = render(
+      <ViewerProvider
+        pages={textPages}
+        initialReadingDirection="ltr"
+        initialViewMode="single"
+      >
+        <Viewport renderPage={(page: TextPage) => <p>{page.body}</p>}>
+          <ViewportTrack className="reader-rail">
+            <ViewportPageSet className="reader-page-set">
+              <ViewportPageSlot className="reader-page-slot" />
+            </ViewportPageSet>
+          </ViewportTrack>
+        </Viewport>
+      </ViewerProvider>
+    );
+
+    expect(container.querySelector(".pcv-viewport-track")).toHaveClass(
+      "reader-rail"
+    );
+    expect(
+      withinCurrentPageSet().getByText("Once upon a time").parentElement
+    ).toHaveClass("reader-page-slot");
+    // The rail holds the next page beside the one on screen.
+    expect(
+      container.querySelector(
+        '.reader-page-set[data-rail-slot="next"] .reader-page-slot'
+      )
+    ).toHaveTextContent("The end");
+
+    pressViewportKey("ArrowRight");
+
+    await waitFor(() => {
+      expect(withinCurrentPageSet().getByText("The end")).toBeInTheDocument();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("follows the finger during a drag on a viewport that draws its pages", () => {
+    const { container } = renderViewport({ initialIndex: 1 });
+    const viewport = screen.getByRole("region", { name: "Comic pages" });
+
+    fireEvent.touchStart(viewport, { touches: [{ clientX: 200 }] });
+    fireEvent.touchMove(viewport, { touches: [{ clientX: 160 }] });
+
+    expect(viewport).toHaveAttribute("data-dragging", "true");
+    expect(container.querySelector(".pcv-viewport-track")).toHaveStyle({
+      "--pcv-drag-offset": "-40px",
+    });
+  });
+
+  it.each([
+    {
+      children: (
+        <ViewportTrack>
+          <ViewportPageSet>
+            <ViewportPageSlot>
+              <ViewportPage />
+            </ViewportPageSlot>
+          </ViewportPageSet>
+        </ViewportTrack>
+      ),
+      name: "a layout template whose slot holds a page template",
+    },
+    { children: <ViewportPage />, name: "a page template" },
+  ])("rejects renderPage together with $name", ({ children }) => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {
+      // React logs the render failure that this test asserts on.
+    });
+
+    try {
+      expect(() => {
+        render(
+          <ViewerProvider pages={pages}>
+            <Viewport<TestPage> renderPage={(page) => <p>{page.title}</p>}>
+              {children}
+            </Viewport>
+          </ViewerProvider>
+        );
+      }).toThrow("Viewport takes either renderPage or a page template");
+    } finally {
+      consoleError.mockRestore();
+    }
+  });
+
   it("requires a source for pages the viewport loads itself", () => {
     // @ts-expect-error -- A text page has no image to load.
     const bareViewport = <Viewport<TextPage> />;
@@ -880,11 +975,11 @@ describe(Viewport, () => {
   it("renders only the current page in single mode", () => {
     renderViewport();
 
-    expect(screen.getByTestId("p1")).toBeInTheDocument();
-    expect(screen.queryByTestId("p2")).not.toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p1")).toBeInTheDocument();
+    expect(withinCurrentPageSet().queryByTestId("p2")).not.toBeInTheDocument();
   });
 
-  it("keeps a page visible after navigating to a fractional index", () => {
+  it("keeps a page visible after navigating to a fractional index", async () => {
     render(
       <ViewerProvider pages={pages}>
         <Viewport<TestPage>
@@ -896,7 +991,10 @@ describe(Viewport, () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Go to index" }));
 
-    expect(screen.getByTestId("p2")).toBeInTheDocument();
+    // The rail slides onto the spread before it rests there.
+    await waitFor(() => {
+      expect(withinCurrentPageSet().getByTestId("p2")).toBeInTheDocument();
+    });
   });
 
   it("renders pre-spread pages individually in double mode", () => {
@@ -906,8 +1004,8 @@ describe(Viewport, () => {
       MockResizeObserver.trigger(1024);
     });
 
-    expect(screen.getByTestId("p1")).toBeInTheDocument();
-    expect(screen.queryByTestId("p2")).not.toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p1")).toBeInTheDocument();
+    expect(withinCurrentPageSet().queryByTestId("p2")).not.toBeInTheDocument();
   });
 
   it("starts odd-indexed spreads in RTL order", () => {
@@ -917,7 +1015,7 @@ describe(Viewport, () => {
       MockResizeObserver.trigger(1024);
     });
 
-    const items = screen.getAllByTestId(/^p/u);
+    const items = withinCurrentPageSet().getAllByTestId(/^p/u);
     expect(items[0]).toHaveAttribute("data-testid", "p3");
     expect(items[1]).toHaveAttribute("data-testid", "p2");
   });
@@ -933,7 +1031,7 @@ describe(Viewport, () => {
       MockResizeObserver.trigger(1024);
     });
 
-    const items = screen.getAllByTestId(/^p/u);
+    const items = withinCurrentPageSet().getAllByTestId(/^p/u);
     expect(items[0]).toHaveAttribute("data-testid", "p3");
     expect(items[1]).toHaveAttribute("data-testid", "p4");
   });
@@ -946,9 +1044,9 @@ describe(Viewport, () => {
     });
 
     // RTL: index 1 on the left, index 0 on the right
-    expect(screen.getByTestId("p1")).toBeInTheDocument();
-    expect(screen.getByTestId("p2")).toBeInTheDocument();
-    expect(screen.queryByTestId("p3")).not.toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p1")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p2")).toBeInTheDocument();
+    expect(withinCurrentPageSet().queryByTestId("p3")).not.toBeInTheDocument();
   });
 
   it("renders 2 pages in double mode (LTR)", () => {
@@ -958,8 +1056,8 @@ describe(Viewport, () => {
       MockResizeObserver.trigger(1024);
     });
 
-    expect(screen.getByTestId("p1")).toBeInTheDocument();
-    expect(screen.getByTestId("p2")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p1")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p2")).toBeInTheDocument();
   });
 
   it("renders the next page first (on the left) in RTL double mode", () => {
@@ -969,7 +1067,7 @@ describe(Viewport, () => {
       MockResizeObserver.trigger(1024);
     });
 
-    const items = screen.getAllByTestId(/^p/u);
+    const items = withinCurrentPageSet().getAllByTestId(/^p/u);
     // RTL order: [p2, p1]
     expect(items[0]).toHaveAttribute("data-testid", "p2");
     expect(items[1]).toHaveAttribute("data-testid", "p1");
@@ -982,7 +1080,7 @@ describe(Viewport, () => {
       MockResizeObserver.trigger(1024);
     });
 
-    const items = screen.getAllByTestId(/^p/u);
+    const items = withinCurrentPageSet().getAllByTestId(/^p/u);
     // LTR order: [p1, p2]
     expect(items[0]).toHaveAttribute("data-testid", "p1");
     expect(items[1]).toHaveAttribute("data-testid", "p2");
@@ -996,8 +1094,8 @@ describe(Viewport, () => {
       MockResizeObserver.trigger(1024);
     });
 
-    expect(screen.getByTestId("p4")).toBeInTheDocument();
-    expect(screen.queryByTestId("p5")).not.toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p4")).toBeInTheDocument();
+    expect(withinCurrentPageSet().queryByTestId("p5")).not.toBeInTheDocument();
   });
 
   it("sets viewport data attributes for RTL odd-last-page in double mode", () => {
@@ -1094,19 +1192,19 @@ describe(Viewport, () => {
     renderViewport({ initialIndex: 0 });
 
     // single mode
-    expect(screen.getByTestId("p1")).toBeInTheDocument();
-    expect(screen.queryByTestId("p2")).not.toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p1")).toBeInTheDocument();
+    expect(withinCurrentPageSet().queryByTestId("p2")).not.toBeInTheDocument();
 
     // double mode
     act(() => {
       MockResizeObserver.trigger(1024);
     });
-    expect(screen.getByTestId("p2")).toBeInTheDocument();
+    expect(withinCurrentPageSet().getByTestId("p2")).toBeInTheDocument();
 
     // back to single
     act(() => {
       MockResizeObserver.trigger(400);
     });
-    expect(screen.queryByTestId("p2")).not.toBeInTheDocument();
+    expect(withinCurrentPageSet().queryByTestId("p2")).not.toBeInTheDocument();
   });
 });
