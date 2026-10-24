@@ -459,7 +459,10 @@ describe(Viewport, () => {
 
     render(
       <ViewerProvider pages={textPages}>
-        <Viewport renderPage={(page: TextPage) => <p>{page.body}</p>} />
+        <Viewport
+          gestures={{ swipe: { enabled: false } }}
+          renderPage={(page: TextPage) => <p>{page.body}</p>}
+        />
       </ViewerProvider>
     );
 
