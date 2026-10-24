@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PageNavigation } from "./page-navigation";
@@ -14,6 +14,7 @@ import {
   pressViewportKey,
   renderViewport,
   setViewportRect,
+  withinCurrentPageSet,
 } from "./viewport-test-helpers";
 
 const renderControlledViewport = ({
@@ -166,11 +167,11 @@ describe(useViewportGestures, () => {
     );
 
     for (const control of [
-      screen.getByRole("textbox", { name: "Title" }),
-      screen.getByRole("textbox", { name: "Description" }),
-      screen.getByRole("combobox", { name: "Page size" }),
-      screen.getByLabelText("Notes"),
-      screen.getByRole("button", { name: "Open menu" }),
+      withinCurrentPageSet().getByRole("textbox", { name: "Title" }),
+      withinCurrentPageSet().getByRole("textbox", { name: "Description" }),
+      withinCurrentPageSet().getByRole("combobox", { name: "Page size" }),
+      withinCurrentPageSet().getByLabelText("Notes"),
+      withinCurrentPageSet().getByRole("button", { name: "Open menu" }),
     ]) {
       expect(fireEvent.keyDown(control, { key: "ArrowRight" })).toBeTruthy();
       expect(screen.getByTestId("current-index")).toHaveTextContent("1");
@@ -278,7 +279,7 @@ describe(useViewportGestures, () => {
     expect(screen.getByTestId("current-index")).toHaveTextContent("1");
   });
 
-  it("navigates by swipe in LTR", () => {
+  it("navigates by swipe in LTR", async () => {
     const { container } = renderViewport({
       initialIndex: 1,
       initialReadingDirection: "ltr",
@@ -300,6 +301,10 @@ describe(useViewportGestures, () => {
     fireEvent.touchEnd(viewport);
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+    // The page slides onto the next spread before it takes another swipe.
+    await waitFor(() => {
+      expect(viewport).toHaveAttribute("data-transition-state", "idle");
+    });
 
     fireEvent.touchStart(viewport, {
       touches: [{ clientX: 120 }],
@@ -312,7 +317,7 @@ describe(useViewportGestures, () => {
     expect(screen.getByTestId("current-index")).toHaveTextContent("1");
   });
 
-  it("navigates by swipe in RTL", () => {
+  it("navigates by swipe in RTL", async () => {
     const { container } = renderViewport({
       initialIndex: 1,
       initialReadingDirection: "rtl",
@@ -334,6 +339,10 @@ describe(useViewportGestures, () => {
     fireEvent.touchEnd(viewport);
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+    // The page slides onto the next spread before it takes another swipe.
+    await waitFor(() => {
+      expect(viewport).toHaveAttribute("data-transition-state", "idle");
+    });
 
     fireEvent.touchStart(viewport, {
       touches: [{ clientX: 120 }],

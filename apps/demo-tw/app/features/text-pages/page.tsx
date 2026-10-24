@@ -24,11 +24,13 @@ const TextPagesPage = async () => {
             type extends <code>PageMetadata</code>, and these four pages of an
             afterword carry a heading and paragraphs set in type instead.{" "}
             <code>Viewport</code> accepts them only when it is given{" "}
-            <code>renderPage</code> and no page template, the one form in which
-            it loads nothing. That form takes no layout template either, so the
-            track and the page sets are styled through their public{" "}
-            <code>pcv-*</code> classes, and <code>ViewportPage</code> reports
-            the <code>data-page-side</code> each page meets the gutter by.
+            <code>renderPage</code> and no page template, the form in which it
+            loads nothing. A layout template still styles the track, the page
+            sets, and the page slots, whose slot is left empty for{" "}
+            <code>renderPage</code> to draw into, so the pages slide on a turn
+            and follow the finger during a swipe as image pages do, and{" "}
+            <code>ViewportPage</code> reports the <code>data-page-side</code>{" "}
+            each page meets the gutter by.
           </p>
         </section>
         <SourceCodePanel name={source.path}>{source.code}</SourceCodePanel>

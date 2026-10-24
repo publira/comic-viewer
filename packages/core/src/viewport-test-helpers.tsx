@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { RenderResult } from "@testing-library/react";
 import { vi } from "vitest";
 
@@ -72,6 +72,21 @@ export const setViewportRect = (viewport: Element, width = 100) => {
     x: 0,
     y: 0,
   } as DOMRect);
+};
+
+/**
+ * Queries the spread on screen, apart from the neighbouring spreads the page
+ * rail holds beside it.
+ */
+export const withinCurrentPageSet = () => {
+  const pageSet = document.querySelector<HTMLElement>(
+    '.pcv-viewport-page-set[data-rail-slot="current"]'
+  );
+  if (pageSet === null) {
+    throw new Error("No page set is on screen.");
+  }
+
+  return within(pageSet);
 };
 
 /** Presses a key on the viewport, which answers the arrow keys once focused. */

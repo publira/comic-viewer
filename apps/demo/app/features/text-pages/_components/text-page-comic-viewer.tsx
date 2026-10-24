@@ -68,8 +68,8 @@ export const TextPageComicViewer = () => (
       initialReadingDirection="ltr"
       pages={textPages}
     >
-      {/* Given renderPage alone, the viewport loads no images, so the pages
-          need no src. ViewportPage still places each one in its half. */}
+      {/* Given renderPage, the viewport loads no images, so the pages need no
+          src. ViewportPage still places each one in its half. */}
       <ComicViewer.Viewport
         renderPage={(page: TextPage) => (
           <ComicViewer.ViewportPage>

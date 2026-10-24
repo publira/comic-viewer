@@ -434,9 +434,27 @@ export function Reader() {
 }
 ```
 
-`Viewport` accepts pages without `src` only when it is given `renderPage` and no `children`, because that is the one form in which it loads nothing. Without `renderPage`, or with a page or layout template as `children`, it loads the image of each page, so TypeScript requires the pages to be `ImagePage`. Annotate the parameter of `renderPage`, or write `ComicViewer.Viewport<TextPage>`, to give the page type; an unannotated parameter is typed as `ViewerPage`.
+`Viewport` accepts pages without `src` only when it is given `renderPage` and no page template, because that is the form in which it loads nothing. Without `renderPage`, or with a page template as `children`, it loads the image of each page, so TypeScript requires the pages to be `ImagePage`. Passing `renderPage` together with a page template throws an error, since only one of them can draw the page. Annotate the parameter of `renderPage`, or write `ComicViewer.Viewport<TextPage>`, to give the page type; an unannotated parameter is typed as `ViewerPage`.
 
-`ViewportPage` can wrap what `renderPage` returns, as it does above: it carries the `pcv-page` class and the `data-page-side` and `data-page-layout` attributes, so a drawn page meets its facing page at the gutter as an image page does. A viewport that draws its pages takes no layout template, so style its track and page sets through the `pcv-viewport-track` and `pcv-viewport-page-set` classes, which `default.css` already does. Pages turn without the sliding animation, and a swipe turns them without the page following the finger. The [plugin hooks](#plugins), `onPageLoadError`, and `usePageLoadState` do not apply, because the viewer loads nothing for these pages. `renderPage` draws every page of its viewport, so a document that mixes drawn pages with images draws the images in `renderPage` too.
+`ViewportPage` can wrap what `renderPage` returns, as it does above: it carries the `pcv-page` class and the `data-page-side` and `data-page-layout` attributes, so a drawn page meets its facing page at the gutter as an image page does. The pages ride the same page rail as image pages: they slide on a turn and follow the finger during a swipe, and the rail draws the spreads before and after the one on screen as well, so `renderPage` is called for those pages too. The [plugin hooks](#plugins), `onPageLoadError`, and `usePageLoadState` do not apply, because the viewer loads nothing for these pages. `renderPage` draws every page of its viewport, so a document that mixes drawn pages with images draws the images in `renderPage` too.
+
+The rail of such a viewport is styled through the `pcv-viewport-track` and `pcv-viewport-page-set` classes, which `default.css` already does, or through a layout template whose `ViewportPageSlot` is left empty, as in the [Tailwind CSS](#tailwind-css) setup; `renderPage` then draws each page inside its slot:
+
+```tsx
+<ComicViewer.Viewport
+  renderPage={(page: TextPage) => (
+    <ComicViewer.ViewportPage>
+      <article>{page.body}</article>
+    </ComicViewer.ViewportPage>
+  )}
+>
+  <ComicViewer.ViewportTrack className="…">
+    <ComicViewer.ViewportPageSet className="…">
+      <ComicViewer.ViewportPageSlot className="…" />
+    </ComicViewer.ViewportPageSet>
+  </ComicViewer.ViewportTrack>
+</ComicViewer.Viewport>
+```
 
 ## Lazy page metadata
 
