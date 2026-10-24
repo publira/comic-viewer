@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 import { revealReaderControl } from "#helpers/reader";
-import { viewport } from "#helpers/selectors";
+import { currentPageSet, viewport } from "#helpers/selectors";
 
 /**
  * Pinches the current spread, from two touches `startSpread` apart to two
@@ -131,4 +131,33 @@ test("zooms the spread in and out through setZoomScale", async ({ page }) => {
   await expect(zoomScale).toHaveText("50%");
   await expect(zoomOutButton).toBeDisabled();
   await expect(page.locator(viewport)).not.toHaveAttribute("data-pannable");
+});
+
+test("draws the zoom and the pan on the current spread", async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 1280 });
+  await page.goto("/features/zoom");
+
+  const zoomInButton = await revealReaderControl(page, "Zoom in");
+  const pageSet = page.locator(currentPageSet);
+
+  await zoomInButton.click();
+
+  await expect(pageSet).toHaveCSS("transform", "matrix(1.5, 0, 0, 1.5, 0, 0)");
+
+  const box = await page.locator(viewport).boundingBox();
+  if (box === null) {
+    throw new Error("The viewport was not laid out.");
+  }
+  const centreX = box.x + box.width / 2;
+  const centreY = box.y + box.height / 2;
+
+  await page.mouse.move(centreX, centreY);
+  await page.mouse.down();
+  await page.mouse.move(centreX - 100, centreY, { steps: 5 });
+  await page.mouse.up();
+
+  await expect(pageSet).toHaveCSS(
+    "transform",
+    "matrix(1.5, 0, 0, 1.5, -100, 0)"
+  );
 });
