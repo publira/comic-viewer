@@ -3,9 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import packageJson from "../package.json" with { type: "json" };
 
-// Importing both subpaths fails the whole test file when either one stops
-// resolving, which is what keeps the deprecated alias from silently breaking.
-import "@publira/comic-viewer/core.css";
+// Importing the stylesheet fails the whole test file when it stops resolving.
 import "@publira/comic-viewer/default.css";
 
 // Vite rewrites `new URL(path, import.meta.url)` written out literally.
@@ -40,13 +38,14 @@ const declaredExportNames = (...entries: URL[]) => {
 };
 
 describe("package exports", () => {
-  it("exports default.css and the deprecated core.css alias from one file", () => {
-    expect(packageJson.exports["./core.css"]).toBe(
-      packageJson.exports["./default.css"]
-    );
+  it("exposes only the entry points the versioning policy covers", () => {
+    expect(Object.keys(packageJson.exports)).toStrictEqual([
+      ".",
+      "./default.css",
+    ]);
   });
 
-  it("ships the stylesheet the subpaths point at", () => {
+  it("ships the stylesheet default.css points at", () => {
     expect(packageJson.files).toContain(
       packageJson.exports["./default.css"].replace("./", "")
     );
