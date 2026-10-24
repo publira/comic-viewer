@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { usePageResolveState } from "./page-source";
 import { definePlugin } from "./plugin";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
+import type { PageMetadata } from "./viewer-context";
 import { Viewport } from "./viewport";
 import { PageCanvas, ViewportPage, ViewportPendingPage } from "./viewport-page";
 import {
@@ -30,6 +31,11 @@ import {
 const pagesWithSpread = pages.map((page, index) =>
   index === 2 ? { ...page, layout: "spread" as const } : page
 );
+
+/** A page drawn from text alone, which carries no image to load. */
+interface TextPage extends PageMetadata {
+  body: string;
+}
 
 const GoToIndexButton = ({ index }: { index: number }) => {
   const { goTo } = useViewerContext();
@@ -438,6 +444,39 @@ describe(Viewport, () => {
     } finally {
       restore();
     }
+  });
+
+  it("draws pages without a source through renderPage", async () => {
+    const fetchMock = vi.fn<MockFetch>(() =>
+      Promise.reject(new Error("should not fetch"))
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const textPages: TextPage[] = [
+      { body: "Once upon a time", id: "t1", title: "Text 1" },
+      { body: "The end", id: "t2", title: "Text 2" },
+    ];
+
+    render(
+      <ViewerProvider pages={textPages}>
+        <Viewport renderPage={(page: TextPage) => <p>{page.body}</p>} />
+      </ViewerProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Once upon a time")).toBeInTheDocument();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("requires a source for pages the viewport loads itself", () => {
+    // @ts-expect-error -- A text page has no image to load.
+    const bareViewport = <Viewport<TextPage> />;
+    const templateViewport = (
+      // @ts-expect-error -- A page template draws the loaded image.
+      <Viewport<TextPage>>{(page: TextPage) => page.body}</Viewport>
+    );
+
+    expect([bareViewport, templateViewport]).toHaveLength(2);
   });
 
   it("renders a pending placeholder until the page metadata resolves", async () => {

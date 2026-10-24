@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 
-import type { ViewerPage } from "./viewer-context";
+import type { PageMetadata, ViewerPage } from "./viewer-context";
 
 /** The context a page resolver receives with every request. */
 export interface PageResolveContext {
@@ -22,7 +22,7 @@ export interface PageResolveContext {
  * page unresolved until it enters the resolve window again, and rejecting
  * leaves it failed until a retry is asked for through `usePageResolveState`.
  */
-export type PageResolver<TPage extends ViewerPage = ViewerPage> = (
+export type PageResolver<TPage extends PageMetadata = ViewerPage> = (
   index: number,
   context: PageResolveContext
 ) => Promise<TPage | undefined> | TPage | undefined;
@@ -60,7 +60,7 @@ interface PageRequestState {
 
 /** What `usePageResolveState` reads from the provider. */
 export interface PageResolveStore {
-  pages: readonly (ViewerPage | undefined)[];
+  pages: readonly (PageMetadata | undefined)[];
   requestStates: ReadonlyMap<number, PageRequestState>;
   retryPageResolution: (index: number) => void;
 }
@@ -126,7 +126,7 @@ const RAIL_RETENTION_DISTANCE = 5;
 
 const EMPTY_PAGES: readonly never[] = [];
 
-interface UsePageSourceOptions<TPage extends ViewerPage> {
+interface UsePageSourceOptions<TPage extends PageMetadata> {
   currentIndex: number;
   onPageResolveError?: (error: PageResolveError) => void;
   overscan: number;
@@ -135,7 +135,7 @@ interface UsePageSourceOptions<TPage extends ViewerPage> {
   resolvePage?: PageResolver<TPage>;
 }
 
-interface PageSource<TPage extends ViewerPage> {
+interface PageSource<TPage extends PageMetadata> {
   pages: readonly (TPage | undefined)[];
   resolveStore: PageResolveStore;
 }
@@ -151,7 +151,7 @@ interface PageSource<TPage extends ViewerPage> {
  * page returned to later is resolved again, which is what keeps expiring URLs
  * usable.
  */
-export const usePageSource = <TPage extends ViewerPage>({
+export const usePageSource = <TPage extends PageMetadata>({
   currentIndex,
   onPageResolveError,
   overscan,

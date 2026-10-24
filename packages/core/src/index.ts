@@ -2,6 +2,8 @@ export {
   START_PAGE_INDEX,
   ViewerProvider,
   useViewerContext,
+  type ImagePage,
+  type PageMetadata,
   type ReadingDirection,
   type PageFitMode,
   type PageLayout,
@@ -19,7 +21,11 @@ export {
   ComicViewer as Root,
   type ComicViewerProps,
 } from "./comic-viewer";
-export { Viewport, type ViewportProps } from "./viewport";
+export {
+  Viewport,
+  type CustomPageViewportProps,
+  type ViewportProps,
+} from "./viewport";
 export {
   PageCanvas,
   ViewportPage,

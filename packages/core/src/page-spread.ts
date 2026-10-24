@@ -1,11 +1,11 @@
-import type { ViewerPage } from "./viewer-context";
+import type { PageMetadata } from "./viewer-context";
 
 /**
  * The page list a grouping is read from. An entry is `undefined` while the
  * page is unresolved, and an index outside the list belongs to a start or an
  * end page, neither of which can be a spread.
  */
-export type SpreadPageList = readonly (ViewerPage | undefined)[];
+export type SpreadPageList = readonly (PageMetadata | undefined)[];
 
 /** Whether the page at an index fills a whole two-page spread on its own. */
 export const isSpreadPage = (index: number, pages: SpreadPageList): boolean =>

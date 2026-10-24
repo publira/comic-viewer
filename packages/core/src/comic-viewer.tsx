@@ -1,9 +1,9 @@
 import { composeClassName } from "./class-names";
 import { ViewerProvider } from "./viewer-context";
-import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
+import type { PageMetadata, ViewerProviderProps } from "./viewer-context";
 import { extractViewerSlotPages } from "./viewer-slots";
 
-export type ComicViewerProps<TPage extends ViewerPage> =
+export type ComicViewerProps<TPage extends PageMetadata> =
   ViewerProviderProps<TPage> & {
     className?: string;
   };
@@ -18,7 +18,7 @@ export type ComicViewerProps<TPage extends ViewerPage> =
  * the reading sequence rather than where it stands, and a slot holds as many
  * of them as it is written with.
  */
-export const ComicViewer = <TPage extends ViewerPage>({
+export const ComicViewer = <TPage extends PageMetadata>({
   children,
   className,
   initialViewMode = "double",

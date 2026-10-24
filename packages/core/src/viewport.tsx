@@ -7,17 +7,30 @@ import { usePageTurn } from "./use-page-turn";
 import { useViewMode } from "./use-view-mode";
 import { useViewportGestures } from "./use-viewport-gestures";
 import { getScrubSpread, useViewerContext } from "./viewer-context";
-import type { ViewerPage } from "./viewer-context";
+import type { PageMetadata, ViewerPage } from "./viewer-context";
 import type { ViewportChildren } from "./viewport-page";
 import { ViewportRail } from "./viewport-rail";
 import { getViewportLayoutTemplate } from "./viewport-template";
 
-export interface ViewportProps<TPage extends ViewerPage> {
+interface ViewportBaseProps {
   /**
    * The accessible name of the reading surface, which assistive technology
    * announces as a region. Defaults to "Comic pages".
    */
   "aria-label"?: string;
+  /**
+   * Renders the placeholder for a page inside the viewport whose metadata is
+   * still being resolved by `resolvePage`. Defaults to ViewportPendingPage.
+   */
+  renderPendingPage?: (index: number) => ReactNode;
+  className?: string;
+  doublePageThreshold?: number;
+}
+
+/** The props of a Viewport that loads and draws the image of each page. */
+export interface ViewportProps<
+  TPage extends ViewerPage,
+> extends ViewportBaseProps {
   /**
    * A page template rendered for each visible page. Use ViewportPage and
    * PageCanvas to style the public page elements without private selectors.
@@ -31,17 +44,35 @@ export interface ViewportProps<TPage extends ViewerPage> {
    */
   onPageLoadError?: (error: PageLoadError<TPage>) => void;
   renderPage?: (page: TPage, index: number) => ReactNode;
-  /**
-   * Renders the placeholder for a page inside the viewport whose metadata is
-   * still being resolved by `resolvePage`. Defaults to ViewportPendingPage.
-   */
-  renderPendingPage?: (index: number) => ReactNode;
-  className?: string;
-  doublePageThreshold?: number;
 }
 
-/** Composes the page rail, its page-turn state, and the viewport gestures. */
-export const Viewport = <TPage extends ViewerPage>({
+/**
+ * The props of a Viewport that draws every page itself. It loads no images, so
+ * its pages need no `src`.
+ */
+export interface CustomPageViewportProps<
+  TPage extends PageMetadata,
+> extends ViewportBaseProps {
+  children?: undefined;
+  renderPage: (page: TPage, index: number) => ReactNode;
+}
+
+/** Viewport takes pages without `src` only in the form that loads nothing. */
+interface ViewportComponent {
+  <TPage extends PageMetadata = ViewerPage>(
+    props: CustomPageViewportProps<TPage>
+  ): ReactNode;
+  <TPage extends ViewerPage = ViewerPage>(
+    props: ViewportProps<TPage>
+  ): ReactNode;
+}
+
+/**
+ * Composes the page rail, its page-turn state, and the viewport gestures.
+ * Given `renderPage` and no `children`, it draws each page itself and accepts
+ * pages without `src`; otherwise it loads the image of each page.
+ */
+export const Viewport = (<TPage extends ViewerPage>({
   "aria-label": ariaLabel = "Comic pages",
   children,
   onPageLoadError,
@@ -201,4 +232,4 @@ export const Viewport = <TPage extends ViewerPage>({
       />
     </div>
   );
-};
+}) as ViewportComponent;
