@@ -24,6 +24,7 @@ import {
   MockResizeObserver,
   mockPageImages,
   pages,
+  pressViewportKey,
   renderViewport,
 } from "./viewport-test-helpers";
 
@@ -458,7 +459,10 @@ describe(Viewport, () => {
 
     render(
       <ViewerProvider pages={textPages}>
-        <Viewport renderPage={(page: TextPage) => <p>{page.body}</p>} />
+        <Viewport
+          gestures={{ swipe: { enabled: false } }}
+          renderPage={(page: TextPage) => <p>{page.body}</p>}
+        />
       </ViewerProvider>
     );
 
@@ -837,7 +841,7 @@ describe(Viewport, () => {
         expect(createImageBitmapMock).toHaveBeenCalledTimes(2);
       });
 
-      fireEvent.keyDown(window, { key: "ArrowRight" });
+      pressViewportKey("ArrowRight");
 
       await waitFor(() => {
         expect(screen.getByLabelText("Page 2")).not.toHaveAttribute(
@@ -845,7 +849,7 @@ describe(Viewport, () => {
         );
       });
 
-      fireEvent.keyDown(window, { key: "ArrowLeft" });
+      pressViewportKey("ArrowLeft");
 
       await waitFor(() => {
         expect(screen.getByLabelText("Page 1")).not.toHaveAttribute(
@@ -866,7 +870,7 @@ describe(Viewport, () => {
       expect(onPageChange).toHaveBeenLastCalledWith(0, 4);
     });
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
 
     await waitFor(() => {
       expect(onPageChange).toHaveBeenLastCalledWith(1, 4);

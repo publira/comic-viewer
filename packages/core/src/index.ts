@@ -27,6 +27,7 @@ export {
   type CustomPageViewportProps,
   type ViewportProps,
 } from "./viewport";
+export type { ViewportGestures } from "./use-viewport-gestures";
 export {
   PageCanvas,
   ViewportPage,

@@ -11,6 +11,7 @@ import {
   CurrentIndexIndicator,
   MockResizeObserver,
   pages,
+  pressViewportKey,
   renderViewport,
   setViewportRect,
 } from "./viewport-test-helpers";
@@ -55,21 +56,93 @@ describe(useViewportGestures, () => {
   it("handles ArrowLeft and ArrowRight in LTR", () => {
     renderViewport({ initialIndex: 1, initialReadingDirection: "ltr" });
 
-    fireEvent.keyDown(window, { key: "ArrowRight" });
+    pressViewportKey("ArrowRight");
     expect(screen.getByTestId("current-index")).toHaveTextContent("2");
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByTestId("current-index")).toHaveTextContent("1");
   });
 
   it("handles ArrowLeft and ArrowRight in RTL", () => {
     renderViewport({ initialIndex: 1, initialReadingDirection: "rtl" });
 
-    fireEvent.keyDown(window, { key: "ArrowRight" });
+    pressViewportKey("ArrowRight");
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
+  it("ignores the arrow keys pressed outside the viewport", () => {
+    renderViewport({ initialIndex: 1, initialReadingDirection: "ltr" });
+
+    expect(fireEvent.keyDown(window, { key: "ArrowRight" })).toBeTruthy();
+    expect(fireEvent.keyDown(document.body, { key: "ArrowLeft" })).toBeTruthy();
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
+  it("turns only the viewer whose viewport takes the key", () => {
+    render(
+      <>
+        {["First", "Second"].map((name) => (
+          <ViewerProvider
+            initialIndex={1}
+            initialReadingDirection="ltr"
+            key={name}
+            pages={pages}
+          >
+            <Viewport aria-label={name} renderPage={() => null} />
+            <CurrentIndexIndicator />
+          </ViewerProvider>
+        ))}
+      </>
+    );
+
+    fireEvent.keyDown(screen.getByRole("region", { name: "First" }), {
+      key: "ArrowRight",
+    });
+
+    const [first, second] = screen.getAllByTestId("current-index");
+    expect(first).toHaveTextContent("2");
+    expect(second).toHaveTextContent("1");
+  });
+
+  it("answers the arrow keys from anywhere with the global keyboard scope", () => {
+    renderViewport({
+      gestures: { keyboard: { scope: "global" } },
+      initialIndex: 1,
+      initialReadingDirection: "ltr",
+    });
+
+    expect(fireEvent.keyDown(window, { key: "ArrowRight" })).toBeFalsy();
+    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+
+    // The viewport handles its own key once, without the global listener.
+    pressViewportKey("ArrowLeft");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
+  it("leaves the arrow keys alone while the keyboard gesture is disabled", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <div className="pcv-root">
+          <Viewport
+            gestures={{ keyboard: { enabled: false, scope: "global" } }}
+          />
+          <PageNavigation />
+        </div>
+        <CurrentIndexIndicator />
+      </ViewerProvider>
+    );
+    const { navigation } = getControlElements(container);
+
+    expect(pressViewportKey("ArrowLeft")).toBeTruthy();
+    expect(fireEvent.keyDown(window, { key: "ArrowLeft" })).toBeTruthy();
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+
+    // The controls stay reachable from the keyboard.
+    expect(pressViewportKey("Enter")).toBeFalsy();
+    expect(navigation).toHaveAttribute("aria-hidden", "false");
   });
 
   it("does not navigate from editable or interactive descendants", () => {
@@ -163,6 +236,48 @@ describe(useViewportGestures, () => {
     expect(screen.getByTestId("current-index")).toHaveTextContent("1");
   });
 
+  it("toggles the reader controls from the edges while edge clicks are disabled", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <div className="pcv-root">
+          <Viewport gestures={{ edgeClick: { enabled: false } }} />
+          <PageNavigation />
+        </div>
+        <CurrentIndexIndicator />
+      </ViewerProvider>
+    );
+    const { navigation, viewport } = getControlElements(container);
+
+    setViewportRect(viewport);
+    fireEvent.click(viewport, { clientX: 5 });
+
+    expect(navigation).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+  });
+
+  it("turns the page from edges as wide as the edge click ratio", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <div className="pcv-root">
+          <Viewport gestures={{ edgeClick: { ratio: 0.1 } }} />
+          <PageNavigation />
+        </div>
+        <CurrentIndexIndicator />
+      </ViewerProvider>
+    );
+    const { navigation, viewport } = getControlElements(container);
+
+    setViewportRect(viewport);
+    fireEvent.click(viewport, { clientX: 20 });
+
+    expect(navigation).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+
+    fireEvent.click(viewport, { clientX: 5 });
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
   it("navigates by swipe in LTR", () => {
     const { container } = renderViewport({
       initialIndex: 1,
@@ -253,6 +368,89 @@ describe(useViewportGestures, () => {
     fireEvent.touchEnd(viewport);
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("1");
+  });
+
+  it("neither drags nor turns the page while swipes are disabled", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport gestures={{ swipe: { enabled: false } }} />
+        <CurrentIndexIndicator />
+      </ViewerProvider>
+    );
+    const viewport = container.querySelector(".pcv-viewport");
+    const track = container.querySelector(".pcv-viewport-track");
+
+    if (viewport === null || track === null) {
+      throw new Error("The default viewport rail was not rendered.");
+    }
+
+    fireEvent.touchStart(viewport, { touches: [{ clientX: 200 }] });
+    fireEvent.touchMove(viewport, { touches: [{ clientX: 120 }] });
+
+    expect(viewport).not.toHaveAttribute("data-dragging");
+    expect(track).toHaveStyle("--pcv-drag-offset: 0px");
+
+    fireEvent.touchEnd(viewport);
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+  });
+
+  it("returns the rail when the swipe is disabled mid-drag", () => {
+    const { container, rerender } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport />
+        <CurrentIndexIndicator />
+      </ViewerProvider>
+    );
+    const viewport = container.querySelector(".pcv-viewport");
+    const track = container.querySelector(".pcv-viewport-track");
+
+    if (viewport === null || track === null) {
+      throw new Error("The default viewport rail was not rendered.");
+    }
+
+    fireEvent.touchStart(viewport, { touches: [{ clientX: 200 }] });
+    fireEvent.touchMove(viewport, { touches: [{ clientX: 120 }] });
+    expect(track).toHaveStyle("--pcv-drag-offset: -80px");
+
+    rerender(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport gestures={{ swipe: { enabled: false } }} />
+        <CurrentIndexIndicator />
+      </ViewerProvider>
+    );
+    fireEvent.touchEnd(viewport);
+
+    expect(track).toHaveStyle("--pcv-drag-offset: 0px");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+  });
+
+  it("does not take two disabled swipes for a double tap", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport gestures={{ swipe: { enabled: false } }} />
+      </ViewerProvider>
+    );
+    const viewport = container.querySelector(".pcv-viewport");
+
+    if (viewport === null) {
+      throw new Error("The viewport was not rendered.");
+    }
+
+    for (let swipe = 0; swipe < 2; swipe += 1) {
+      fireEvent.touchStart(viewport, {
+        touches: [{ clientX: 200, clientY: 100 }],
+      });
+      fireEvent.touchMove(viewport, {
+        touches: [{ clientX: 120, clientY: 100 }],
+      });
+      fireEvent.touchEnd(viewport, {
+        changedTouches: [{ clientX: 120, clientY: 100 }],
+        touches: [],
+      });
+    }
+
+    expect(viewport).toHaveAttribute("data-page-fit-mode", "height");
   });
 
   it("moves the page rail while a touch swipe is in progress", () => {

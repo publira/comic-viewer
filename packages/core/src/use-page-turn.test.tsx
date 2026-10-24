@@ -16,6 +16,7 @@ import {
   MockResizeObserver,
   mockPageImages,
   pages,
+  pressViewportKey,
 } from "./viewport-test-helpers";
 
 /** Stands in for a slider that scrubs to a position and is released there. */
@@ -98,7 +99,7 @@ describe(usePageTurn, () => {
         );
       });
 
-      fireEvent.keyDown(window, { key: "ArrowRight" });
+      pressViewportKey("ArrowRight");
 
       expect(viewport).toHaveAttribute("data-transition-state", "waiting");
       expect(screen.getByLabelText("Page 2")).toHaveAttribute(
@@ -172,7 +173,7 @@ describe(usePageTurn, () => {
         throw new Error("The viewport was not rendered.");
       }
 
-      fireEvent.keyDown(window, { key: "ArrowRight" });
+      pressViewportKey("ArrowRight");
 
       expect(viewport).toHaveAttribute("data-transition-state", "waiting");
 
@@ -204,7 +205,7 @@ describe(usePageTurn, () => {
         expect(container.querySelectorAll("canvas")).toHaveLength(4);
       });
 
-      fireEvent.keyDown(window, { key: "ArrowRight" });
+      pressViewportKey("ArrowRight");
 
       await waitFor(() => {
         expect(
@@ -237,7 +238,7 @@ describe(usePageTurn, () => {
         return;
       }
 
-      fireEvent.keyDown(window, { key: "ArrowRight" });
+      pressViewportKey("ArrowRight");
 
       expect(viewport).toHaveAttribute("data-transition-state", "idle");
       expect(viewport).not.toHaveAttribute("data-slide-direction");

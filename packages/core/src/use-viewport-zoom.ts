@@ -22,6 +22,7 @@ const DOUBLE_TAP_DISTANCE_PX = 24;
 interface UseViewportZoomOptions {
   containerRef: RefObject<HTMLDivElement | null>;
   currentIndex: number;
+  isDoubleTapEnabled: boolean;
   pageFitMode: PageFitMode;
   setPageFitMode: (mode: PageFitMode) => void;
 }
@@ -37,6 +38,7 @@ interface UseViewportZoomOptions {
 export const useViewportZoom = ({
   containerRef,
   currentIndex,
+  isDoubleTapEnabled,
   pageFitMode,
   setPageFitMode,
 }: UseViewportZoomOptions) => {
@@ -232,6 +234,10 @@ export const useViewportZoom = ({
 
   const registerTap = useCallback(
     (clientX: number, clientY: number): void => {
+      if (!isDoubleTapEnabled) {
+        return;
+      }
+
       const now = Date.now();
       const previousTap = lastTapRef.current;
       if (
@@ -248,7 +254,7 @@ export const useViewportZoom = ({
 
       lastTapRef.current = { key: panKey, time: now, x: clientX, y: clientY };
     },
-    [panKey, resetToFitWidth]
+    [isDoubleTapEnabled, panKey, resetToFitWidth]
   );
 
   const beginPinch = useCallback(

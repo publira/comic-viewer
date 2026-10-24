@@ -343,6 +343,31 @@ describe("zoom scale on the viewer context", () => {
     expect(screen.getByTestId("current-index")).toHaveTextContent("2");
     expect(screen.getByTestId("zoom-scale")).toHaveTextContent("1");
   });
+
+  it("keeps the page fit mode on a double tap while double taps are disabled", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialPageFitMode="actual">
+        <Viewport gestures={{ doubleTap: { enabled: false } }} />
+      </ViewerProvider>
+    );
+    const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
+
+    if (viewport === null) {
+      throw new Error("The viewport was not rendered.");
+    }
+
+    for (let tap = 0; tap < 2; tap += 1) {
+      fireEvent.touchStart(viewport, {
+        touches: [{ clientX: 100, clientY: 100 }],
+      });
+      fireEvent.touchEnd(viewport, {
+        changedTouches: [{ clientX: 100, clientY: 100 }],
+        touches: [],
+      });
+    }
+
+    expect(viewport).toHaveAttribute("data-page-fit-mode", "actual");
+  });
 });
 
 describe("setZoomScale on the viewer context", () => {

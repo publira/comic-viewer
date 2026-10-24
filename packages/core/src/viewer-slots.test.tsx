@@ -11,6 +11,7 @@ import {
   CurrentIndexIndicator,
   MockResizeObserver,
   pages,
+  pressViewportKey,
   setViewportRect,
 } from "./viewport-test-helpers";
 
@@ -91,7 +92,7 @@ describe("viewer slot pages", () => {
   it("turns from the start page onto the first page", () => {
     renderSlotViewer();
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
     expect(screen.getByTestId("p1")).toBeInTheDocument();
@@ -103,7 +104,7 @@ describe("viewer slot pages", () => {
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
 
-    fireEvent.keyDown(window, { key: "ArrowRight" });
+    pressViewportKey("ArrowRight");
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("-1");
     expect(screen.getByText("Cover notice")).toBeInTheDocument();
@@ -112,20 +113,20 @@ describe("viewer slot pages", () => {
   it("turns from the last page onto the end page", () => {
     renderSlotViewer({ initialIndex: 3 });
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("4");
     expect(screen.getByText("Next chapter")).toBeInTheDocument();
 
     // The end page is the last one the reader can reach.
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByTestId("current-index")).toHaveTextContent("4");
   });
 
   it("stops at the start page and at the end page", () => {
     renderSlotViewer();
 
-    fireEvent.keyDown(window, { key: "ArrowRight" });
+    pressViewportKey("ArrowRight");
     expect(screen.getByTestId("current-index")).toHaveTextContent("-1");
   });
 
@@ -134,7 +135,7 @@ describe("viewer slot pages", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Start page");
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByRole("status")).toHaveTextContent("Page 1 of 4");
   });
 
@@ -300,7 +301,7 @@ describe("viewer slot pages", () => {
     // page the spreads are counted from rather than the start page below it.
     renderSlotViewer({ initialIndex: 1, initialViewMode: "double" });
 
-    fireEvent.keyDown(window, { key: "ArrowRight" });
+    pressViewportKey("ArrowRight");
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
   });
@@ -329,13 +330,13 @@ describe("viewer slot pages", () => {
 
     // The start pages take the indexes below the page list in the order they
     // are written, so the reading order runs -3, -2, -1, and then page 1.
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByText("Publisher card")).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByText("Chapter title")).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
     expect(screen.getByTestId("p1")).toBeInTheDocument();
   });
@@ -345,18 +346,18 @@ describe("viewer slot pages", () => {
 
     // The end pages take the indexes above the page list in the order they are
     // written, so the reading order runs 4, 5, and then 6.
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByText("Next chapter")).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByText("Afterword")).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByTestId("current-index")).toHaveTextContent("6");
     expect(screen.getByText("Recommendations")).toBeInTheDocument();
 
     // The last end page is the last one the reader can reach.
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByTestId("current-index")).toHaveTextContent("6");
   });
 
@@ -365,10 +366,10 @@ describe("viewer slot pages", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("Start page 1 of 3");
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByRole("status")).toHaveTextContent("Start page 2 of 3");
 
-    fireEvent.keyDown(window, { key: "ArrowRight" });
+    pressViewportKey("ArrowRight");
     expect(screen.getByRole("status")).toHaveTextContent("Start page 1 of 3");
   });
 
@@ -412,7 +413,7 @@ describe("viewer slot pages", () => {
     );
     expect(screen.getByText("Cover notice")).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(getCurrentPageSet(container)).toHaveAttribute(
       "data-page-count",
       "1"
@@ -435,7 +436,7 @@ describe("viewer slot pages", () => {
     expect(screen.getByText("Publisher card")).toBeInTheDocument();
 
     // The spread that follows holds the first two pages of the document.
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByTestId("p1")).toBeInTheDocument();
     expect(screen.getByTestId("p2")).toBeInTheDocument();
   });
@@ -451,7 +452,7 @@ describe("viewer slot pages", () => {
     // own, and the two that follow face each other.
     expect(screen.getByRole("status")).toHaveTextContent("Start page 1 of 3");
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByRole("status")).toHaveTextContent(
       "Start pages 2-3 of 3"
     );
@@ -475,7 +476,7 @@ describe("viewer slot pages", () => {
     expect(screen.getByTestId("p3")).toBeInTheDocument();
     expect(screen.getByText("Next chapter")).toBeInTheDocument();
 
-    fireEvent.keyDown(window, { key: "ArrowLeft" });
+    pressViewportKey("ArrowLeft");
     expect(screen.getByText("Afterword")).toBeInTheDocument();
     expect(getCurrentPageSet(container)).toHaveAttribute(
       "data-page-count",
@@ -519,10 +520,10 @@ describe("viewer slot pages", () => {
       const forwardKey =
         initialReadingDirection === "rtl" ? "ArrowLeft" : "ArrowRight";
 
-      fireEvent.keyDown(window, { key: forwardKey });
+      pressViewportKey(forwardKey);
       expect(screen.getByText("Next chapter")).toBeInTheDocument();
 
-      fireEvent.keyDown(window, { key: forwardKey });
+      pressViewportKey(forwardKey);
       expect(screen.getByText("Afterword")).toBeInTheDocument();
     }
   );
