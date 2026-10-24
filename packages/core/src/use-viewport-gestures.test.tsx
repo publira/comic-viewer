@@ -395,6 +395,36 @@ describe(useViewportGestures, () => {
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
   });
 
+  it("returns the rail when the swipe is disabled mid-drag", () => {
+    const { container, rerender } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport />
+        <CurrentIndexIndicator />
+      </ViewerProvider>
+    );
+    const viewport = container.querySelector(".pcv-viewport");
+    const track = container.querySelector(".pcv-viewport-track");
+
+    if (viewport === null || track === null) {
+      throw new Error("The default viewport rail was not rendered.");
+    }
+
+    fireEvent.touchStart(viewport, { touches: [{ clientX: 200 }] });
+    fireEvent.touchMove(viewport, { touches: [{ clientX: 120 }] });
+    expect(track).toHaveStyle("--pcv-drag-offset: -80px");
+
+    rerender(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport gestures={{ swipe: { enabled: false } }} />
+        <CurrentIndexIndicator />
+      </ViewerProvider>
+    );
+    fireEvent.touchEnd(viewport);
+
+    expect(track).toHaveStyle("--pcv-drag-offset: 0px");
+    expect(screen.getByTestId("current-index")).toHaveTextContent("0");
+  });
+
   it("does not take two disabled swipes for a double tap", () => {
     const { container } = render(
       <ViewerProvider pages={pages} initialViewMode="single">

@@ -340,7 +340,9 @@ export const useViewportGestures = ({
         );
         return;
       }
+      // A swipe disabled mid-drag would otherwise leave the rail displaced.
       if (!isSwipeEnabled) {
+        setDragOffset(0);
         return;
       }
 
