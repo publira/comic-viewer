@@ -1,12 +1,14 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
 import {
+  MAX_ZOOM_SCALE,
+  MIN_ZOOM_SCALE,
   RESTING_VIEWPORT_ZOOM,
   getViewportZoomKey,
   useViewportZoomStore,
 } from "./viewer-context";
-import type { PageFitMode } from "./viewer-context";
+import type { PageFitMode, ZoomFocalPoint } from "./viewer-context";
 import {
   getTouchCenter,
   getTouchDistance,
@@ -14,8 +16,6 @@ import {
 } from "./viewport-touch";
 import type { TouchInput } from "./viewport-touch";
 
-const MAX_ZOOM_SCALE = 4;
-const MIN_ZOOM_SCALE = 0.5;
 const DOUBLE_TAP_DELAY_MS = 300;
 const DOUBLE_TAP_DISTANCE_PX = 24;
 
@@ -28,7 +28,8 @@ interface UseViewportZoomOptions {
 
 /**
  * Drives the pan offset and zoom scale of the current spread through the
- * pointer, pinch, and double-tap gestures that change them. The two values
+ * pointer, pinch, and double-tap gestures that change them, and applies the
+ * programmatic zoom of `setZoomScale` against the same bounds. The two values
  * are held by the viewer provider, which exposes the scale to consumers, and
  * are scoped to a pan key so that turning the page or changing the fit mode
  * restores the resting position.
@@ -68,7 +69,7 @@ export const useViewportZoom = ({
     y: number;
   } | null>(null);
   const [panningKey, setPanningKey] = useState<string | null>(null);
-  const { setZoom, zoom } = useViewportZoomStore();
+  const { setZoom, zoom, zoomToRef } = useViewportZoomStore();
   const panKey = getViewportZoomKey(currentIndex, pageFitMode);
   const isCurrentZoom = zoom.key === panKey;
   const activePan = isCurrentZoom
@@ -120,6 +121,52 @@ export const useViewportZoom = ({
     },
     [getPanLimits, panKey, setZoom]
   );
+
+  // The point under the focal point stays put, so the offset from it scales
+  // with the zoom. The limits depend on the target scale alone.
+  const zoomTo = useCallback(
+    (scale: number, focalPoint?: ZoomFocalPoint): void => {
+      const viewport = containerRef.current;
+      if (viewport === null) {
+        return;
+      }
+
+      const rect = viewport.getBoundingClientRect();
+      const focusX =
+        focalPoint === undefined
+          ? 0
+          : focalPoint.x - rect.left - rect.width / 2;
+      const focusY =
+        focalPoint === undefined
+          ? 0
+          : focalPoint.y - rect.top - rect.height / 2;
+      const limits = getPanLimits(scale);
+      setZoom((current) => {
+        const base = current.key === panKey ? current : RESTING_VIEWPORT_ZOOM;
+        const ratio = scale / base.scale;
+        return {
+          key: panKey,
+          panX: Math.max(
+            -limits.x,
+            Math.min(limits.x, focusX - (focusX - base.panX) * ratio)
+          ),
+          panY: Math.max(
+            -limits.y,
+            Math.min(limits.y, focusY - (focusY - base.panY) * ratio)
+          ),
+          scale,
+        };
+      });
+    },
+    [containerRef, getPanLimits, panKey, setZoom]
+  );
+
+  useEffect(() => {
+    zoomToRef.current = zoomTo;
+    return () => {
+      zoomToRef.current = null;
+    };
+  }, [zoomTo, zoomToRef]);
 
   const beginPan = useCallback(
     (pointerId: number | "touch", clientX: number, clientY: number): void => {

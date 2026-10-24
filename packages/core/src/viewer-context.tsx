@@ -11,6 +11,7 @@ import type {
   Dispatch,
   PropsWithChildren,
   ReactNode,
+  RefObject,
   SetStateAction,
 } from "react";
 
@@ -122,6 +123,10 @@ export interface ViewerContextValue<TPage extends PageMetadata = ViewerPage> {
    * mode returns it to `1`.
    */
   zoomScale: number;
+  /** The lowest zoom scale a pinch or `setZoomScale` reaches. */
+  minZoomScale: number;
+  /** The highest zoom scale a pinch or `setZoomScale` reaches. */
+  maxZoomScale: number;
   spreadStartIndex: number;
   /**
    * Whether the viewport is wide enough for a double-page spread, which
@@ -154,11 +159,18 @@ export interface ViewerContextValue<TPage extends PageMetadata = ViewerPage> {
   setReadingDirection: (direction: ReadingDirection) => void;
   /**
    * Returns the current spread to the resting position of its fit mode,
-   * clearing the zoom scale and the pan offset a gesture left on it. It is
-   * the one write operation the zoom state offers: zooming in and out stays
-   * with the viewport gestures.
+   * clearing the zoom scale and the pan offset a gesture left on it.
    */
   resetZoom: () => void;
+  /**
+   * Zooms the current spread to `scale`, held within `minZoomScale` and
+   * `maxZoomScale`. The point at `focalPoint`, in client coordinates such as
+   * those of a wheel event, stays where it is, and the centre of the viewport
+   * does without one. The pan offset stays within the bounds a pinch keeps it
+   * in. Nothing changes while a scrub is in progress or no Viewport is
+   * rendered.
+   */
+  setZoomScale: (scale: number, focalPoint?: ZoomFocalPoint) => void;
   goToNext: () => void;
   goToPrev: () => void;
   goTo: (index: number) => void;
@@ -303,6 +315,15 @@ export interface ViewportZoomState {
   scale: number;
 }
 
+/** A point on screen, in client coordinates. */
+export interface ZoomFocalPoint {
+  x: number;
+  y: number;
+}
+
+export const MIN_ZOOM_SCALE = 0.5;
+export const MAX_ZOOM_SCALE = 4;
+
 /** The position every spread starts from, and the one `resetZoom` restores. */
 export const RESTING_VIEWPORT_ZOOM: ViewportZoomState = {
   key: "",
@@ -317,9 +338,13 @@ export const getViewportZoomKey = (
   pageFitMode: PageFitMode
 ): string => `${currentIndex}:${pageFitMode}`;
 
+type ViewportZoomTo = (scale: number, focalPoint?: ZoomFocalPoint) => void;
+
 interface ViewportZoomStore {
   setZoom: Dispatch<SetStateAction<ViewportZoomState>>;
   zoom: ViewportZoomState;
+  /** Where the viewport registers how it zooms its current spread. */
+  zoomToRef: RefObject<ViewportZoomTo | null>;
 }
 
 const ViewportZoomContext = createContext<ViewportZoomStore | null>(null);
@@ -327,7 +352,8 @@ const ViewportZoomContext = createContext<ViewportZoomStore | null>(null);
 /**
  * Reads the zoom state the provider holds on behalf of the viewport. It stays
  * inside the library, because the viewport is the only thing that writes it:
- * a consumer reads `zoomScale` and calls `resetZoom` on the viewer context.
+ * a consumer goes through `zoomScale`, `setZoomScale`, and `resetZoom` on the
+ * viewer context.
  */
 export const useViewportZoomStore = (): ViewportZoomStore => {
   const store = useContext(ViewportZoomContext);
@@ -740,7 +766,10 @@ export const ViewerProvider = <TPage extends PageMetadata>({
   // The viewport gestures write the zoom state, but it lives here so that the
   // context can carry the scale and offer the reset a consumer builds on.
   const [zoom, setZoom] = useState<ViewportZoomState>(RESTING_VIEWPORT_ZOOM);
-  const zoomStore = useMemo(() => ({ setZoom, zoom }), [zoom]);
+  // Only the viewport can measure the bounds a pan offset is held within, so
+  // it registers how a programmatic zoom is applied.
+  const zoomToRef = useRef<ViewportZoomTo | null>(null);
+  const zoomStore = useMemo(() => ({ setZoom, zoom, zoomToRef }), [zoom]);
   const resetZoom = useCallback(() => {
     setZoom(RESTING_VIEWPORT_ZOOM);
   }, []);
@@ -860,6 +889,22 @@ export const ViewerProvider = <TPage extends PageMetadata>({
     clampedScrubPosition === null
       ? zoom.scale
       : 1;
+  const isScrubbing = clampedScrubPosition !== null;
+  // A step taken from the scale a scrub reports as 1 would land on the wrong
+  // spread's scale, so a scrub ignores programmatic zoom.
+  const setZoomScale = useCallback(
+    (scale: number, focalPoint?: ZoomFocalPoint) => {
+      if (isScrubbing || !Number.isFinite(scale)) {
+        return;
+      }
+
+      zoomToRef.current?.(
+        Math.min(MAX_ZOOM_SCALE, Math.max(MIN_ZOOM_SCALE, scale)),
+        focalPoint
+      );
+    },
+    [isScrubbing]
+  );
 
   const value = useMemo<ViewerContextValue<TPage>>(
     () => ({
@@ -873,7 +918,9 @@ export const ViewerProvider = <TPage extends PageMetadata>({
       imagePreloadSpreads: clampedImagePreloadSpreads,
       isDoublePageAvailable,
       maxIndex,
+      maxZoomScale: MAX_ZOOM_SCALE,
       minIndex,
+      minZoomScale: MIN_ZOOM_SCALE,
       pageCount: totalPageCount,
       pageFitMode,
       pages: sourcePages,
@@ -886,6 +933,7 @@ export const ViewerProvider = <TPage extends PageMetadata>({
       setReadingDirection,
       setScrubPosition,
       setViewMode,
+      setZoomScale,
       spreadStartIndex: clampedSpreadStartIndex,
       startPages,
       toggleControls,
@@ -918,6 +966,7 @@ export const ViewerProvider = <TPage extends PageMetadata>({
       goToNext,
       goToPrev,
       resetZoom,
+      setZoomScale,
       zoomScale,
     ]
   );

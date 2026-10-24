@@ -14,6 +14,7 @@ export {
   type ViewerProviderProps,
   type ViewerSlot,
   type ViewMode,
+  type ZoomFocalPoint,
 } from "./viewer-context";
 export { EndPage, StartPage, type ViewerSlotPageProps } from "./viewer-slots";
 export {

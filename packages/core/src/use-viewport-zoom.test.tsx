@@ -11,15 +11,41 @@ import {
   setViewportRect,
 } from "./viewport-test-helpers";
 
-/** Reads the zoom scale a consumer sees, and offers the reset it can build. */
+/** Reads the zoom scale a consumer sees, and offers the controls it can build. */
 const ZoomControls = () => {
-  const { goToNext, resetZoom, zoomScale } = useViewerContext();
+  const {
+    goToNext,
+    maxZoomScale,
+    minZoomScale,
+    resetZoom,
+    setScrubPosition,
+    setZoomScale,
+    zoomScale,
+  } = useViewerContext();
 
   return (
     <>
       <output data-testid="zoom-scale">{zoomScale}</output>
+      <output data-testid="zoom-limits">
+        {minZoomScale}-{maxZoomScale}
+      </output>
       <button onClick={resetZoom} type="button">
         Reset zoom
+      </button>
+      <button onClick={() => setZoomScale(zoomScale * 2)} type="button">
+        Zoom in
+      </button>
+      <button onClick={() => setZoomScale(zoomScale / 2)} type="button">
+        Zoom out
+      </button>
+      <button
+        onClick={() => setZoomScale(zoomScale * 2, { x: 75, y: 50 })}
+        type="button"
+      >
+        Zoom in on the right half
+      </button>
+      <button onClick={() => setScrubPosition(2)} type="button">
+        Start scrubbing
       </button>
       <button onClick={goToNext} type="button">
         Next page
@@ -312,6 +338,105 @@ describe("zoom scale on the viewer context", () => {
     const { viewport } = renderZoomableViewport();
 
     pinchToDoubleScale(viewport);
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(screen.getByTestId("current-index")).toHaveTextContent("2");
+    expect(screen.getByTestId("zoom-scale")).toHaveTextContent("1");
+  });
+});
+
+describe("setZoomScale on the viewer context", () => {
+  beforeEach(() => {
+    vi.stubGlobal("ResizeObserver", MockResizeObserver);
+    MockResizeObserver.reset();
+  });
+
+  it("zooms the spread about the centre of the viewport", () => {
+    const { pageSet, viewport } = renderZoomableViewport();
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+
+    expect(screen.getByTestId("zoom-scale")).toHaveTextContent("2");
+    expect(pageSet).toHaveStyle("--pcv-zoom-scale: 2");
+    expect(pageSet).toHaveStyle("--pcv-pan-x: 0px");
+    expect(viewport).toHaveAttribute("data-pannable", "true");
+  });
+
+  it("holds the scale within the limits the context reports", () => {
+    renderZoomableViewport();
+
+    expect(screen.getByTestId("zoom-limits")).toHaveTextContent("0.5-4");
+
+    for (let step = 0; step < 3; step += 1) {
+      fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    }
+
+    expect(screen.getByTestId("zoom-scale")).toHaveTextContent("4");
+
+    for (let step = 0; step < 4; step += 1) {
+      fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    }
+
+    expect(screen.getByTestId("zoom-scale")).toHaveTextContent("0.5");
+  });
+
+  it("keeps the point under the focal point where it is", () => {
+    const { pageSet, viewport } = renderZoomableViewport();
+    setViewportRect(viewport);
+    const zoomInOnRightHalf = screen.getByRole("button", {
+      name: "Zoom in on the right half",
+    });
+
+    fireEvent.click(zoomInOnRightHalf);
+
+    expect(pageSet).toHaveStyle("--pcv-pan-x: -25px");
+    expect(pageSet).toHaveStyle("--pcv-pan-y: 0px");
+
+    fireEvent.click(zoomInOnRightHalf);
+
+    expect(pageSet).toHaveStyle("--pcv-zoom-scale: 4");
+    expect(pageSet).toHaveStyle("--pcv-pan-x: -75px");
+  });
+
+  it("holds the pan offset within the bounds of the new scale", () => {
+    const { pageSet, viewport } = renderZoomableViewport();
+    setViewportRect(viewport);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Zoom in on the right half" })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+
+    expect(pageSet).toHaveStyle("--pcv-zoom-scale: 1");
+    expect(pageSet).toHaveStyle("--pcv-pan-x: 0px");
+  });
+
+  it("zooms on from the scale and offset a pinch left", () => {
+    const { pageSet, viewport } = renderZoomableViewport();
+
+    pinchToDoubleScale(viewport);
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+
+    expect(pageSet).toHaveStyle("--pcv-zoom-scale: 4");
+    expect(pageSet).toHaveStyle("--pcv-pan-x: 40px");
+  });
+
+  it("ignores the call while a scrub is in progress", () => {
+    const { viewport } = renderZoomableViewport();
+
+    fireEvent.click(screen.getByRole("button", { name: "Start scrubbing" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+
+    expect(screen.getByTestId("zoom-scale")).toHaveTextContent("1");
+    expect(
+      viewport.querySelector('.pcv-viewport-page-set[data-rail-slot="current"]')
+    ).toHaveStyle("--pcv-zoom-scale: 1");
+  });
+
+  it("drops the scale it set once the reader turns the page", () => {
+    renderZoomableViewport();
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
     fireEvent.click(screen.getByRole("button", { name: "Next page" }));
 
     expect(screen.getByTestId("current-index")).toHaveTextContent("2");
