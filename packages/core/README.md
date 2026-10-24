@@ -23,6 +23,10 @@ yarn add @publira/comic-viewer
 
 This project is pre-1.0 and does not yet follow strict Semantic Versioning guarantees. Within a `0.x.y` line, patch releases aim to preserve compatibility where reasonably possible. Minor `0.x` releases may include breaking API changes when they improve the library design or public API, so review the [changelog](https://github.com/publira/comic-viewer/blob/main/packages/core/CHANGELOG.md) before upgrading between minor versions.
 
+### Page types
+
+The page model is settled for `1.0.0`. `PageMetadata` holds what every page has (`id`, `title`, `width`, `height`, and `layout`), `ImagePage` adds the image fields the built-in loader reads (`src`, which it requires, and `srcset`, `mimeType`, and `placeholder`), and `ViewerPage` is the same type as `ImagePage`. `ComicViewer.Root`, `resolvePage`, and `useViewerContext` accept any `PageMetadata`, and `Viewport` requires `ImagePage` unless it draws the pages itself through `renderPage`.
+
 ### Planned breaking changes for `1.0.0`
 
 - The `./core.css` subpath, kept as an alias of `./default.css` throughout the `0.x` line, will be removed. Import `@publira/comic-viewer/default.css` instead.
@@ -41,7 +45,7 @@ The stylesheet was named `core.css` before it was renamed to `default.css`. `@pu
 
 ## Basic usage
 
-Import the package namespace and compose `ComicViewer.Root` with `ComicViewer.Viewport`, providing a page list. Each component is an independent named export, so a bundler can omit the ones you never render. A page needs an `id`, `src`, and accessible `title`; `width`, `height`, `layout`, `mimeType`, `placeholder`, and [`srcset`](#responsive-page-images) are optional.
+Import the package namespace and compose `ComicViewer.Root` with `ComicViewer.Viewport`, providing a page list. Each component is an independent named export, so a bundler can omit the ones you never render. A page needs an `id`, `src`, and accessible `title`; `width`, `height`, `layout`, `mimeType`, `placeholder`, and [`srcset`](#responsive-page-images) are optional. A page the application draws itself needs no `src`, as [pages without an image](#pages-without-an-image) describes.
 
 ```tsx
 import * as ComicViewer from "@publira/comic-viewer";
@@ -355,6 +359,42 @@ The `url` that [plugin hooks](#plugins) receive is the chosen candidate, or `src
 
 Whichever image is fetched, it is decoded no wider than the required width rather than at the size of the file, because the decoded bitmaps, not the downloaded bytes, are what runs a phone out of memory. A page that has only a 4000-pixel `src` is held as a bitmap as wide as its slot on a phone, not as a 4000-pixel one. An image narrower than the required width is decoded at its own size and never scaled up. The viewer reads the width from the header of a JPEG, PNG, GIF, WebP, or AVIF file; an image in another format, or one the browser can decode only through an image element, is decoded at its full size. When the slot grows past the decoded width, the page is decoded again from the data it already has, without a new request, unless the larger slot selects a larger candidate, which is fetched instead. A slot that shrinks keeps the wider bitmap.
 
+## Pages without an image
+
+A page the application draws itself, such as a page set in type, an HTML panel, or a page rendered from a PDF by a library of your own, has no image for the viewer to load and needs no `src`. Its type extends `PageMetadata`, which holds what every page has: an `id`, an accessible `title`, and the optional `width`, `height`, and `layout`. Add the fields your renderer reads, and pass `renderPage` to `Viewport`:
+
+```tsx
+import * as ComicViewer from "@publira/comic-viewer";
+import type { PageMetadata } from "@publira/comic-viewer";
+
+interface TextPage extends PageMetadata {
+  body: string;
+}
+
+const pages: TextPage[] = [
+  { body: "This volume began as…", id: "afterword", title: "Afterword" },
+];
+
+export function Reader() {
+  return (
+    <ComicViewer.Root pages={pages}>
+      <ComicViewer.Viewport
+        renderPage={(page: TextPage) => (
+          <ComicViewer.ViewportPage>
+            <article>{page.body}</article>
+          </ComicViewer.ViewportPage>
+        )}
+      />
+      <ComicViewer.PageNavigation />
+    </ComicViewer.Root>
+  );
+}
+```
+
+`Viewport` accepts pages without `src` only when it is given `renderPage` and no `children`, because that is the one form in which it loads nothing. Without `renderPage`, or with a page or layout template as `children`, it loads the image of each page, so TypeScript requires the pages to be `ImagePage`. Annotate the parameter of `renderPage`, or write `ComicViewer.Viewport<TextPage>`, to give the page type; an unannotated parameter is typed as `ViewerPage`.
+
+`ViewportPage` can wrap what `renderPage` returns, as it does above: it carries the `pcv-page` class and the `data-page-side` and `data-page-layout` attributes, so a drawn page meets its facing page at the gutter as an image page does. A viewport that draws its pages takes no layout template, so style its track and page sets through the `pcv-viewport-track` and `pcv-viewport-page-set` classes, which `default.css` already does. Pages turn without the sliding animation, and a swipe turns them without the page following the finger. The [plugin hooks](#plugins), `onPageLoadError`, and `usePageLoadState` do not apply, because the viewer loads nothing for these pages. `renderPage` draws every page of its viewport, so a document that mixes drawn pages with images draws the images in `renderPage` too.
+
 ## Lazy page metadata
 
 Pass the whole `pages` array when the list is short and its URLs are stable. For a long document, for URLs that expire, or for a list that grows as the reader advances, give the viewer a `pageCount` and a `resolvePage` function instead: it then asks for the metadata of a page only as the reader approaches it.
@@ -507,7 +547,7 @@ Use `className` on the other components to style their controls. For page markup
 </ComicViewer.Viewport>
 ```
 
-`PageCanvas` receives the current page and decoded image from `Viewport`, so it must be used in a viewport page template. Use `renderPage` when you need to render page content entirely independently of the built-in image pipeline.
+`PageCanvas` receives the current page and decoded image from `Viewport`, so it must be used in a viewport page template. Use `renderPage` when you need to render page content entirely independently of the built-in image pipeline, as [pages without an image](#pages-without-an-image) describes.
 
 ## Page loading state and errors
 

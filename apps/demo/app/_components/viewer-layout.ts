@@ -1,10 +1,10 @@
-import type { ViewerPage } from "@publira/comic-viewer";
+import type { PageMetadata } from "@publira/comic-viewer";
 import type { CSSProperties } from "react";
 
 type ViewerStyle = CSSProperties & Record<`--${string}`, string>;
 
 export const getViewerStyle = (
-  pages: readonly ViewerPage[]
+  pages: readonly PageMetadata[]
 ): ViewerStyle | undefined => {
   const [page] = pages;
 

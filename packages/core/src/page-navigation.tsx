@@ -28,7 +28,7 @@ import {
   useViewerContext,
 } from "./viewer-context";
 import type {
-  ViewerPage,
+  PageMetadata,
   ViewerSlot,
   ViewerSlotPages,
   ViewMode,
@@ -231,7 +231,7 @@ interface PageStatusInput extends ViewerSlotPages {
   maxIndex: number;
   pageCount: number;
   /** The page list, which reports the pages that fill a spread on their own. */
-  pages: readonly (ViewerPage | undefined)[];
+  pages: readonly (PageMetadata | undefined)[];
   spreadStartIndex: number;
   viewMode: ViewMode;
 }

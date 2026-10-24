@@ -39,18 +39,28 @@ export type PageFitMode = "width" | "height" | "actual";
  */
 export type PageLayout = "single" | "spread";
 
-export interface ViewerPage {
+/**
+ * What the viewer needs to know about any page: its identity, its accessible
+ * name, and how it is laid out. A page without an image, drawn by
+ * `renderPage`, needs nothing more.
+ */
+export interface PageMetadata {
   height?: number;
   id: string;
   /**
-   * Whether the image covers one page or a whole two-page spread. A spread
+   * Whether the page covers one page or a whole two-page spread. A spread
    * page takes a page set to itself in double-page mode instead of being
    * squeezed into one half, and is shown whole in single-page mode.
    */
   layout?: PageLayout;
+  title: string;
+  width?: number;
+}
+
+/** A page whose image the viewer loads and draws itself. */
+export interface ImagePage extends PageMetadata {
   mimeType?: string;
   placeholder?: string;
-  title: string;
   src: string;
   /**
    * Further renditions of the page image, in the HTML `srcset` microsyntax
@@ -59,10 +69,12 @@ export interface ViewerPage {
    * page at, and falls back to `src` when the list is absent or yields none.
    */
   srcset?: string;
-  width?: number;
 }
 
-export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
+/** A page of the built-in image viewer, the same type as `ImagePage`. */
+export type ViewerPage = ImagePage;
+
+export interface ViewerContextValue<TPage extends PageMetadata = ViewerPage> {
   /**
    * The page list, holding one entry per page of the document. An entry is
    * `undefined` while a page provided by `resolvePage` is still unresolved.
@@ -163,7 +175,7 @@ export interface ViewerContextValue<TPage extends ViewerPage = ViewerPage> {
  * because one given nothing but a `resolvePage` function would have no idea
  * how many pages to resolve.
  */
-export type ViewerPageListProps<TPage extends ViewerPage = ViewerPage> =
+export type ViewerPageListProps<TPage extends PageMetadata = ViewerPage> =
   | {
       /** The pages of the document, known upfront. */
       pages: readonly (TPage | undefined)[];
@@ -182,7 +194,7 @@ export type ViewerPageListProps<TPage extends ViewerPage = ViewerPage> =
       pageCount: number;
     };
 
-export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
+export interface ViewerOptionsProps<TPage extends PageMetadata = ViewerPage> {
   /**
    * Resolves the metadata of a page the reader is approaching. The viewer
    * asks only for pages within `pageResolveOverscan` of the current one, and
@@ -271,10 +283,12 @@ export interface ViewerOptionsProps<TPage extends ViewerPage = ViewerPage> {
   spreadStartIndex?: number;
 }
 
-export type ViewerProviderProps<TPage extends ViewerPage = ViewerPage> =
+export type ViewerProviderProps<TPage extends PageMetadata = ViewerPage> =
   PropsWithChildren<ViewerPageListProps<TPage> & ViewerOptionsProps<TPage>>;
 
-const ViewerContext = createContext<ViewerContextValue | null>(null);
+const ViewerContext = createContext<ViewerContextValue<PageMetadata> | null>(
+  null
+);
 
 /**
  * The pan offset and zoom scale one spread carries. `key` names the spread
@@ -605,7 +619,7 @@ export const getScrubSpread = (
       };
 };
 
-export const ViewerProvider = <TPage extends ViewerPage>({
+export const ViewerProvider = <TPage extends PageMetadata>({
   pages = EMPTY_PAGES,
   pageCount,
   resolvePage,
@@ -922,7 +936,7 @@ export const ViewerProvider = <TPage extends ViewerPage>({
 };
 
 export const useViewerContext = <
-  TPage extends ViewerPage,
+  TPage extends PageMetadata = ViewerPage,
 >(): ViewerContextValue<TPage> => {
   const context = useContext(ViewerContext);
 
