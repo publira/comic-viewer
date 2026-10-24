@@ -6,6 +6,7 @@ import type { PageLoadError } from "./page-load";
 import { usePageTurn } from "./use-page-turn";
 import { useViewMode } from "./use-view-mode";
 import { useViewportGestures } from "./use-viewport-gestures";
+import type { ViewportGestures } from "./use-viewport-gestures";
 import { getScrubSpread, useViewerContext } from "./viewer-context";
 import type { PageMetadata, ViewerPage } from "./viewer-context";
 import type { ViewportChildren } from "./viewport-page";
@@ -18,6 +19,12 @@ interface ViewportBaseProps {
    * announces as a region. Defaults to "Comic pages".
    */
   "aria-label"?: string;
+  /**
+   * Turns the edge click, the swipe, the double tap, and the arrow keys on and
+   * off. Every gesture is enabled by default, and the arrow keys answer only
+   * while the viewport is focused.
+   */
+  gestures?: ViewportGestures;
   /**
    * Renders the placeholder for a page inside the viewport whose metadata is
    * still being resolved by `resolvePage`. Defaults to ViewportPendingPage.
@@ -75,6 +82,7 @@ interface ViewportComponent {
 export const Viewport = (<TPage extends ViewerPage>({
   "aria-label": ariaLabel = "Comic pages",
   children,
+  gestures,
   onPageLoadError,
   renderPage,
   renderPendingPage,
@@ -167,6 +175,7 @@ export const Viewport = (<TPage extends ViewerPage>({
     containerRef,
     currentIndex: scrubSpread?.nearestIndex ?? currentIndex,
     displayedIndex,
+    gestures,
     goToNext,
     goToPrev,
     isTransitioning,

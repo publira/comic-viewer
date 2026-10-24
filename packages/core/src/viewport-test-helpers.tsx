@@ -1,8 +1,9 @@
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { RenderResult } from "@testing-library/react";
 import { vi } from "vitest";
 
 import type { ViewerPlugin } from "./plugin";
+import type { ViewportGestures } from "./use-viewport-gestures";
 import type { ReadingDirection } from "./viewer-context";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
 import { Viewport } from "./viewport";
@@ -73,12 +74,19 @@ export const setViewportRect = (viewport: Element, width = 100) => {
   } as DOMRect);
 };
 
+/** Presses a key on the viewport, which answers the arrow keys once focused. */
+export const pressViewportKey = (key: string): boolean =>
+  fireEvent.keyDown(screen.getByRole("region", { name: "Comic pages" }), {
+    key,
+  });
+
 export const CurrentIndexIndicator = () => {
   const { currentIndex } = useViewerContext();
   return <div data-testid="current-index">{currentIndex}</div>;
 };
 
 export const renderViewport = ({
+  gestures = undefined as ViewportGestures | undefined,
   initialIndex = 0,
   initialReadingDirection = "rtl" as ReadingDirection,
   plugins = [] as readonly ViewerPlugin[],
@@ -96,6 +104,7 @@ export const renderViewport = ({
       <Viewport<TestPage>
         renderPage={(page) => <div data-testid={page.id}>{page.title}</div>}
         doublePageThreshold={threshold}
+        gestures={gestures}
       />
       <CurrentIndexIndicator />
     </ViewerProvider>

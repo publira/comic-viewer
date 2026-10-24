@@ -13,7 +13,8 @@ import type { PageFitMode, ViewMode } from "./viewer-context";
 import { getFirstTouch } from "./viewport-touch";
 import type { TouchInput } from "./viewport-touch";
 
-const EDGE_CLICK_RATIO = 0.3;
+const DEFAULT_EDGE_CLICK_RATIO = 0.3;
+const MAX_EDGE_CLICK_RATIO = 0.5;
 const MIN_SWIPE_THRESHOLD_PX = 48;
 const SWIPE_THRESHOLD_RATIO = 0.12;
 const INTERACTIVE_ELEMENT_SELECTOR = [
@@ -53,10 +54,39 @@ const isInteractiveTarget = (target: EventTarget | null): boolean =>
   target instanceof Element &&
   target.closest(INTERACTIVE_ELEMENT_SELECTOR) !== null;
 
+/**
+ * Turns the gestures of a viewport on and off, one group per gesture, so that
+ * a later setting joins its group instead of widening ViewportProps.
+ */
+export interface ViewportGestures {
+  /** A double tap returns the page to fit-to-width. */
+  doubleTap?: { enabled?: boolean };
+  /**
+   * A click near the left or right edge turns the page. `ratio` is the share of
+   * the viewport width each edge takes, from 0 to 0.5, and defaults to 0.3.
+   * Disabled, a click anywhere toggles the reader controls.
+   */
+  edgeClick?: { enabled?: boolean; ratio?: number };
+  /**
+   * ArrowLeft and ArrowRight turn the page while the viewport is focused, or
+   * from anywhere on the page with `scope: "global"`. Enter and Space keep
+   * toggling the reader controls either way.
+   */
+  keyboard?: { enabled?: boolean; scope?: "global" | "viewport" };
+  /** A horizontal swipe drags the page rail and turns the page. */
+  swipe?: { enabled?: boolean };
+}
+
+const getEdgeClickRatio = (ratio: number | undefined): number =>
+  ratio === undefined || Number.isNaN(ratio)
+    ? DEFAULT_EDGE_CLICK_RATIO
+    : Math.max(0, Math.min(MAX_EDGE_CLICK_RATIO, ratio));
+
 interface UseViewportGesturesOptions {
   containerRef: RefObject<HTMLDivElement | null>;
   currentIndex: number;
   displayedIndex: number;
+  gestures: ViewportGestures | undefined;
   goToNext: () => void;
   goToPrev: () => void;
   isTransitioning: boolean;
@@ -84,6 +114,7 @@ export const useViewportGestures = ({
   containerRef,
   currentIndex,
   displayedIndex,
+  gestures,
   goToNext,
   goToPrev,
   isTransitioning,
@@ -99,6 +130,12 @@ export const useViewportGestures = ({
   usesPageRail,
   viewMode,
 }: UseViewportGesturesOptions) => {
+  const isDoubleTapEnabled = gestures?.doubleTap?.enabled ?? true;
+  const isEdgeClickEnabled = gestures?.edgeClick?.enabled ?? true;
+  const edgeClickRatio = getEdgeClickRatio(gestures?.edgeClick?.ratio);
+  const isKeyboardEnabled = gestures?.keyboard?.enabled ?? true;
+  const isKeyboardGlobal = gestures?.keyboard?.scope === "global";
+  const isSwipeEnabled = gestures?.swipe?.enabled ?? true;
   const touchStateRef = useRef<{
     startX: number;
     startY: number;
@@ -131,6 +168,7 @@ export const useViewportGestures = ({
   } = useViewportZoom({
     containerRef,
     currentIndex,
+    isDoubleTapEnabled,
     pageFitMode,
     setPageFitMode,
   });
@@ -156,6 +194,10 @@ export const useViewportGestures = ({
   );
 
   useEffect(() => {
+    if (!isKeyboardEnabled || !isKeyboardGlobal) {
+      return;
+    }
+
     const onKeyDown = (event: KeyboardEvent): void => {
       const direction = getHorizontalDirection(event.key);
       if (direction === undefined || isInteractiveTarget(event.target)) {
@@ -170,7 +212,7 @@ export const useViewportGestures = ({
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [goByHorizontalDirection]);
+  }, [goByHorizontalDirection, isKeyboardEnabled, isKeyboardGlobal]);
 
   const beginTouch = useCallback(
     (touches: TouchInput, target: EventTarget | null): void => {
@@ -195,6 +237,9 @@ export const useViewportGestures = ({
         beginPan("touch", touch.clientX, touch.clientY);
         return;
       }
+      if (!isSwipeEnabled) {
+        return;
+      }
 
       touchStateRef.current = {
         active: true,
@@ -205,7 +250,14 @@ export const useViewportGestures = ({
       };
       setIsDragging(usesPageRail);
     },
-    [beginPan, beginPinch, isPannable, isTransitioning, usesPageRail]
+    [
+      beginPan,
+      beginPinch,
+      isPannable,
+      isSwipeEnabled,
+      isTransitioning,
+      usesPageRail,
+    ]
   );
 
   const moveTouch = useCallback(
@@ -358,12 +410,13 @@ export const useViewportGestures = ({
     }
     const rect = event.currentTarget.getBoundingClientRect();
     const offsetX = event.clientX - rect.left;
-    const edgeWidth = rect.width * EDGE_CLICK_RATIO;
+    const edgeWidth = rect.width * edgeClickRatio;
 
     // A pannable page reserves its whole surface for panning gestures, so its
     // edges toggle the controls instead of turning the page.
     if (
       isPannable ||
+      !isEdgeClickEnabled ||
       (offsetX > edgeWidth && offsetX < rect.width - edgeWidth)
     ) {
       toggleControls();
@@ -386,10 +439,11 @@ export const useViewportGestures = ({
     }
 
     const direction = getHorizontalDirection(event.key);
-    if (direction === undefined) {
+    if (!isKeyboardEnabled || direction === undefined) {
       return;
     }
 
+    // Stopping the event keeps a global listener from turning the page twice.
     event.preventDefault();
     event.stopPropagation();
     goByHorizontalDirection(direction);

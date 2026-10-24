@@ -95,6 +95,26 @@ export function Reader() {
 
 The element reports its state through data attributes, which `default.css` and the [Tailwind CSS](#tailwind-css) setup read and a stylesheet of your own can read too: `data-reading-direction` and `data-view-mode` for the reader's direction and whether it shows one page or two, `data-page-fit-mode` for the page size, `data-page-count` for the number of pages on screen, `data-slide-direction` and `data-transition-state` for the page turn in progress, `data-dragging` while a swipe follows the finger, and `data-pannable` and `data-panning` while a zoomed page can be moved and while it is being moved. The role and the name are not part of the styling contract; select the element by its class rather than by `[role]`.
 
+### Viewport gestures
+
+The viewport turns the page from a click near its left or right edge, a horizontal swipe, and the arrow keys, and a double tap returns a page to fit-to-width. Every one of them is enabled by default. Pass `gestures` to turn one off or tune it; each gesture has a group of its own, so a setting added later joins its group rather than becoming another prop.
+
+```tsx
+<ComicViewer.Viewport
+  gestures={{
+    doubleTap: { enabled: false },
+    edgeClick: { ratio: 0.2 },
+    keyboard: { scope: "global" },
+    swipe: { enabled: true },
+  }}
+/>
+```
+
+- `edgeClick.ratio` is the share of the viewport width each edge takes, from `0` to `0.5`, and defaults to `0.3`. With `edgeClick.enabled` set to `false`, a click anywhere on the page toggles the [reader controls](#reader-control-visibility) instead.
+- The arrow keys answer only while the viewport is focused, so two viewers on one page never turn together and a key pressed elsewhere on the page keeps its usual meaning. A click or a tap on the viewport focuses it. `keyboard.scope: "global"` listens on the whole window instead, for a page that holds a single reader. Either way, a key pressed in a form field, a link, or a button inside a page is left to it.
+- `keyboard.enabled: false` stops the arrow keys only. <kbd>Enter</kbd> and <kbd>Space</kbd> keep toggling the reader controls, so a keyboard can still reach them.
+- `swipe.enabled: false` neither drags the page rail nor turns the page from a swipe, while pinching and panning a zoomed page keep working.
+
 ### Per-viewer theme
 
 When using `default.css`, each viewer root falls back to `#111111` for `--pcv-bg` and `#f3f3f3` for `--pcv-fg`. Add a class to `ComicViewer.Root` and set those properties on that same element to theme viewers independently:
