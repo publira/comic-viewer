@@ -237,10 +237,8 @@ export const useViewportGestures = ({
         beginPan("touch", touch.clientX, touch.clientY);
         return;
       }
-      if (!isSwipeEnabled) {
-        return;
-      }
 
+      // A disabled swipe is still tracked, so that a drag is never taken for a tap.
       touchStateRef.current = {
         active: true,
         currentX: touch.clientX,
@@ -248,7 +246,7 @@ export const useViewportGestures = ({
         startX: touch.clientX,
         startY: touch.clientY,
       };
-      setIsDragging(usesPageRail);
+      setIsDragging(isSwipeEnabled && usesPageRail);
     },
     [
       beginPan,
@@ -279,7 +277,7 @@ export const useViewportGestures = ({
 
       touchStateRef.current.currentX = touch.clientX;
       touchStateRef.current.currentY = touch.clientY;
-      if (usesPageRail) {
+      if (isSwipeEnabled && usesPageRail) {
         const offset =
           touchStateRef.current.currentX - touchStateRef.current.startX;
         const containerWidth = containerRef.current?.clientWidth ?? 0;
@@ -290,7 +288,14 @@ export const useViewportGestures = ({
         );
       }
     },
-    [containerRef, movePan, movePinch, setDragOffset, usesPageRail]
+    [
+      containerRef,
+      isSwipeEnabled,
+      movePan,
+      movePinch,
+      setDragOffset,
+      usesPageRail,
+    ]
   );
 
   const endTouch = useCallback(
@@ -335,6 +340,9 @@ export const useViewportGestures = ({
         );
         return;
       }
+      if (!isSwipeEnabled) {
+        return;
+      }
 
       const direction = deltaX > 0 ? "left" : "right";
       // The target index is only a boundary probe: a swipe past the first or
@@ -367,6 +375,7 @@ export const useViewportGestures = ({
       endPinch,
       goByHorizontalDirection,
       isPinching,
+      isSwipeEnabled,
       isTouchPanning,
       maxIndex,
       minIndex,

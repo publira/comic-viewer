@@ -395,6 +395,34 @@ describe(useViewportGestures, () => {
     expect(screen.getByTestId("current-index")).toHaveTextContent("0");
   });
 
+  it("does not take two disabled swipes for a double tap", () => {
+    const { container } = render(
+      <ViewerProvider pages={pages} initialViewMode="single">
+        <Viewport gestures={{ swipe: { enabled: false } }} />
+      </ViewerProvider>
+    );
+    const viewport = container.querySelector(".pcv-viewport");
+
+    if (viewport === null) {
+      throw new Error("The viewport was not rendered.");
+    }
+
+    for (let swipe = 0; swipe < 2; swipe += 1) {
+      fireEvent.touchStart(viewport, {
+        touches: [{ clientX: 200, clientY: 100 }],
+      });
+      fireEvent.touchMove(viewport, {
+        touches: [{ clientX: 120, clientY: 100 }],
+      });
+      fireEvent.touchEnd(viewport, {
+        changedTouches: [{ clientX: 120, clientY: 100 }],
+        touches: [],
+      });
+    }
+
+    expect(viewport).toHaveAttribute("data-page-fit-mode", "height");
+  });
+
   it("moves the page rail while a touch swipe is in progress", () => {
     const { container } = render(
       <ViewerProvider pages={pages} initialViewMode="single">
