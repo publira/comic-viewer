@@ -9,39 +9,33 @@ import {
 } from "#helpers/reader";
 import { currentPageSet, viewport } from "#helpers/selectors";
 
-/**
- * Dispatches a one-finger touch on the viewport, at `offset` pixels from its
- * centre. Desktop Chrome has no touchscreen, so the swipe is dispatched as the
- * touch events the viewport listens for.
- */
-const touchViewport = async (page: Page, type: string, offset = 0) => {
-  await page.locator(viewport).evaluate(
-    (element, [eventType, touchOffset]) => {
-      const box = element.getBoundingClientRect();
-      const touches =
-        eventType === "touchend"
-          ? []
-          : [
-              new Touch({
-                clientX: box.x + box.width / 2 + touchOffset,
-                clientY: box.y + box.height / 2,
-                identifier: 0,
-                target: element,
-              }),
-            ];
+type TouchType = "touchStart" | "touchMove" | "touchEnd";
 
-      element.dispatchEvent(
-        new TouchEvent(eventType, {
-          bubbles: true,
-          cancelable: true,
-          changedTouches: touches,
-          targetTouches: touches,
-          touches,
-        })
-      );
-    },
-    [type, offset] as const
-  );
+/**
+ * Returns a finger that touches the viewport at `offset` pixels from its
+ * centre, through the browser's own input pipeline. Playwright's touchscreen
+ * only taps, so a swipe goes through the Chrome DevTools Protocol, which also
+ * applies the `touch-action` the reader sets. One session carries the whole
+ * swipe, since a touch only moves and ends in the session it started in.
+ */
+const touchViewport = async (page: Page) => {
+  const box = await page.locator(viewport).boundingBox();
+
+  if (box === null) {
+    throw new Error("The viewport was not laid out.");
+  }
+
+  const session = await page.context().newCDPSession(page);
+
+  return async (type: TouchType, offset = 0) => {
+    await session.send("Input.dispatchTouchEvent", {
+      touchPoints:
+        type === "touchEnd"
+          ? []
+          : [{ x: box.x + box.width / 2 + offset, y: box.y + box.height / 2 }],
+      type,
+    });
+  };
 };
 
 test("draws pages without an image and loads none", async ({ page }) => {
@@ -150,26 +144,37 @@ test("slides the text pages onto the next spread", async ({ page }) => {
   ).toHaveAccessibleName("Character notes");
 });
 
-test("lets a text page follow the finger during a swipe", async ({ page }) => {
-  await openShortenedReader(page, "/features/text-pages");
+test.describe("on a touchscreen", () => {
+  test.use({ hasTouch: true });
 
-  const firstPage = page.locator(`${currentPageSet} article`).first();
-  const restingBox = await firstPage.boundingBox();
+  test("lets a text page follow the finger during a swipe", async ({
+    page,
+  }) => {
+    await openShortenedReader(page, "/features/text-pages");
 
-  await touchViewport(page, "touchstart");
-  await touchViewport(page, "touchmove", -240);
+    const firstPage = page.locator(`${currentPageSet} article`).first();
+    const restingBox = await firstPage.boundingBox();
 
-  await expect(page.locator(viewport)).toHaveAttribute("data-dragging", "true");
-  const draggedBox = await firstPage.boundingBox();
+    const touch = await touchViewport(page);
 
-  if (restingBox === null || draggedBox === null) {
-    throw new Error("The text page was not laid out.");
-  }
+    await touch("touchStart");
+    await touch("touchMove", -240);
 
-  expect(draggedBox.x - restingBox.x).toBeCloseTo(-240, 0);
+    await expect(page.locator(viewport)).toHaveAttribute(
+      "data-dragging",
+      "true"
+    );
+    const draggedBox = await firstPage.boundingBox();
 
-  await touchViewport(page, "touchend");
+    if (restingBox === null || draggedBox === null) {
+      throw new Error("The text page was not laid out.");
+    }
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 4");
-  await expect(firstPage).toHaveAccessibleName("Character notes");
+    expect(draggedBox.x - restingBox.x).toBeCloseTo(-240, 0);
+
+    await touch("touchEnd");
+
+    await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 4");
+    await expect(firstPage).toHaveAccessibleName("Character notes");
+  });
 });
