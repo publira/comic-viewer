@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.12.0](https://github.com/publira/comic-viewer/compare/v0.11.0...v0.12.0) (2026-10-24)
+
+
+### Features
+
+* **core:** group viewport gestures under one option and scope the arrow keys to the viewer ([#456](https://github.com/publira/comic-viewer/issues/456)) ([0241b0e](https://github.com/publira/comic-viewer/commit/0241b0eb6a071ebf5acf7fa0032b76c9aefc186e))
+* **core:** let a renderPage viewport take a layout template and the page rail ([#464](https://github.com/publira/comic-viewer/issues/464)) ([e844424](https://github.com/publira/comic-viewer/commit/e844424e0aa7c09fb0e535f9880bfddca51f9845)), closes [#458](https://github.com/publira/comic-viewer/issues/458)
+* **core:** let pages drawn through renderPage leave out src ([#455](https://github.com/publira/comic-viewer/issues/455)) ([d8ae81c](https://github.com/publira/comic-viewer/commit/d8ae81cc20429c8e63cfeb23a0a25343df1b6ff1)), closes [#430](https://github.com/publira/comic-viewer/issues/430)
+* **core:** let the viewer context set the zoom scale ([#460](https://github.com/publira/comic-viewer/issues/460)) ([e7879ae](https://github.com/publira/comic-viewer/commit/e7879ae6689b2c2b87af883479ba85017c3b0ce8)), closes [#432](https://github.com/publira/comic-viewer/issues/432)
+
+
+### Bug Fixes
+
+* **core:** separate the translate() arguments in the Tailwind CSS example ([#462](https://github.com/publira/comic-viewer/issues/462)) ([c8d83b3](https://github.com/publira/comic-viewer/commit/c8d83b36535b1942a9d8816001c1600886f87ca3)), closes [#459](https://github.com/publira/comic-viewer/issues/459)
+
 ## [0.11.0](https://github.com/publira/comic-viewer/compare/v0.10.2...v0.11.0) (2026-10-23)
 
 
