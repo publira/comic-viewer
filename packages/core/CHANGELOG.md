@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/publira/comic-viewer/compare/v0.12.0...v1.0.0) (2026-10-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** @publira/comic-viewer/core.css no longer resolves; import @publira/comic-viewer/default.css instead.
+
+### Features
+
+* **core:** remove the core.css alias and state the versioning policy ([#463](https://github.com/publira/comic-viewer/issues/463)) ([ddf4158](https://github.com/publira/comic-viewer/commit/ddf4158b007d9f5ca04f83154a19ae0a279956c0))
+
 ## [0.12.0](https://github.com/publira/comic-viewer/compare/v0.11.0...v0.12.0) (2026-10-24)
 
 
