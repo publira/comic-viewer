@@ -24,8 +24,7 @@
       "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs"
     },
-    "./default.css": "./src/default.css",
-    "./core.css": "./src/default.css"
+    "./default.css": "./src/default.css"
   },
   "scripts": {
     "build": "tsdown",

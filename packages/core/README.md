@@ -21,15 +21,27 @@ yarn add @publira/comic-viewer
 
 ## Versioning
 
-This project is pre-1.0 and does not yet follow strict Semantic Versioning guarantees. Within a `0.x.y` line, patch releases aim to preserve compatibility where reasonably possible. Minor `0.x` releases may include breaking API changes when they improve the library design or public API, so review the [changelog](https://github.com/publira/comic-viewer/blob/main/packages/core/CHANGELOG.md) before upgrading between minor versions.
+From `1.0.0` on, `@publira/comic-viewer` follows [Semantic Versioning](https://semver.org/): a breaking change to the public API below waits for a major release, a backward-compatible addition comes in a minor release, and a patch release fixes bugs. The [changelog](https://github.com/publira/comic-viewer/blob/main/packages/core/CHANGELOG.md) lists every release and marks its breaking changes. Before `1.0.0`, a minor `0.x` release could break the API.
+
+### Public API
+
+The public API is what this README documents:
+
+- The exports of `@publira/comic-viewer`: its components, hooks, and functions, their props, options, and return values, and the TypeScript types it exports.
+- The package entry points, `@publira/comic-viewer` and `@publira/comic-viewer/default.css`, and the range of the `react` peer dependency.
+- The `pcv-*` class names, the `data-*` attributes and their values, and the `--pcv-*` custom properties that the viewer sets or `default.css` reads, which the [Tailwind CSS](#tailwind-css) setup and stylesheets of your own select and set.
+- The states the viewer reports through `aria-hidden`, `inert`, `aria-pressed`, and `aria-busy` where this README names them.
+
+Some things may change in a minor or patch release:
+
+- The DOM structure between the documented elements, and any class name, attribute, or custom property this README does not name. Select an element by its class and data attributes rather than by its tag or its place in the tree.
+- The roles and the default accessible names of the elements, which follow accessibility fixes. Name the controls through `aria-label` or their children when the wording matters.
+- The look of `default.css`, such as its spacing, colors, and transitions, as long as the selectors and custom properties above keep working. Style the viewer yourself when you need a look that never moves.
+- Anything that is not reached through an entry point above, such as a file under `dist`.
 
 ### Page types
 
 The page model is settled for `1.0.0`. `PageMetadata` holds what every page has (`id`, `title`, `width`, `height`, and `layout`), `ImagePage` adds the image fields the built-in loader reads (`src`, which it requires, and `srcset`, `mimeType`, and `placeholder`), and `ViewerPage` is the same type as `ImagePage`. `ComicViewer.Root`, `resolvePage`, and `useViewerContext` accept any `PageMetadata`, and `Viewport` requires `ImagePage` unless it draws the pages itself through `renderPage`.
-
-### Planned breaking changes for `1.0.0`
-
-- The `./core.css` subpath, kept as an alias of `./default.css` throughout the `0.x` line, will be removed. Import `@publira/comic-viewer/default.css` instead.
 
 ## CSS setup
 
@@ -40,8 +52,6 @@ import "@publira/comic-viewer/default.css";
 ```
 
 `default.css` is optional. Omit it when you override the viewer styles through `className`, such as with Tailwind CSS, or when you provide all styles independently. In either case, give the viewer's parent an explicit size so the viewport can fill the available area. Compose the public `ViewportTrack`, `ViewportPageSet`, and `ViewportPageSlot` components to style the page-turn structure without targeting implementation classes.
-
-The stylesheet was named `core.css` before it was renamed to `default.css`. `@publira/comic-viewer/core.css` still resolves to the same file for the rest of the `0.x` line, but it is deprecated and will be removed in `1.0.0`, so move existing imports to `@publira/comic-viewer/default.css`.
 
 ## Basic usage
 
