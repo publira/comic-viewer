@@ -22,12 +22,12 @@
   },
   "dependencies": {
     "@publira/comic-viewer": "workspace:*",
-    "@sugar-high/react": "2.5.0",
+    "@sugar-high/react": "2.5.1",
     "lucide-react": "1.61.0",
     "next": "16.4.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "sugar-high": "2.6.3"
+    "sugar-high": "2.6.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
