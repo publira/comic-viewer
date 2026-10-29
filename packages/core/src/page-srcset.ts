@@ -38,6 +38,12 @@ interface RawCandidate {
   url: string;
 }
 
+interface DescriptorRun {
+  descriptors: readonly string[];
+  /** The position after the comma or the end of the input that closed the run. */
+  position: number;
+}
+
 interface DescribedCandidate {
   density?: number;
   url: string;
@@ -54,10 +60,7 @@ const FLOATING_POINT_NUMBER = /^-?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?$/iu;
  * comma inside parentheses belongs to the descriptor, as the specification
  * reserves for future syntax.
  */
-const readDescriptors = (
-  input: string,
-  start: number
-): { descriptors: readonly string[]; position: number } => {
+const readDescriptors = (input: string, start: number): DescriptorRun => {
   const descriptors: string[] = [];
   let current = "";
   let inParens = false;
@@ -79,6 +82,7 @@ const readDescriptors = (
       inParens = character !== ")";
     } else if (character === ",") {
       endDescriptor();
+
       return { descriptors, position };
     } else if (ASCII_WHITESPACE.has(character)) {
       endDescriptor();
@@ -89,6 +93,7 @@ const readDescriptors = (
   }
 
   endDescriptor();
+
   return { descriptors, position };
 };
 
@@ -104,23 +109,56 @@ const splitCandidates = (input: string): RawCandidate[] => {
     }
 
     const urlStart = position;
+
     while (position < input.length && !ASCII_WHITESPACE.has(input[position])) {
       position += 1;
     }
-    const url = input.slice(urlStart, position);
 
-    // A URL that ends with commas has no descriptors; the commas close it.
-    if (url.endsWith(",")) {
-      candidates.push({ descriptors: [], url: url.replace(/,+$/u, "") });
-      continue;
+    let urlEnd = position;
+
+    while (input[urlEnd - 1] === ",") {
+      urlEnd -= 1;
     }
 
-    const { descriptors, position: next } = readDescriptors(input, position);
-    candidates.push({ descriptors, url });
-    position = next;
+    // A URL that ends with commas has no descriptors; the commas close it.
+    if (urlEnd < position) {
+      candidates.push({ descriptors: [], url: input.slice(urlStart, urlEnd) });
+    } else {
+      const { descriptors, position: next } = readDescriptors(input, position);
+      candidates.push({ descriptors, url: input.slice(urlStart, position) });
+      position = next;
+    }
   }
 
   return candidates;
+};
+
+type DescriptorUnit = "h" | "w" | "x";
+
+/**
+ * Reads one descriptor into its unit and value, or returns `undefined` when it
+ * is malformed: a width or a height must be a positive integer, and a density
+ * a non-negative number.
+ */
+const readDescriptor = (
+  descriptor: string
+): { unit: DescriptorUnit; value: number } | undefined => {
+  const unit = descriptor.at(-1);
+  const text = descriptor.slice(0, -1);
+
+  if ((unit === "w" || unit === "h") && NON_NEGATIVE_INTEGER.test(text)) {
+    const value = Number(text);
+
+    return value === 0 ? undefined : { unit, value };
+  }
+
+  if (unit === "x" && FLOATING_POINT_NUMBER.test(text)) {
+    const value = Number(text);
+
+    return value < 0 ? undefined : { unit, value };
+  }
+
+  return undefined;
 };
 
 /**
@@ -132,48 +170,28 @@ const describeCandidate = ({
   descriptors,
   url,
 }: RawCandidate): DescribedCandidate | undefined => {
-  let density: number | undefined;
-  let height: number | undefined;
-  let width: number | undefined;
+  const values = new Map<DescriptorUnit, number>();
 
   for (const descriptor of descriptors) {
-    const unit = descriptor.at(-1);
-    const value = descriptor.slice(0, -1);
+    const parsed = readDescriptor(descriptor);
 
-    if (unit === "w" && NON_NEGATIVE_INTEGER.test(value)) {
-      if (width !== undefined || density !== undefined) {
-        return undefined;
-      }
-      width = Number(value);
-      if (width === 0) {
-        return undefined;
-      }
-    } else if (unit === "x" && FLOATING_POINT_NUMBER.test(value)) {
-      if (
-        width !== undefined ||
-        density !== undefined ||
-        height !== undefined
-      ) {
-        return undefined;
-      }
-      density = Number(value);
-      if (density < 0) {
-        return undefined;
-      }
-    } else if (unit === "h" && NON_NEGATIVE_INTEGER.test(value)) {
-      if (density !== undefined || height !== undefined) {
-        return undefined;
-      }
-      height = Number(value);
-      if (height === 0) {
-        return undefined;
-      }
-    } else {
+    if (parsed === undefined || values.has(parsed.unit)) {
       return undefined;
     }
+
+    values.set(parsed.unit, parsed.value);
   }
 
-  if (height !== undefined && width === undefined) {
+  const density = values.get("x");
+  const width = values.get("w");
+  const hasHeight = values.has("h");
+
+  // A density stands alone, and a height needs a width beside it.
+  if (density !== undefined && (width !== undefined || hasHeight)) {
+    return undefined;
+  }
+
+  if (hasHeight && width === undefined) {
     return undefined;
   }
 
@@ -193,6 +211,7 @@ const hasWidth = (
 export const parseSrcset = (srcset: string): ParsedSrcset | undefined => {
   const candidates = splitCandidates(srcset).flatMap((candidate) => {
     const described = describeCandidate(candidate);
+
     return described === undefined ? [] : [described];
   });
 
@@ -237,6 +256,7 @@ const pickCandidate = <TCandidate extends { url: string }>(
 
     const value = measure(candidate);
     const chosenValue = measure(chosen);
+
     const improves =
       chosenValue >= required
         ? value >= required && value < chosenValue
@@ -261,6 +281,7 @@ export const selectSrcsetCandidate = (
   requirement: SrcsetRequirement
 ): string | undefined => {
   const parsed = srcset === undefined ? undefined : parseSrcset(srcset);
+
   if (parsed === undefined) {
     return undefined;
   }
