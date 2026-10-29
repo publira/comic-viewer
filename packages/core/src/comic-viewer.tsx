@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import { composeClassName } from "./class-names";
 import { ViewerProvider } from "./viewer-context";
 import type { PageMetadata, ViewerProviderProps } from "./viewer-context";
@@ -24,7 +26,7 @@ export const ComicViewer = <TPage extends PageMetadata>({
   initialViewMode = "double",
   initialReadingDirection = "rtl",
   ...viewerProps
-}: ComicViewerProps<TPage>) => {
+}: ComicViewerProps<TPage>): JSX.Element => {
   // The root element holds the reader itself, so the slot pages are lifted out
   // of it and left among the children the provider reads them from.
   const {

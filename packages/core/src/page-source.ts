@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { Provider } from "react";
 
 import type { PageMetadata, ViewerPage } from "./viewer-context";
 
@@ -67,7 +68,8 @@ export interface PageResolveStore {
 
 const PageResolveStoreContext = createContext<PageResolveStore | null>(null);
 
-export const PageResolveStoreProvider = PageResolveStoreContext.Provider;
+export const PageResolveStoreProvider: Provider<PageResolveStore | null> =
+  PageResolveStoreContext.Provider;
 
 /** Reads the store of the enclosing ViewerProvider. */
 export const usePageResolveStore = (consumerName: string): PageResolveStore => {

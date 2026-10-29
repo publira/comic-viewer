@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { RenderResult } from "@testing-library/react";
+import type { JSX } from "react";
 import { vi } from "vitest";
+import type { Mock } from "vitest";
 
 import type { ViewerPlugin } from "./plugin";
 import type { ViewportGestures } from "./use-viewport-gestures";
@@ -16,7 +18,8 @@ export type MockFetch = (
 /** Stands in for every ResizeObserver the viewport creates until disconnected. */
 // eslint-disable-next-line eslint-plugin-promise/prefer-await-to-callbacks
 export class MockResizeObserver {
-  static callbacks = new Set<ResizeObserverCallback>();
+  static callbacks: Set<ResizeObserverCallback> =
+    new Set<ResizeObserverCallback>();
 
   readonly #callback: ResizeObserverCallback;
 
@@ -26,17 +29,17 @@ export class MockResizeObserver {
     MockResizeObserver.callbacks.add(callback);
   }
 
-  observe = vi.fn<() => void>();
-  disconnect = vi.fn<() => void>(() => {
+  observe: Mock<() => void> = vi.fn<() => void>();
+  disconnect: Mock<() => void> = vi.fn<() => void>(() => {
     MockResizeObserver.callbacks.delete(this.#callback);
   });
-  unobserve = vi.fn<() => void>();
+  unobserve: Mock<() => void> = vi.fn<() => void>();
 
-  static reset() {
+  static reset(): void {
     MockResizeObserver.callbacks.clear();
   }
 
-  static trigger(width: number, height = 100) {
+  static trigger(width: number, height = 100): void {
     for (const notify of MockResizeObserver.callbacks) {
       notify(
         [
@@ -51,16 +54,20 @@ export class MockResizeObserver {
   }
 }
 
-export const pages = [
+export interface TestPage {
+  id: string;
+  src: string;
+  title: string;
+}
+
+export const pages: TestPage[] = [
   { id: "p1", src: "page1.png", title: "Page 1" },
   { id: "p2", src: "page2.png", title: "Page 2" },
   { id: "p3", src: "page3.png", title: "Page 3" },
   { id: "p4", src: "page4.png", title: "Page 4" },
 ];
 
-export type TestPage = (typeof pages)[number];
-
-export const setViewportRect = (viewport: Element, width = 100) => {
+export const setViewportRect = (viewport: Element, width = 100): void => {
   vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue({
     bottom: 100,
     height: 100,
@@ -78,7 +85,7 @@ export const setViewportRect = (viewport: Element, width = 100) => {
  * Queries the spread on screen, apart from the neighbouring spreads the page
  * rail holds beside it.
  */
-export const withinCurrentPageSet = () => {
+export const withinCurrentPageSet = (): ReturnType<typeof within> => {
   const pageSet = document.querySelector<HTMLElement>(
     '.pcv-viewport-page-set[data-rail-slot="current"]'
   );
@@ -95,19 +102,28 @@ export const pressViewportKey = (key: string): boolean =>
     key,
   });
 
-export const CurrentIndexIndicator = () => {
+export const CurrentIndexIndicator = (): JSX.Element => {
   const { currentIndex } = useViewerContext();
   return <div data-testid="current-index">{currentIndex}</div>;
 };
 
+interface RenderViewportOptions {
+  gestures?: ViewportGestures;
+  initialIndex?: number;
+  initialReadingDirection?: ReadingDirection;
+  plugins?: readonly ViewerPlugin[];
+  spreadStartIndex?: number;
+  threshold?: number;
+}
+
 export const renderViewport = ({
-  gestures = undefined as ViewportGestures | undefined,
+  gestures,
   initialIndex = 0,
-  initialReadingDirection = "rtl" as ReadingDirection,
-  plugins = [] as readonly ViewerPlugin[],
+  initialReadingDirection = "rtl",
+  plugins = [],
   spreadStartIndex = 0,
   threshold = 768,
-} = {}): RenderResult =>
+}: RenderViewportOptions = {}): RenderResult =>
   render(
     <ViewerProvider
       pages={pages}
@@ -129,8 +145,17 @@ interface MockPageImagesOptions {
   fetch?: MockFetch;
 }
 
+interface MockPageImages {
+  drawImage: Mock<() => void>;
+  fetchMock: Mock<MockFetch>;
+  image: ImageBitmap;
+  restore: () => void;
+}
+
 /** Stubs canvas decoding and page fetching for viewport rendering tests. */
-export const mockPageImages = ({ fetch }: MockPageImagesOptions = {}) => {
+export const mockPageImages = ({
+  fetch,
+}: MockPageImagesOptions = {}): MockPageImages => {
   const image = {
     close: vi.fn<() => void>(),
     height: 1,

@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { ButtonHTMLAttributes, MouseEvent, ReactNode } from "react";
+import type { ButtonHTMLAttributes, JSX, MouseEvent, ReactNode } from "react";
 
 import { composeClassName } from "./class-names";
 import { useViewerContext } from "./viewer-context";
@@ -65,7 +65,7 @@ export const ViewModeToggle = ({
   disabled = false,
   onClick,
   ...props
-}: ViewModeToggleProps) => {
+}: ViewModeToggleProps): JSX.Element => {
   const { isDoublePageAvailable, setViewMode, viewMode } = useViewerContext();
   const isDoublePage = viewMode === "double";
   const handleClick = useCallback(
@@ -104,7 +104,7 @@ export const ReadingDirectionToggle = ({
   children,
   onClick,
   ...props
-}: ReadingDirectionToggleProps) => {
+}: ReadingDirectionToggleProps): JSX.Element => {
   const { readingDirection, setReadingDirection } = useViewerContext();
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -147,7 +147,7 @@ export const PageFitModeToggle = ({
   mode,
   onClick,
   ...props
-}: PageFitModeToggleProps) => {
+}: PageFitModeToggleProps): JSX.Element => {
   const { pageFitMode, setPageFitMode } = useViewerContext();
   // A button that names a mode always sets that one; a cycling button sets
   // whichever mode follows the one the reader is on.

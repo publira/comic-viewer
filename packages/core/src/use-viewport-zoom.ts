@@ -27,6 +27,31 @@ interface UseViewportZoomOptions {
   setPageFitMode: (mode: PageFitMode) => void;
 }
 
+export interface UseViewportZoomResult {
+  activePan: { x: number; y: number };
+  activeZoom: { scale: number };
+  beginPan: (
+    pointerId: number | "touch",
+    clientX: number,
+    clientY: number
+  ) => void;
+  beginPinch: (touches: TouchInput) => boolean;
+  didPanRef: RefObject<boolean>;
+  endPan: (pointerId: number | "touch") => void;
+  endPinch: () => void;
+  isPannable: boolean;
+  isPanning: boolean;
+  isPinching: () => boolean;
+  isTouchPanning: () => boolean;
+  movePan: (
+    pointerId: number | "touch",
+    clientX: number,
+    clientY: number
+  ) => boolean;
+  movePinch: (touches: TouchInput) => boolean;
+  registerTap: (clientX: number, clientY: number) => void;
+}
+
 /**
  * Drives the pan offset and zoom scale of the current spread through the
  * pointer, pinch, and double-tap gestures that change them, and applies the
@@ -41,7 +66,7 @@ export const useViewportZoom = ({
   isDoubleTapEnabled,
   pageFitMode,
   setPageFitMode,
-}: UseViewportZoomOptions) => {
+}: UseViewportZoomOptions): UseViewportZoomResult => {
   const panStateRef = useRef<{
     pointerId: number | "touch" | null;
     startPanX: number;

@@ -7,6 +7,7 @@ import {
 } from "react";
 import type {
   ComponentPropsWithoutRef,
+  JSX,
   PropsWithChildren,
   ReactNode,
 } from "react";
@@ -37,7 +38,7 @@ export const ViewerSlotProvider = ({
   position,
   side,
   slot,
-}: ViewerSlotProviderProps) => {
+}: ViewerSlotProviderProps): JSX.Element => {
   const value = useMemo(
     () => ({ count, position, side, slot }),
     [count, position, side, slot]
@@ -107,7 +108,7 @@ const SlotPage = ({
  * any other page, yet it stays out of the page count and out of the index
  * mapping of the page list, so the pages keep the numbers they are given.
  */
-export const StartPage = (props: ViewerSlotPageProps) => (
+export const StartPage = (props: ViewerSlotPageProps): JSX.Element => (
   <SlotPage {...props} componentName="StartPage" slot="start" />
 );
 
@@ -116,7 +117,7 @@ export const StartPage = (props: ViewerSlotPageProps) => (
  * the next chapter. Like StartPage, it stays out of the page count and out of
  * the index mapping of the page list.
  */
-export const EndPage = (props: ViewerSlotPageProps) => (
+export const EndPage = (props: ViewerSlotPageProps): JSX.Element => (
   <SlotPage {...props} componentName="EndPage" slot="end" />
 );
 

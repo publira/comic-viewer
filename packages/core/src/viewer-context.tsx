@@ -9,6 +9,7 @@ import {
 } from "react";
 import type {
   Dispatch,
+  JSX,
   PropsWithChildren,
   ReactNode,
   RefObject,
@@ -669,7 +670,7 @@ export const ViewerProvider = <TPage extends PageMetadata>({
   initialReadingDirection = "rtl",
   onReadingDirectionChange,
   spreadStartIndex = 0,
-}: ViewerProviderProps<TPage>) => {
+}: ViewerProviderProps<TPage>): JSX.Element => {
   // A StartPage or an EndPage written among the children belongs to the
   // viewport rather than to the place it stands in, so it is taken out of the
   // tree here and rendered from the context instead.

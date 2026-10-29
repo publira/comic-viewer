@@ -6,7 +6,7 @@ import {
   useMemo,
   useRef,
 } from "react";
-import type { ComponentPropsWithoutRef, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, JSX, Provider, ReactNode } from "react";
 
 import { composeClassName } from "./class-names";
 import type { PageLoadError, PageLoadState, PageLoadStatus } from "./page-load";
@@ -99,7 +99,10 @@ export type PageCanvasProps = Omit<
 >;
 
 /** Draws the decoded viewport page or its preview without exposing an image element. */
-export const PageCanvas = ({ className, ...props }: PageCanvasProps) => {
+export const PageCanvas = ({
+  className,
+  ...props
+}: PageCanvasProps): JSX.Element => {
   const {
     image: pageImage,
     page,
@@ -177,7 +180,8 @@ const ViewportPendingPageContext = createContext<"pending" | "error">(
 );
 
 /** Tells the pending page rendered for an unresolved index how it stands. */
-export const ViewportPendingPageProvider = ViewportPendingPageContext.Provider;
+export const ViewportPendingPageProvider: Provider<"pending" | "error"> =
+  ViewportPendingPageContext.Provider;
 
 /**
  * Stands in for a page whose metadata is still being resolved, so the spread
@@ -188,7 +192,7 @@ export const ViewportPendingPageProvider = ViewportPendingPageContext.Provider;
 export const ViewportPendingPage = ({
   className,
   ...props
-}: ViewportPendingPageProps) => {
+}: ViewportPendingPageProps): JSX.Element => {
   const failed = useContext(ViewportPendingPageContext) === "error";
 
   return (
@@ -211,7 +215,7 @@ export const ViewportPage = ({
   children,
   className,
   ...props
-}: ViewportPageProps) => {
+}: ViewportPageProps): JSX.Element => {
   const layout = useViewportPageLayout();
   const side = useViewportPageSide();
 
@@ -252,7 +256,7 @@ export const ViewportPageInstance = <TPage extends ViewerPage>({
   retryPage,
   side,
   status,
-}: ViewportPageInstanceProps<TPage>) => {
+}: ViewportPageInstanceProps<TPage>): JSX.Element => {
   const retry = useCallback(() => {
     retryPage(index);
   }, [index, retryPage]);
