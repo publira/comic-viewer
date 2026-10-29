@@ -27,6 +27,7 @@ This repository is a monorepo configured with Turborepo and managed via `pnpm`.
 ### Language
 
 - Use **English** consistently for all code comments, `.md` documentation, commit messages, Issue discussions, and Pull Request titles/descriptions.
+- Answer the user in the language of their own prose. Quoted logs, code, or UI strings do not decide it. Answer in English when no user prose settles it, such as in a scheduled or CI-started run.
 
 ### Commit Messages
 
