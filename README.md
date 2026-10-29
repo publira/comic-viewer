@@ -82,6 +82,8 @@ The repository is a [Turborepo](https://turborepo.com/) monorepo managed with [p
 | `pnpm check`     | Run the linter and formatter checks.               |
 | `pnpm fix`       | Apply the linter and formatter fixes.              |
 
+`pnpm install` also installs the [lefthook](https://lefthook.dev/) pre-commit hook, so committing formats the staged files with oxfmt and commits the result. It does not lint, and `git commit --no-verify` skips it, so run `pnpm check` before opening a pull request.
+
 See [`AGENTS.md`](AGENTS.md) for the repository conventions, including the Conventional Commits format used for commit messages and pull request titles.
 
 ## License

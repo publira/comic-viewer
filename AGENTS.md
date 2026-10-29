@@ -24,6 +24,8 @@ The root `package.json` pins the toolchain: Node.js through `devEngines.runtime`
 - `pnpm check`: Run linter and formatter checks.
 - `pnpm fix`: Automatically fix linting and formatting issues.
 
+`pnpm install` also installs a lefthook pre-commit hook (`lefthook.yml`) that formats the staged JavaScript, TypeScript, CSS, JSON, Markdown, and YAML files with oxfmt and stages the result. It does not lint, so run `pnpm check` before pushing.
+
 ## Rules & Conventions
 
 ### Language

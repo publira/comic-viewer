@@ -4,6 +4,7 @@ packages:
   - packages/*
 
 allowBuilds:
+  lefthook: true
   sharp: true
 
 minimumReleaseAgeExclude:
