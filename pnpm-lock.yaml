@@ -188,8 +188,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
       '@sugar-high/react':
-        specifier: 2.5.0
-        version: 2.5.0(react@19.3.1)
+        specifier: 2.5.1
+        version: 2.5.1(react@19.3.1)
       next:
         specifier: 16.4.3
         version: 16.4.3(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -200,8 +200,8 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
       sugar-high:
-        specifier: 2.6.3
-        version: 2.6.3
+        specifier: 2.6.4
+        version: 2.6.4
     devDependencies:
       '@types/node':
         specifier: 24.19.2
@@ -222,8 +222,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/core
       '@sugar-high/react':
-        specifier: 2.5.0
-        version: 2.5.0(react@19.3.1)
+        specifier: 2.5.1
+        version: 2.5.1(react@19.3.1)
       lucide-react:
         specifier: 1.61.0
         version: 1.61.0(@types/react@19.3.0)(react@19.3.1)
@@ -237,8 +237,8 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
       sugar-high:
-        specifier: 2.6.3
-        version: 2.6.3
+        specifier: 2.6.4
+        version: 2.6.4
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.3.3
@@ -262,8 +262,8 @@ importers:
   apps/website:
     dependencies:
       '@sugar-high/react':
-        specifier: 2.5.0
-        version: 2.5.0(react@19.3.1)
+        specifier: 2.5.1
+        version: 2.5.1(react@19.3.1)
       next:
         specifier: 16.4.3
         version: 16.4.3(@playwright/test@1.64.1)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -274,8 +274,8 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
       sugar-high:
-        specifier: 2.6.3
-        version: 2.6.3
+        specifier: 2.6.4
+        version: 2.6.4
     devDependencies:
       '@publira/design-tokens':
         specifier: 1.1.0
@@ -1067,8 +1067,8 @@ packages:
     resolution: {integrity: sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ==}
     engines: {node: '>=18'}
 
-  '@sugar-high/react@2.5.0':
-    resolution: {integrity: sha512-F1DYkfVMvXRDXIz86JXnvZENqwWrWAF0qfFWILuFMeZmYaxqwiSIb/mw88RbixxVQRQacm7Z0F/fE4dgOS2aSQ==}
+  '@sugar-high/react@2.5.1':
+    resolution: {integrity: sha512-8kp6oN/Cud3Aj+QpvRZFZaA3lIBQwqZVINSkdOuBvK0V6F6ABnzIxqCvK/26uc/zamVb7k1z+h9KTwYL+WXmGg==}
     peerDependencies:
       react: ^18.0.0 || ^19.0.0
 
@@ -2113,8 +2113,8 @@ packages:
       babel-plugin-macros:
         optional: true
 
-  sugar-high@2.6.3:
-    resolution: {integrity: sha512-IfcHTzIo5Akp9h4NCwGmu8agrf4bbXDauwFcVmfYwqEj1RbdRfS2NEdMaCOKLSjK06I7fZmVmovYlz3+KkvH5Q==}
+  sugar-high@2.6.4:
+    resolution: {integrity: sha512-GJkKsIyzqPMCJabhM8c4IKBg3aKUtI62DMPGdgFuXDo0Z5LY+q3SIT3PsSjGkOT9IglhCR6dZBDVQYmdIfumsw==}
 
   tailwindcss@4.3.3:
     resolution: {integrity: sha512-gOhV3P7ufE62QDGg1zVaTgCR+EtPv92k2nIhVcVKcLmxT1sUBsQGhnZj175j+MqRt4zLF7ic+sCYjfhxMxj7YQ==}
@@ -2841,10 +2841,10 @@ snapshots:
 
   '@sindresorhus/merge-streams@4.0.0': {}
 
-  '@sugar-high/react@2.5.0(react@19.3.1)':
+  '@sugar-high/react@2.5.1(react@19.3.1)':
     dependencies:
       react: 19.3.1
-      sugar-high: 2.6.3
+      sugar-high: 2.6.4
 
   '@swc/helpers@0.5.23':
     dependencies:
@@ -3757,7 +3757,7 @@ snapshots:
       client-only: 0.0.1
       react: 19.3.1
 
-  sugar-high@2.6.3: {}
+  sugar-high@2.6.4: {}
 
   tailwindcss@4.3.3: {}
 
