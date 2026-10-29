@@ -8,3 +8,5 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - "@publira/*"
+
+savePrefix: ""
