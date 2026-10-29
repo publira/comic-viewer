@@ -9,8 +9,8 @@ import {
   getVisibleIndices,
   useViewportLayout,
 } from "./use-viewport-layout";
-import { getPreviousSpreadIndex } from "./viewer-context";
 import type { ViewerPage } from "./viewer-context";
+import { getPreviousSpreadIndex } from "./viewer-spreads";
 
 /** A page list of `count` pages, with a spread page at each given index. */
 const createPages = (
@@ -25,9 +25,11 @@ const createPages = (
   }));
 
 const plainPages = createPages(8);
+
 // Pages 1 and 2 pair, page 3 is left facing the blank half before the spread,
 // and the pages after it pair again from the sheet the spread ends.
 const pagesWithSpread = createPages(8, 3);
+
 /** The ten pages the rail and preload windows are measured over. */
 const railPages = createPages(10);
 

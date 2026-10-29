@@ -11,7 +11,6 @@ import type {
   ButtonHTMLAttributes,
   ChangeEvent,
   ComponentPropsWithoutRef,
-  CSSProperties,
   JSX,
   MouseEvent,
   PointerEvent,
@@ -19,21 +18,19 @@ import type {
   ReactNode,
 } from "react";
 
+import { isAvailable } from "./browser-api";
 import { composeClassName } from "./class-names";
+import type { CustomPropertyStyle } from "./custom-property-style";
 import { useControlsHold } from "./use-controls-hold";
+import { useViewerContext } from "./viewer-context";
+import type { PageMetadata, ViewerSlot, ViewMode } from "./viewer-context";
+import { getSlotPage } from "./viewer-slot-pages";
+import type { ViewerSlotPages } from "./viewer-slot-pages";
 import {
   getScrubSpread,
-  getSlotPage,
   getSpreadIndex,
   getVisiblePageCount,
-  useViewerContext,
-} from "./viewer-context";
-import type {
-  PageMetadata,
-  ViewerSlot,
-  ViewerSlotPages,
-  ViewMode,
-} from "./viewer-context";
+} from "./viewer-spreads";
 
 interface PageProgressState {
   ariaLabel: string;
@@ -64,14 +61,17 @@ const easeOut = (progress: number): number => {
   // the elapsed share of the duration.
   for (let iteration = 0; iteration < 20; iteration += 1) {
     const x = sampleCubicBezier(t, 0, 0.58);
+
     if (Math.abs(x - progress) < 1e-4) {
       break;
     }
+
     if (x < progress) {
       lower = t;
     } else {
       upper = t;
     }
+
     t = (lower + upper) / 2;
   }
 
@@ -101,9 +101,11 @@ export const PreviousPageButton = ({
 }: PageNavigationButtonProps): JSX.Element => {
   const { currentIndex, goToPrev, minIndex } = useViewerContext();
   const isDisabled = disabled || currentIndex <= minIndex;
+
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
+
       if (!event.defaultPrevented) {
         goToPrev();
       }
@@ -141,6 +143,7 @@ export const NextPageButton = ({
     spreadStartIndex,
     viewMode,
   } = useViewerContext();
+
   const isDisabled =
     disabled ||
     currentIndex +
@@ -152,9 +155,11 @@ export const NextPageButton = ({
         pages
       ) >
       maxIndex;
+
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
+
       if (!event.defaultPrevented) {
         goToNext();
       }
@@ -261,18 +266,22 @@ const getPageStatusValue = ({
       pages
     ) -
     1;
+
   // A slot page is counted neither in the page numbers nor in the total, so
   // the reader keeps the numbering of the document itself.
   const slotPages = { endPages, startPages };
   const lastVisibleSlotPage = getSlotPage(lastIndex, pageCount, slotPages);
+
   const slotPage =
     getSlotPage(currentIndex, pageCount, slotPages) ?? lastVisibleSlotPage;
+
   // A spread that pairs two pages of the same slot is reported as the range
   // they cover, the way a spread of two pages of the document is.
   const lastSlotPage =
     lastVisibleSlotPage?.slot === slotPage?.slot
       ? lastVisibleSlotPage
       : slotPage;
+
   const firstVisiblePage = Math.max(currentIndex, 0) + 1;
   const lastVisiblePage = Math.min(lastIndex + 1, pageCount);
   const hasVisiblePages = pageCount > 0 && firstVisiblePage <= lastVisiblePage;
@@ -344,7 +353,9 @@ export const PageStatus = ({
     startPages,
     viewMode,
   } = useViewerContext();
+
   const progressIndex = useProgressIndex();
+
   const value = getPageStatusValue({
     currentIndex: progressIndex,
     endPages,
@@ -355,6 +366,7 @@ export const PageStatus = ({
     startPages,
     viewMode,
   });
+
   const label = format?.(value) ?? getDefaultPageStatusLabel(value);
 
   return (
@@ -412,9 +424,12 @@ export const PageProgressTrack = ({
   ...props
 }: PageProgressTrackProps): JSX.Element => {
   const pageProgress = useContext(PageProgressContext);
+
   const { maxIndex, pageCount, pages, spreadStartIndex, viewMode } =
     useViewerContext();
+
   const progressIndex = useProgressIndex();
+
   const visiblePageCount = getVisiblePageCount(
     viewMode,
     progressIndex,
@@ -422,6 +437,7 @@ export const PageProgressTrack = ({
     spreadStartIndex,
     pages
   );
+
   // A slot page leaves the progress where the pages next to it put it, since
   // it is not one of the pages being counted.
   const currentPage = Math.min(
@@ -440,10 +456,13 @@ export const PageProgressTrack = ({
   );
 };
 
-export interface PageProgressSliderProps extends Omit<
+/** The input attributes the slider leaves to its caller. */
+type SliderInputProps = Omit<
   ComponentPropsWithoutRef<"input">,
   "children" | "defaultValue" | "max" | "min" | "step" | "type" | "value"
-> {
+>;
+
+export interface PageProgressSliderProps extends SliderInputProps {
   /**
    * Names the page under the thumb in `aria-valuetext`, from the same value
    * `PageStatus` passes to its own `format`. An explicit `aria-valuetext`
@@ -480,6 +499,7 @@ export const PageProgressSlider = ({
   ...props
 }: PageProgressSliderProps): JSX.Element => {
   const pageProgress = useContext(PageProgressContext);
+
   const {
     currentIndex,
     endPages,
@@ -495,12 +515,14 @@ export const PageProgressSlider = ({
     startPages,
     viewMode,
   } = useViewerContext();
+
   const [isScrubbing, setIsScrubbing] = useState(false);
   // A drag ends on an event that arrives from the window rather than through
   // React, and reports its steps before a render carries them into state, so
   // both are read back through refs.
   const isScrubbingRef = useRef(false);
   const scrubPositionRef = useRef<number | null>(null);
+
   const snapToSpread = useCallback(
     (index: number): number =>
       getSpreadIndex(
@@ -513,6 +535,7 @@ export const PageProgressSlider = ({
       ),
     [maxIndex, minIndex, pages, spreadStartIndex, viewMode]
   );
+
   const restingValue = snapToSpread(currentIndex);
   const restingValueRef = useRef(restingValue);
   // Where the thumb is on its way from the point a drag was released at to
@@ -520,6 +543,7 @@ export const PageProgressSlider = ({
   const [settlingValue, setSettlingValue] = useState<number | null>(null);
   const settleFrameRef = useRef<number | null>(null);
   const progressIndex = useProgressIndex();
+
   const value =
     isScrubbing && scrubPosition !== null
       ? scrubPosition
@@ -534,6 +558,7 @@ export const PageProgressSlider = ({
       cancelAnimationFrame(settleFrameRef.current);
       settleFrameRef.current = null;
     }
+
     setSettlingValue(null);
   }, []);
 
@@ -545,17 +570,19 @@ export const PageProgressSlider = ({
   // controlled host kept instead.
   const settleThumb = useCallback((from: number): void => {
     if (
-      typeof requestAnimationFrame !== "function" ||
+      !isAvailable(globalThis.requestAnimationFrame) ||
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
     ) {
       return;
     }
 
     let startTime: number | null = null;
+
     const step = (time: number): void => {
       if (startTime === null) {
         startTime = time;
       }
+
       const progress = Math.min(
         (time - startTime) / THUMB_SETTLE_DURATION_MS,
         1
@@ -564,6 +591,7 @@ export const PageProgressSlider = ({
       if (progress === 1) {
         settleFrameRef.current = null;
         setSettlingValue(null);
+
         return;
       }
 
@@ -655,6 +683,7 @@ export const PageProgressSlider = ({
   const handlePointerDown = useCallback(
     (event: PointerEvent<HTMLInputElement>) => {
       onPointerDown?.(event);
+
       if (event.defaultPrevented) {
         return;
       }
@@ -673,6 +702,7 @@ export const PageProgressSlider = ({
   const handleChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       onChange?.(event);
+
       if (event.defaultPrevented) {
         return;
       }
@@ -685,6 +715,7 @@ export const PageProgressSlider = ({
       if (isScrubbingRef.current) {
         scrubPositionRef.current = requestedPosition;
         setScrubPosition(requestedPosition);
+
         return;
       }
 
@@ -697,6 +728,7 @@ export const PageProgressSlider = ({
       // back to it, so it carries on to the next spread it is heading for.
       const isStuckOnTheSameSpread =
         snappedIndex === restingValue && requestedIndex !== restingValue;
+
       goTo(
         isStuckOnTheSameSpread
           ? snapToSpread(
@@ -718,8 +750,14 @@ export const PageProgressSlider = ({
     startPages,
     viewMode,
   });
+
   const fillRatio =
     maxIndex > minIndex ? (value - minIndex) / (maxIndex - minIndex) : 0;
+
+  const progressStyle: CustomPropertyStyle = {
+    ...style,
+    "--pcv-page-progress-fill": `${fillRatio * 100}%`,
+  };
 
   return (
     <input
@@ -739,12 +777,7 @@ export const PageProgressSlider = ({
       // A value between two indices would be rounded to one of them under a
       // step of one, so the step stays lifted while the thumb settles too.
       step={isScrubbing || settlingValue !== null ? "any" : 1}
-      style={
-        {
-          ...style,
-          "--pcv-page-progress-fill": `${fillRatio * 100}%`,
-        } as CSSProperties
-      }
+      style={progressStyle}
       type="range"
       value={value}
     />

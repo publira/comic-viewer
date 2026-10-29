@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 
+import type { PageFitMode } from "./viewer-context";
 import {
   MAX_ZOOM_SCALE,
   MIN_ZOOM_SCALE,
   RESTING_VIEWPORT_ZOOM,
   getViewportZoomKey,
   useViewportZoomStore,
-} from "./viewer-context";
-import type { PageFitMode, ZoomFocalPoint } from "./viewer-context";
+} from "./viewer-zoom";
+import type { ZoomFocalPoint } from "./viewer-zoom";
 import {
   getTouchCenter,
   getTouchDistance,
@@ -80,7 +81,9 @@ export const useViewportZoom = ({
     startX: 0,
     startY: 0,
   });
+
   const didPanRef = useRef(false);
+
   const pinchStateRef = useRef<{
     startCenterX: number;
     startCenterY: number;
@@ -89,19 +92,23 @@ export const useViewportZoom = ({
     startPanY: number;
     startScale: number;
   } | null>(null);
+
   const lastTapRef = useRef<{
     key: string;
     time: number;
     x: number;
     y: number;
   } | null>(null);
+
   const [panningKey, setPanningKey] = useState<string | null>(null);
   const { setZoom, zoom, zoomToRef } = useViewportZoomStore();
   const panKey = getViewportZoomKey(currentIndex, pageFitMode);
   const isCurrentZoom = zoom.key === panKey;
+
   const activePan = isCurrentZoom
     ? { x: zoom.panX, y: zoom.panY }
     : { x: 0, y: 0 };
+
   const activeZoom = { scale: isCurrentZoom ? zoom.scale : 1 };
   // Actual-size can exceed the viewport. A pinch may also zoom any fit mode
   // beyond its initial size. Fit-to-width remains swipeable after a double tap.
@@ -110,12 +117,15 @@ export const useViewportZoom = ({
   const getPanLimits = useCallback(
     (scale: number) => {
       const viewport = containerRef.current;
+
       const currentPageSet = viewport?.querySelector<HTMLDivElement>(
         '.pcv-viewport-page-set[data-rail-slot="current"]'
       );
+
       if (viewport === null || viewport === undefined) {
         return { x: 0, y: 0 };
       }
+
       if (currentPageSet === null || currentPageSet === undefined) {
         return { x: 0, y: 0 };
       }
@@ -154,23 +164,28 @@ export const useViewportZoom = ({
   const zoomTo = useCallback(
     (scale: number, focalPoint?: ZoomFocalPoint): void => {
       const viewport = containerRef.current;
+
       if (viewport === null) {
         return;
       }
 
       const rect = viewport.getBoundingClientRect();
+
       const focusX =
         focalPoint === undefined
           ? 0
           : focalPoint.x - rect.left - rect.width / 2;
+
       const focusY =
         focalPoint === undefined
           ? 0
           : focalPoint.y - rect.top - rect.height / 2;
+
       const limits = getPanLimits(scale);
       setZoom((current) => {
         const base = current.key === panKey ? current : RESTING_VIEWPORT_ZOOM;
         const ratio = scale / base.scale;
+
         return {
           key: panKey,
           panX: Math.max(
@@ -190,6 +205,7 @@ export const useViewportZoom = ({
 
   useEffect(() => {
     zoomToRef.current = zoomTo;
+
     return () => {
       zoomToRef.current = null;
     };
@@ -221,20 +237,24 @@ export const useViewportZoom = ({
       clientY: number
     ): boolean => {
       const panState = panStateRef.current;
+
       if (panState.pointerId !== pointerId) {
         return false;
       }
 
       const deltaX = clientX - panState.startX;
       const deltaY = clientY - panState.startY;
+
       if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
         didPanRef.current = true;
       }
+
       updateZoom(
         panState.startPanX + deltaX,
         panState.startPanY + deltaY,
         activeZoom.scale
       );
+
       return true;
     },
     [activeZoom.scale, updateZoom]
@@ -265,6 +285,7 @@ export const useViewportZoom = ({
 
       const now = Date.now();
       const previousTap = lastTapRef.current;
+
       if (
         previousTap !== null &&
         previousTap.key === panKey &&
@@ -274,6 +295,7 @@ export const useViewportZoom = ({
       ) {
         lastTapRef.current = null;
         resetToFitWidth();
+
         return;
       }
 
@@ -285,12 +307,14 @@ export const useViewportZoom = ({
   const beginPinch = useCallback(
     (touches: TouchInput): boolean => {
       const pair = getTouchPair(touches);
+
       if (pair === null) {
         return false;
       }
 
       const [first, second] = pair;
       const startDistance = getTouchDistance(first, second);
+
       if (startDistance === 0) {
         return false;
       }
@@ -307,6 +331,7 @@ export const useViewportZoom = ({
       };
       panStateRef.current.pointerId = null;
       setPanningKey(panKey);
+
       return true;
     },
     [activePan.x, activePan.y, activeZoom.scale, panKey]
@@ -316,6 +341,7 @@ export const useViewportZoom = ({
     (touches: TouchInput): boolean => {
       const pinchState = pinchStateRef.current;
       const pair = getTouchPair(touches);
+
       if (pinchState === null || pair === null) {
         return false;
       }
@@ -323,6 +349,7 @@ export const useViewportZoom = ({
       const [first, second] = pair;
       const distance = getTouchDistance(first, second);
       const center = getTouchCenter(first, second);
+
       const scale = Math.max(
         MIN_ZOOM_SCALE,
         Math.min(
@@ -330,6 +357,7 @@ export const useViewportZoom = ({
           pinchState.startScale * (distance / pinchState.startDistance)
         )
       );
+
       if (
         Math.abs(center.x - pinchState.startCenterX) > 2 ||
         Math.abs(center.y - pinchState.startCenterY) > 2 ||
@@ -337,11 +365,13 @@ export const useViewportZoom = ({
       ) {
         didPanRef.current = true;
       }
+
       updateZoom(
         pinchState.startPanX + center.x - pinchState.startCenterX,
         pinchState.startPanY + center.y - pinchState.startCenterY,
         scale
       );
+
       return true;
     },
     [updateZoom]
@@ -357,6 +387,7 @@ export const useViewportZoom = ({
   }, []);
 
   const isPinching = useCallback(() => pinchStateRef.current !== null, []);
+
   const isTouchPanning = useCallback(
     () => panStateRef.current.pointerId === "touch",
     []

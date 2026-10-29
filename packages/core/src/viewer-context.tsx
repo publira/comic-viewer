@@ -1,38 +1,47 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import type {
   Dispatch,
   JSX,
   PropsWithChildren,
   ReactNode,
-  RefObject,
   SetStateAction,
 } from "react";
 
+import { clampInteger } from "./clamp-integer";
 import {
   DEFAULT_PAGE_RESOLVE_OVERSCAN,
   PageResolveStoreProvider,
   usePageSource,
 } from "./page-source";
 import type { PageResolveError, PageResolver } from "./page-source";
-import { isSpreadPage, startsPageSet } from "./page-spread";
-import type { SpreadPageList } from "./page-spread";
 import type { ViewerPlugin } from "./plugin";
-import { extractViewerSlotPages } from "./viewer-slots";
+import { useControllableSetting } from "./use-controllable-setting";
+import { useEndReached } from "./use-end-reached";
+import { useReaderControls } from "./use-reader-controls";
+import {
+  useScrubPosition,
+  useSpreadNavigation,
+  useViewerIndex,
+} from "./use-viewer-navigation";
+import { extractViewerSlotPages } from "./viewer-slot-pages";
+import {
+  MAX_ZOOM_SCALE,
+  MIN_ZOOM_SCALE,
+  ViewportZoomContext,
+  useViewerZoom,
+} from "./viewer-zoom";
+import type { ZoomFocalPoint } from "./viewer-zoom";
 
 export type ViewMode = "single" | "double";
+
 /** One of the two ends of the reading sequence an extra page is inserted at. */
 export type ViewerSlot = "start" | "end";
+
 export type ReadingDirection = "rtl" | "ltr";
+
 /** Controls how a page is sized inside the viewport. */
 export type PageFitMode = "width" | "height" | "actual";
+
 /**
  * How much of a printed sheet the image of a page covers. A `"spread"` page
  * is a whole two-page spread delivered as one landscape image, as EPUB fixed
@@ -303,71 +312,6 @@ const ViewerContext = createContext<ViewerContextValue<PageMetadata> | null>(
   null
 );
 
-/**
- * The pan offset and zoom scale one spread carries. `key` names the spread
- * and the fit mode the gesture was made in, so a state left over from another
- * one falls back to the resting position instead of being applied to a spread
- * it was never meant for.
- */
-export interface ViewportZoomState {
-  key: string;
-  panX: number;
-  panY: number;
-  scale: number;
-}
-
-/** A point on screen, in client coordinates. */
-export interface ZoomFocalPoint {
-  x: number;
-  y: number;
-}
-
-export const MIN_ZOOM_SCALE = 0.5;
-export const MAX_ZOOM_SCALE = 4;
-
-/** The position every spread starts from, and the one `resetZoom` restores. */
-export const RESTING_VIEWPORT_ZOOM: ViewportZoomState = {
-  key: "",
-  panX: 0,
-  panY: 0,
-  scale: 1,
-};
-
-/** Names the spread and fit mode a zoom state belongs to. */
-export const getViewportZoomKey = (
-  currentIndex: number,
-  pageFitMode: PageFitMode
-): string => `${currentIndex}:${pageFitMode}`;
-
-type ViewportZoomTo = (scale: number, focalPoint?: ZoomFocalPoint) => void;
-
-interface ViewportZoomStore {
-  setZoom: Dispatch<SetStateAction<ViewportZoomState>>;
-  zoom: ViewportZoomState;
-  /** Where the viewport registers how it zooms its current spread. */
-  zoomToRef: RefObject<ViewportZoomTo | null>;
-}
-
-const ViewportZoomContext = createContext<ViewportZoomStore | null>(null);
-
-/**
- * Reads the zoom state the provider holds on behalf of the viewport. It stays
- * inside the library, because the viewport is the only thing that writes it:
- * a consumer goes through `zoomScale`, `setZoomScale`, and `resetZoom` on the
- * viewer context.
- */
-export const useViewportZoomStore = (): ViewportZoomStore => {
-  const store = useContext(ViewportZoomContext);
-
-  if (store === null) {
-    throw new Error(
-      "The viewport zoom state must be read within a ViewerProvider"
-    );
-  }
-
-  return store;
-};
-
 // Only an uncontrolled mode follows the viewport width, so the switch
 // `useViewMode` makes writes the local state and reports nothing.
 const ViewModeSwitchContext = createContext<Dispatch<
@@ -385,266 +329,11 @@ export const useViewModeSwitch = (): Dispatch<SetStateAction<ViewMode>> => {
   return switchViewMode;
 };
 
-/**
- * Holds a reader setting that the application may control, the way
- * `currentIndex` is held: a controlled value is mirrored, and the setter
- * reports a change instead of writing it.
- */
-const useControllableSetting = <TValue,>(
-  controlledValue: TValue | undefined,
-  initialValue: TValue,
-  onChange: ((value: TValue) => void) | undefined
-) => {
-  const [uncontrolledValue, setUncontrolledValue] = useState(initialValue);
-  const value = controlledValue ?? uncontrolledValue;
-  const setValue = useCallback(
-    (nextValue: TValue) => {
-      if (nextValue === value) {
-        return;
-      }
-
-      if (controlledValue === undefined) {
-        setUncontrolledValue(nextValue);
-      }
-      onChange?.(nextValue);
-    },
-    [controlledValue, onChange, value]
-  );
-
-  return { setUncontrolledValue, setValue, value };
-};
-
 const EMPTY_PAGES: readonly never[] = [];
 const EMPTY_PLUGINS: readonly ViewerPlugin[] = [];
-const CONTROLS_HIDE_DELAY_MS = 2000;
-/**
- * The index of the start page nearest the first page of the document, which
- * is the last StartPage written among the children of the viewer. A viewer
- * holding several of them fills the indexes below it as well, down to
- * `minIndex`, so this is no longer the index such a viewer opens on.
- */
-export const START_PAGE_INDEX = -1;
+
 const DEFAULT_END_REACHED_THRESHOLD = 2;
 const DEFAULT_IMAGE_PRELOAD_SPREADS = 0;
-
-const clamp = (value: number, min: number, max: number): number => {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-
-  return Math.min(max, Math.max(min, Math.trunc(value)));
-};
-
-/** The extra pages a viewer holds at the ends of its reading sequence. */
-export interface ViewerSlotPages {
-  endPages: readonly ReactNode[];
-  startPages: readonly ReactNode[];
-}
-
-/** One of the extra pages, together with its place among the slot it fills. */
-export interface ViewerSlotPage {
-  /** How many pages the slot holds. */
-  count: number;
-  /** The content written for this position of the slot. */
-  page: ReactNode;
-  /** The one-based position the page takes among the pages of its slot. */
-  position: number;
-  slot: ViewerSlot;
-}
-
-/**
- * Returns the extra page a navigable index addresses, or `undefined` for an
- * index that addresses a page of the document. The start pages take the
- * indexes below the page list, `-1` being the last one written, and the end
- * pages the indexes above it, `pageCount` being the first one written, so the
- * reading order follows the order they are written in.
- */
-export const getSlotPage = (
-  index: number,
-  pageCount: number,
-  { endPages, startPages }: ViewerSlotPages
-): ViewerSlotPage | undefined => {
-  if (index < 0) {
-    const position = startPages.length + index + 1;
-
-    return position < 1
-      ? undefined
-      : {
-          count: startPages.length,
-          page: startPages[position - 1],
-          position,
-          slot: "start",
-        };
-  }
-
-  if (index < pageCount) {
-    return undefined;
-  }
-
-  const position = index - pageCount + 1;
-
-  return position > endPages.length
-    ? undefined
-    : {
-        count: endPages.length,
-        page: endPages[position - 1],
-        position,
-        slot: "end",
-      };
-};
-
-/**
- * Returns the slot a navigable index belongs to, or `undefined` for an index
- * that addresses a page of the document.
- */
-export const getPageSlot = (
-  index: number,
-  pageCount: number,
-  slotPages: ViewerSlotPages
-): ViewerSlot | undefined => getSlotPage(index, pageCount, slotPages)?.slot;
-
-/**
- * Returns the index the viewer steps back to, or `undefined` on the first
- * index it holds. A double-page step lands on the page that starts the
- * previous spread, and stops at `spreadStartIndex` rather than stepping over
- * it, so an index the spreads are not counted from still passes through the
- * pages before them one at a time.
- */
-export const getPreviousSpreadIndex = (
-  currentIndex: number,
-  minIndex: number,
-  spreadStartIndex: number,
-  viewMode: ViewMode,
-  pages: SpreadPageList
-): number | undefined => {
-  if (currentIndex <= minIndex) {
-    return undefined;
-  }
-
-  if (viewMode === "double" && currentIndex > spreadStartIndex) {
-    const previousIndex = startsPageSet(
-      currentIndex - 1,
-      spreadStartIndex,
-      pages
-    )
-      ? currentIndex - 1
-      : currentIndex - 2;
-
-    return Math.max(spreadStartIndex, previousIndex);
-  }
-
-  return currentIndex - 1;
-};
-
-/**
- * Returns the index the reading position lands on for `index`. A double-page
- * spread is addressed by the page it starts from, so an index that falls on
- * the facing page of a spread is pulled back to the page that opens it, while
- * the pages before `spreadStartIndex` keep the index of their own.
- */
-export const getSpreadIndex = (
-  index: number,
-  minIndex: number,
-  maxIndex: number,
-  spreadStartIndex: number,
-  viewMode: ViewMode,
-  pages: SpreadPageList
-): number => {
-  const clampedIndex = clamp(index, minIndex, maxIndex);
-
-  if (viewMode !== "double" || clampedIndex <= spreadStartIndex) {
-    return clampedIndex;
-  }
-
-  return startsPageSet(clampedIndex, spreadStartIndex, pages)
-    ? clampedIndex
-    : clampedIndex - 1;
-};
-
-/**
- * Returns how many pages the set at `currentIndex` puts on screen. A spread
- * page fills a set on its own, and so does the page that would have faced it,
- * which keeps its own half and leaves the other one to the spread.
- */
-export const getVisiblePageCount = (
-  viewMode: ViewMode,
-  currentIndex: number,
-  maxIndex: number,
-  spreadStartIndex: number,
-  pages: SpreadPageList
-): number => {
-  if (
-    viewMode !== "double" ||
-    currentIndex < spreadStartIndex ||
-    currentIndex >= maxIndex
-  ) {
-    return 1;
-  }
-
-  return isSpreadPage(currentIndex, pages) ||
-    isSpreadPage(currentIndex + 1, pages)
-    ? 1
-    : 2;
-};
-
-/** Where a scrub position falls among the spreads of the document. */
-export interface ScrubSpread {
-  /** The spread the position has passed, addressed by its first page. */
-  index: number;
-  /**
-   * How far the position has moved from that spread towards the next one,
-   * from `0` up to, but not including, `1`.
-   */
-  fraction: number;
-  /** The spread nearest the position, which a scrub released there commits. */
-  nearestIndex: number;
-}
-
-/**
- * Places a scrub position between the two spreads it lies between. A spread
- * rests at the index of its first page, so a position halfway to the next
- * spread is halfway through the turn to it.
- */
-export const getScrubSpread = (
-  position: number,
-  minIndex: number,
-  maxIndex: number,
-  spreadStartIndex: number,
-  viewMode: ViewMode,
-  pages: SpreadPageList
-): ScrubSpread => {
-  const clampedPosition = Number.isFinite(position)
-    ? Math.min(maxIndex, Math.max(minIndex, position))
-    : minIndex;
-  const index = getSpreadIndex(
-    Math.floor(clampedPosition),
-    minIndex,
-    maxIndex,
-    spreadStartIndex,
-    viewMode,
-    pages
-  );
-  const nextIndex =
-    index +
-    getVisiblePageCount(viewMode, index, maxIndex, spreadStartIndex, pages);
-
-  if (nextIndex > maxIndex) {
-    return { fraction: 0, index, nearestIndex: index };
-  }
-
-  const fraction = Math.min(
-    Math.max((clampedPosition - index) / (nextIndex - index), 0),
-    1
-  );
-
-  return fraction === 1
-    ? { fraction: 0, index: nextIndex, nearestIndex: nextIndex }
-    : {
-        fraction,
-        index,
-        nearestIndex: fraction < 0.5 ? index : nextIndex,
-      };
-};
 
 export const ViewerProvider = <TPage extends PageMetadata>({
   pages = EMPTY_PAGES,
@@ -679,11 +368,13 @@ export const ViewerProvider = <TPage extends PageMetadata>({
     endPages,
     startPages,
   } = extractViewerSlotPages(children);
-  const totalPageCount = clamp(
+
+  const totalPageCount = clampInteger(
     pageCount ?? pages.length,
     0,
     Number.MAX_SAFE_INTEGER
   );
+
   // A slot page sits outside the page list, so the pages of a slot take the
   // indexes running away from the end of the list they belong to rather than
   // indexes of their own.
@@ -691,39 +382,41 @@ export const ViewerProvider = <TPage extends PageMetadata>({
   // holding no start page on `0` instead of the `-0` negation would give.
   const minIndex = 0 - startPages.length;
   const maxIndex = Math.max(minIndex, totalPageCount - 1 + endPages.length);
-  const clampedSpreadStartIndex = clamp(
+
+  const clampedSpreadStartIndex = clampInteger(
     spreadStartIndex,
     minIndex,
     totalPageCount
   );
-  const [uncontrolledIndex, setUncontrolledIndex] = useState(() =>
-    clamp(initialIndex ?? minIndex, minIndex, maxIndex)
-  );
-  const clampedCurrentIndex = clamp(
-    controlledIndex ?? uncontrolledIndex,
+
+  const { currentIndex, goTo } = useViewerIndex({
+    controlledIndex,
+    initialIndex,
+    maxIndex,
+    minIndex,
+    onIndexChange,
+  });
+
+  const { scrubPosition, setScrubPosition } = useScrubPosition(
     minIndex,
     maxIndex
   );
-  const [scrubPosition, setScrubPosition] = useState<number | null>(null);
-  const clampedScrubPosition =
-    scrubPosition === null || !Number.isFinite(scrubPosition)
-      ? null
-      : Math.min(maxIndex, Math.max(minIndex, scrubPosition));
+
   // The pages around the position a scrub rests at are the ones on screen, so
   // they are the ones resolved, whatever reading position the host holds.
-  const scrubbedIndex =
-    clampedScrubPosition === null ? null : Math.round(clampedScrubPosition);
-  const viewIndex = scrubbedIndex ?? clampedCurrentIndex;
+  const viewIndex =
+    scrubPosition === null ? currentIndex : Math.round(scrubPosition);
+
   const { pages: sourcePages, resolveStore } = usePageSource({
     currentIndex: viewIndex,
     onPageResolveError,
-    overscan: clamp(pageResolveOverscan, 0, Number.MAX_SAFE_INTEGER),
+    overscan: clampInteger(pageResolveOverscan, 0, Number.MAX_SAFE_INTEGER),
     pageCount: totalPageCount,
     pages,
     resolvePage,
   });
 
-  const clampedImagePreloadSpreads = clamp(
+  const clampedImagePreloadSpreads = clampInteger(
     imagePreloadSpreads,
     0,
     Number.MAX_SAFE_INTEGER
@@ -764,153 +457,36 @@ export const ViewerProvider = <TPage extends PageMetadata>({
       onReadingDirectionChange
     );
 
-  // The viewport gestures write the zoom state, but it lives here so that the
-  // context can carry the scale and offer the reset a consumer builds on.
-  const [zoom, setZoom] = useState<ViewportZoomState>(RESTING_VIEWPORT_ZOOM);
-  // Only the viewport can measure the bounds a pan offset is held within, so
-  // it registers how a programmatic zoom is applied.
-  const zoomToRef = useRef<ViewportZoomTo | null>(null);
-  const zoomStore = useMemo(() => ({ setZoom, zoom, zoomToRef }), [zoom]);
-  const resetZoom = useCallback(() => {
-    setZoom(RESTING_VIEWPORT_ZOOM);
-  }, []);
+  const { resetZoom, setZoomScale, zoomScale, zoomStore } = useViewerZoom({
+    currentIndex,
+    isScrubbing: scrubPosition !== null,
+    pageFitMode,
+  });
 
-  const [areControlsVisible, setAreControlsVisible] = useState(false);
-  const [controlsHoldCount, setControlsHoldCount] = useState(0);
-  const toggleControls = useCallback(() => {
-    setAreControlsVisible((areVisible) => !areVisible);
-  }, []);
-  const holdControls = useCallback((held: boolean) => {
-    setControlsHoldCount((count) => Math.max(0, count + (held ? 1 : -1)));
-  }, []);
-  // A held control keeps its countdown from running at all, so releasing the
-  // hold starts a whole fresh window rather than resuming a spent one.
-  useEffect(() => {
-    if (!areControlsVisible || controlsHoldCount > 0) {
-      return;
-    }
+  const { areControlsVisible, holdControls, toggleControls } =
+    useReaderControls();
 
-    const hideTimeout = setTimeout(() => {
-      setAreControlsVisible(false);
-    }, CONTROLS_HIDE_DELAY_MS);
-
-    return () => {
-      clearTimeout(hideTimeout);
-    };
-  }, [areControlsVisible, controlsHoldCount]);
-
-  const goTo = useCallback(
-    (index: number) => {
-      const nextIndex = clamp(index, minIndex, maxIndex);
-      if (nextIndex === clampedCurrentIndex) {
-        return;
-      }
-
-      if (controlledIndex === undefined) {
-        setUncontrolledIndex(nextIndex);
-      }
-      onIndexChange?.(nextIndex);
-    },
-    [clampedCurrentIndex, controlledIndex, maxIndex, minIndex, onIndexChange]
-  );
-
-  const goToNext = useCallback(() => {
-    const nextIndex =
-      clampedCurrentIndex +
-      getVisiblePageCount(
-        viewMode,
-        clampedCurrentIndex,
-        maxIndex,
-        clampedSpreadStartIndex,
-        sourcePages
-      );
-    if (nextIndex <= maxIndex) {
-      goTo(nextIndex);
-    }
-  }, [
-    clampedCurrentIndex,
-    clampedSpreadStartIndex,
+  const { goToNext, goToPrev } = useSpreadNavigation({
+    currentIndex,
     goTo,
     maxIndex,
-    sourcePages,
-    viewMode,
-  ]);
-
-  const goToPrev = useCallback(() => {
-    const previousIndex = getPreviousSpreadIndex(
-      clampedCurrentIndex,
-      minIndex,
-      clampedSpreadStartIndex,
-      viewMode,
-      sourcePages
-    );
-    if (previousIndex !== undefined) {
-      goTo(previousIndex);
-    }
-  }, [
-    clampedCurrentIndex,
-    clampedSpreadStartIndex,
-    goTo,
     minIndex,
-    sourcePages,
+    pages: sourcePages,
+    spreadStartIndex: clampedSpreadStartIndex,
     viewMode,
-  ]);
+  });
 
-  // A page count that has already been reported is not reported again, so a
-  // consumer that has nothing more to append is not asked in a loop.
-  const onEndReachedRef = useRef(onEndReached);
-  const reportedEndPageCountRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    onEndReachedRef.current = onEndReached;
-  }, [onEndReached]);
-
-  useEffect(() => {
-    const remainingPageCount = totalPageCount - (clampedCurrentIndex + 1);
-    if (
-      totalPageCount === 0 ||
-      remainingPageCount >
-        clamp(endReachedThreshold, 0, Number.MAX_SAFE_INTEGER)
-    ) {
-      return;
-    }
-
-    if (reportedEndPageCountRef.current === totalPageCount) {
-      return;
-    }
-
-    reportedEndPageCountRef.current = totalPageCount;
-    onEndReachedRef.current?.();
-  }, [clampedCurrentIndex, endReachedThreshold, totalPageCount]);
-
-  // A zoom state left on another spread, or on the same spread under another
-  // fit mode, no longer applies, so the scale reads as unzoomed again.
-  const zoomScale =
-    zoom.key === getViewportZoomKey(clampedCurrentIndex, pageFitMode) &&
-    clampedScrubPosition === null
-      ? zoom.scale
-      : 1;
-  const isScrubbing = clampedScrubPosition !== null;
-  // A step taken from the scale a scrub reports as 1 would land on the wrong
-  // spread's scale, so a scrub ignores programmatic zoom.
-  const setZoomScale = useCallback(
-    (scale: number, focalPoint?: ZoomFocalPoint) => {
-      if (isScrubbing || !Number.isFinite(scale)) {
-        return;
-      }
-
-      zoomToRef.current?.(
-        Math.min(MAX_ZOOM_SCALE, Math.max(MIN_ZOOM_SCALE, scale)),
-        focalPoint
-      );
-    },
-    [isScrubbing]
-  );
+  useEndReached({
+    currentIndex,
+    endReachedThreshold,
+    onEndReached,
+    pageCount: totalPageCount,
+  });
 
   const value = useMemo<ViewerContextValue<TPage>>(
     () => ({
       areControlsVisible,
-      currentIndex: clampedCurrentIndex,
+      currentIndex,
       endPages,
       goTo,
       goToNext,
@@ -928,7 +504,7 @@ export const ViewerProvider = <TPage extends PageMetadata>({
       plugins,
       readingDirection,
       resetZoom,
-      scrubPosition: clampedScrubPosition,
+      scrubPosition,
       setDoublePageAvailable: setIsDoublePageAvailable,
       setPageFitMode,
       setReadingDirection,
@@ -952,10 +528,11 @@ export const ViewerProvider = <TPage extends PageMetadata>({
       startPages,
       totalPageCount,
       plugins,
-      clampedCurrentIndex,
-      clampedScrubPosition,
+      currentIndex,
+      scrubPosition,
       clampedSpreadStartIndex,
       holdControls,
+      setScrubPosition,
       toggleControls,
       viewMode,
       pageFitMode,
@@ -994,5 +571,7 @@ export const useViewerContext = <
     throw new Error("useViewerContext must be used within a ViewerProvider");
   }
 
+  // SAFETY: the caller names the page type of the ViewerProvider above it,
+  // which React context cannot carry.
   return context as ViewerContextValue<TPage>;
 };

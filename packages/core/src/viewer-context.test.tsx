@@ -2,12 +2,9 @@ import { act, render, renderHook, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { definePlugin } from "./plugin";
-import {
-  getScrubSpread,
-  ViewerProvider,
-  useViewerContext,
-} from "./viewer-context";
+import { ViewerProvider, useViewerContext } from "./viewer-context";
 import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
+import { getScrubSpread } from "./viewer-spreads";
 
 const pages: ViewerPage[] = [
   { id: "p1", src: "page1.png", title: "Page 1" },
@@ -51,6 +48,7 @@ const renderWithPages = (currentPages: (ViewerPage | undefined)[]) => (
 
 const CurrentIndexOutput = () => {
   const { currentIndex } = useViewerContext();
+
   return <output data-testid="current-index">{currentIndex}</output>;
 };
 
@@ -93,6 +91,7 @@ describe("ViewerProvider / useViewerContext", () => {
 
   it("registers plugins in the viewer context", () => {
     const plugin = definePlugin({ name: "analytics" });
+
     const { result } = renderHook(() => useViewerContext(), {
       wrapper: makeWrapper({ plugins: [plugin] }),
     });
@@ -275,6 +274,7 @@ describe("ViewerProvider / useViewerContext", () => {
 
   it("supports controlled navigation and reports only index changes", () => {
     const onIndexChange = vi.fn<(index: number) => void>();
+
     const { result } = renderHook(() => useViewerContext(), {
       wrapper: makeWrapper({ currentIndex: 2, onIndexChange }),
     });
@@ -315,6 +315,7 @@ describe("ViewerProvider / useViewerContext", () => {
 
   it("reports uncontrolled programmatic navigation without duplicate callbacks", () => {
     const onIndexChange = vi.fn<(index: number) => void>();
+
     const { result } = renderHook(() => useViewerContext(), {
       wrapper: makeWrapper({ onIndexChange }),
     });
@@ -478,6 +479,7 @@ describe("ViewerProvider / useViewerContext", () => {
     const unresolvedPages: (ViewerPage | undefined)[] = pages.map(
       (page, index) => (index === 2 ? undefined : page)
     );
+
     const { rerender } = render(renderWithPages(unresolvedPages));
     const goToNext = screen.getByRole("button");
 
@@ -559,6 +561,7 @@ describe("ViewerProvider / useViewerContext", () => {
 
       it("mirrors the controlled value and reports only changes", () => {
         const onChange = vi.fn<(value: string) => void>();
+
         const { result } = renderHook(() => useViewerContext(), {
           wrapper: makeWrapper({ [callbackName]: onChange, [name]: first }),
         });
@@ -605,6 +608,7 @@ describe("ViewerProvider / useViewerContext", () => {
 
       it("reports uncontrolled changes without duplicate callbacks", () => {
         const onChange = vi.fn<(value: string) => void>();
+
         const { result } = renderHook(() => useViewerContext(), {
           wrapper: makeWrapper({
             [callbackName]: onChange,

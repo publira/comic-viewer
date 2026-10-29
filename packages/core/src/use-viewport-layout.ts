@@ -2,8 +2,8 @@ import { useCallback, useMemo } from "react";
 
 import { isSpreadPage, startsPageSet } from "./page-spread";
 import type { SpreadPageList } from "./page-spread";
-import { getPreviousSpreadIndex, getVisiblePageCount } from "./viewer-context";
 import type { ViewMode } from "./viewer-context";
+import { getPreviousSpreadIndex, getVisiblePageCount } from "./viewer-spreads";
 
 export type PageTurnDirection = "left" | "right";
 
@@ -28,6 +28,7 @@ export const getPageSide = (
   }
 
   const startsSpread = startsPageSet(index, spreadStartIndex, pages);
+
   return startsSpread === (readingDirection === "ltr") ? "left" : "right";
 };
 
@@ -38,6 +39,7 @@ export const getPageTurnDirection = (
   readingDirection: "rtl" | "ltr"
 ): PageTurnDirection => {
   const isForward = toIndex > fromIndex;
+
   return isForward === (readingDirection === "ltr") ? "left" : "right";
 };
 
@@ -49,6 +51,7 @@ export const getVisibleIndices = (
   pages: SpreadPageList
 ): number[] => {
   const indices = currentIndex > maxIndex ? [] : [currentIndex];
+
   if (
     getVisiblePageCount(
       viewMode,
@@ -80,6 +83,7 @@ export const getNextSpreadIndex = (
       spreadStartIndex,
       pages
     );
+
   return nextIndex <= maxIndex ? nextIndex : undefined;
 };
 
@@ -96,6 +100,7 @@ export const getSwipeTargetIndex = (
   const movesForward =
     (direction === "left" && readingDirection === "rtl") ||
     (direction === "right" && readingDirection === "ltr");
+
   return movesForward
     ? getNextSpreadIndex(
         currentIndex,
@@ -163,6 +168,7 @@ export const useViewportLayout = ({
       ),
     [displayedIndex, maxIndex, pages, spreadStartIndex, viewMode]
   );
+
   const orderedIndices = useMemo(
     () =>
       readingDirection === "rtl" && visibleIndices.length === 2
@@ -170,6 +176,7 @@ export const useViewportLayout = ({
         : visibleIndices,
     [readingDirection, visibleIndices]
   );
+
   const orderedIndicesFor = useCallback(
     (index: number): number[] => {
       const indices = getVisibleIndices(
@@ -179,12 +186,14 @@ export const useViewportLayout = ({
         viewMode,
         pages
       );
+
       return readingDirection === "rtl" && indices.length === 2
         ? [indices[1], indices[0]]
         : indices;
     },
     [maxIndex, pages, readingDirection, spreadStartIndex, viewMode]
   );
+
   const previousSpreadIndex = getPreviousSpreadIndex(
     displayedIndex,
     minIndex,
@@ -192,6 +201,7 @@ export const useViewportLayout = ({
     viewMode,
     pages
   );
+
   const nextSpreadIndex = getNextSpreadIndex(
     displayedIndex,
     maxIndex,
@@ -199,6 +209,7 @@ export const useViewportLayout = ({
     viewMode,
     pages
   );
+
   const railSpreadIndices = useMemo(() => {
     if (usesPageRail) {
       return readingDirection === "rtl"
@@ -214,6 +225,7 @@ export const useViewportLayout = ({
     readingDirection,
     usesPageRail,
   ]);
+
   const { cachedIndices, preloadIndices } = useMemo(() => {
     const cached = new Set<number>();
     const preloaded = new Set<number>();
@@ -221,6 +233,7 @@ export const useViewportLayout = ({
     // where the viewport stops rather than reloading a page it can render.
     let firstCachedSpreadIndex = displayedIndex;
     let lastCachedSpreadIndex = displayedIndex;
+
     const addSpread = (indices: Set<number>, spreadIndex: number): void => {
       for (const pageIndex of getVisibleIndices(
         spreadIndex,
@@ -232,6 +245,7 @@ export const useViewportLayout = ({
         indices.add(pageIndex);
       }
     };
+
     const cacheSpread = (spreadIndex: number): void => {
       addSpread(cached, spreadIndex);
       firstCachedSpreadIndex = Math.min(firstCachedSpreadIndex, spreadIndex);
@@ -256,6 +270,7 @@ export const useViewportLayout = ({
         viewMode,
         pages
       );
+
       for (let count = 0; count < 2 && nextIndex !== undefined; count += 1) {
         cacheSpread(nextIndex);
         nextIndex = getNextSpreadIndex(
@@ -269,6 +284,7 @@ export const useViewportLayout = ({
     }
 
     let forwardIndex = lastCachedSpreadIndex;
+
     for (let count = 0; count < imagePreloadSpreads; count += 1) {
       const nextIndex = getNextSpreadIndex(
         forwardIndex,
@@ -277,6 +293,7 @@ export const useViewportLayout = ({
         viewMode,
         pages
       );
+
       if (nextIndex === undefined) {
         break;
       }
@@ -286,6 +303,7 @@ export const useViewportLayout = ({
     }
 
     let backwardIndex = firstCachedSpreadIndex;
+
     for (let count = 0; count < imagePreloadSpreads; count += 1) {
       const previousIndex = getPreviousSpreadIndex(
         backwardIndex,
@@ -294,6 +312,7 @@ export const useViewportLayout = ({
         viewMode,
         pages
       );
+
       if (previousIndex === undefined) {
         break;
       }
