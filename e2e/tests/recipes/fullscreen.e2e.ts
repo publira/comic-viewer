@@ -1,7 +1,14 @@
 import { expect, test } from "@playwright/test";
 
-import { turnToNextScreen } from "#helpers/reader";
-import { currentPageSet, viewport } from "#helpers/selectors";
+import {
+  expectPageCount,
+  expectPageLoaded,
+  expectViewMode,
+  turnToNextScreen,
+} from "#helpers/reader";
+import { currentPageSet, pageStatus } from "#helpers/selectors";
+
+const secondSpread = "Pages 3-4 of 21";
 
 test("keeps the reading position across a fullscreen round trip", async ({
   page,
@@ -12,6 +19,7 @@ test("keeps the reading position across a fullscreen round trip", async ({
   const enterFullscreenButton = page.getByRole("button", {
     name: "Enter full screen",
   });
+
   const exitFullscreenButton = page.getByRole("button", {
     name: "Exit full screen",
   });
@@ -20,7 +28,7 @@ test("keeps the reading position across a fullscreen round trip", async ({
   // this also pins down that the demo reports the API as available.
   await expect(enterFullscreenButton).toBeEnabled();
 
-  await turnToNextScreen(page, "Pages 3-4 of 21");
+  await turnToNextScreen(page, secondSpread);
 
   const boxedReaderBox = await page.locator(".pcv-root").boundingBox();
 
@@ -33,18 +41,10 @@ test("keeps the reading position across a fullscreen round trip", async ({
   // The label follows the fullscreenchange event rather than the call, so it
   // only flips once the container really is the element filling the screen.
   await expect(exitFullscreenButton).toBeVisible();
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 21");
-  await expect(page.locator(viewport)).toHaveAttribute(
-    "data-view-mode",
-    "double"
-  );
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "2"
-  );
-  await expect(
-    page.locator(`${currentPageSet} canvas`).first()
-  ).toHaveAttribute("data-page-status", "loaded");
+  await expect(page.locator(pageStatus)).toHaveText(secondSpread);
+  await expectViewMode(page, "double");
+  await expectPageCount(page, 2);
+  await expectPageLoaded(page.locator(`${currentPageSet} canvas`).first());
 
   // The screen sizes a fullscreen element, so the reader leaves the box the
   // page keeps it in. Nothing tells the viewer about that: it measures its own
@@ -60,15 +60,9 @@ test("keeps the reading position across a fullscreen round trip", async ({
   await exitFullscreenButton.click();
 
   await expect(enterFullscreenButton).toBeVisible();
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 21");
-  await expect(page.locator(viewport)).toHaveAttribute(
-    "data-view-mode",
-    "double"
-  );
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "2"
-  );
+  await expect(page.locator(pageStatus)).toHaveText(secondSpread);
+  await expectViewMode(page, "double");
+  await expectPageCount(page, 2);
   await expect
     .poll(async () => {
       const restoredReaderBox = await page.locator(".pcv-root").boundingBox();

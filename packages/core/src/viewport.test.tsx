@@ -23,6 +23,7 @@ import type { MockFetch, TestPage } from "./viewport-test-helpers";
 import {
   MockResizeObserver,
   mockPageImages,
+  stubCanvasContext,
   pages,
   pressViewportKey,
   renderViewport,
@@ -41,6 +42,7 @@ interface TextPage extends PageMetadata {
 
 const GoToIndexButton = ({ index }: { index: number }) => {
   const { goTo } = useViewerContext();
+
   return (
     <button onClick={() => goTo(index)} type="button">
       Go to index
@@ -122,7 +124,9 @@ describe(Viewport, () => {
         </Viewport>
       </ViewerProvider>
     );
+
     const track = container.querySelector(".pcv-viewport-track");
+
     const currentPageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -150,6 +154,7 @@ describe(Viewport, () => {
         </Viewport>
       </ViewerProvider>
     );
+
     const currentPageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -192,6 +197,7 @@ describe(Viewport, () => {
           </Viewport>
         </ViewerProvider>
       );
+
       const currentPageSet = container.querySelector<HTMLDivElement>(
         '.pcv-viewport-page-set[data-rail-slot="current"]'
       );
@@ -223,6 +229,7 @@ describe(Viewport, () => {
         </Viewport>
       </ViewerProvider>
     );
+
     const currentPageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -257,6 +264,7 @@ describe(Viewport, () => {
         </Viewport>
       </ViewerProvider>
     );
+
     const currentPageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -289,6 +297,7 @@ describe(Viewport, () => {
         </Viewport>
       </ViewerProvider>
     );
+
     const currentPageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -372,6 +381,7 @@ describe(Viewport, () => {
         </Viewport>
       </ViewerProvider>
     );
+
     const currentPageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -452,7 +462,9 @@ describe(Viewport, () => {
     const fetchMock = vi.fn<MockFetch>(() =>
       Promise.reject(new Error("should not fetch"))
     );
+
     vi.stubGlobal("fetch", fetchMock);
+
     const textPages: TextPage[] = [
       { body: "Once upon a time", id: "t1", title: "Text 1" },
       { body: "The end", id: "t2", title: "Text 2" },
@@ -477,7 +489,9 @@ describe(Viewport, () => {
     const fetchMock = vi.fn<MockFetch>(() =>
       Promise.reject(new Error("should not fetch"))
     );
+
     vi.stubGlobal("fetch", fetchMock);
+
     const textPages: TextPage[] = [
       { body: "Once upon a time", id: "t1", title: "Text 1" },
       { body: "The end", id: "t2", title: "Text 2" },
@@ -570,6 +584,7 @@ describe(Viewport, () => {
   it("requires a source for pages the viewport loads itself", () => {
     // @ts-expect-error -- A text page has no image to load.
     const bareViewport = <Viewport<TextPage> />;
+
     const templateViewport = (
       // @ts-expect-error -- A page template draws the loaded image.
       <Viewport<TextPage>>{(page: TextPage) => page.body}</Viewport>
@@ -581,6 +596,7 @@ describe(Viewport, () => {
   it("renders a pending placeholder until the page metadata resolves", async () => {
     const { restore } = mockPageImages();
     let resolvePageMetadata: ((page: TestPage) => void) | undefined;
+
     const resolvePage = () =>
       // eslint-disable-next-line promise/avoid-new -- The page metadata stays unresolved until the test resolves it.
       new Promise<TestPage>((resolve) => {
@@ -611,6 +627,7 @@ describe(Viewport, () => {
 
   it("renders the pending page template given to the viewport", () => {
     const { restore } = mockPageImages();
+
     // eslint-disable-next-line promise/avoid-new -- The page metadata never resolves in this test.
     const pendingMetadata = new Promise<TestPage>(() => {
       // The viewer keeps waiting for the page metadata.
@@ -658,6 +675,7 @@ describe(Viewport, () => {
           </Viewport>
         </ViewerProvider>
       );
+
       const pendingPage = container.querySelector(
         "[data-rail-slot='current'] .pcv-page-pending"
       );
@@ -681,6 +699,7 @@ describe(Viewport, () => {
 
   it("retries a failed page from the pending page template", async () => {
     const { restore } = mockPageImages();
+
     const resolvePage = vi
       .fn<() => Promise<TestPage>>()
       .mockRejectedValueOnce(new Error("Offline"))
@@ -713,18 +732,16 @@ describe(Viewport, () => {
   it("clears a decoded canvas while a replacement page loads", async () => {
     const clearRect = vi.fn<() => void>();
     const drawImage = vi.fn<() => void>();
-    const getContext = vi
-      .spyOn(HTMLCanvasElement.prototype, "getContext")
-      .mockReturnValue({
-        clearRect,
-        drawImage,
-      } as unknown as CanvasRenderingContext2D);
+
+    const getContext = stubCanvasContext({ clearRect, drawImage });
+
     let resolveReplacement:
       | ((response: {
           arrayBuffer: () => Promise<ArrayBuffer>;
           ok: boolean;
         }) => void)
       | undefined;
+
     const fetchMock = vi.fn<MockFetch>((input) => {
       if (input === "replacement.png") {
         // eslint-disable-next-line promise/avoid-new -- A pending fetch keeps the replacement page undecoded.
@@ -738,11 +755,13 @@ describe(Viewport, () => {
         ok: true,
       });
     });
-    const image = {
+
+    const image: ImageBitmap = {
       close: vi.fn<() => void>(),
       height: 1,
       width: 1,
-    } as unknown as ImageBitmap;
+    };
+
     vi.stubGlobal(
       "createImageBitmap",
       vi.fn<() => Promise<ImageBitmap>>().mockResolvedValue(image)
@@ -788,6 +807,7 @@ describe(Viewport, () => {
       if (resolveReplacement === undefined) {
         throw new Error("The replacement page did not start loading.");
       }
+
       resolveReplacement({
         arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
         ok: true,
@@ -805,33 +825,34 @@ describe(Viewport, () => {
   });
 
   it("draws the supplied placeholder before fetching the full page", async () => {
-    const image = {
+    const image: ImageBitmap = {
       close: vi.fn<() => void>(),
       height: 1,
       width: 1,
-    } as unknown as ImageBitmap;
+    };
+
     const drawImage = vi.fn<() => void>();
     const filters: string[] = [];
-    const context = {
+
+    const getContext = stubCanvasContext({
       clearRect: vi.fn<() => void>(),
       drawImage,
-    } as unknown as CanvasRenderingContext2D;
-    Object.defineProperty(context, "filter", {
-      get: () => filters.at(-1) ?? "none",
-      set: (filter: string) => {
+      get filter() {
+        return filters.at(-1) ?? "none";
+      },
+      set filter(filter: string) {
         filters.push(filter);
       },
     });
-    const getContext = vi
-      .spyOn(HTMLCanvasElement.prototype, "getContext")
-      .mockReturnValue(context);
+
     const fetchMock = vi.fn<MockFetch>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
       ok: true,
     });
+
     vi.stubGlobal(
       "createImageBitmap",
-      vi.fn<() => Promise<unknown>>().mockResolvedValue(image)
+      vi.fn<() => Promise<ImageBitmap>>().mockResolvedValue(image)
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -887,35 +908,31 @@ describe(Viewport, () => {
   });
 
   it("renders decoded neighbouring pages during back-and-forth navigation", async () => {
-    const bitmaps: {
-      closed: boolean;
-      close: () => void;
-      height: number;
-      width: number;
-    }[] = [];
-    const drawImage = vi.fn<(image: unknown) => void>((image: unknown) => {
-      if ((image as { closed: boolean }).closed) {
+    const releasedImages = new Set<CanvasImageSource>();
+
+    const drawImage = vi.fn<(image: CanvasImageSource) => void>((image) => {
+      if (releasedImages.has(image)) {
         throw new Error("A released bitmap was redrawn");
       }
     });
-    const getContext = vi
-      .spyOn(HTMLCanvasElement.prototype, "getContext")
-      .mockReturnValue({
-        clearRect: vi.fn<() => void>(),
-        drawImage,
-      } as unknown as CanvasRenderingContext2D);
+
+    const getContext = stubCanvasContext({
+      clearRect: vi.fn<() => void>(),
+      drawImage,
+    });
+
     const createImageBitmapMock = vi.fn<() => Promise<ImageBitmap>>(() => {
-      const bitmap = {
+      const bitmap: ImageBitmap = {
         close: () => {
-          bitmap.closed = true;
+          releasedImages.add(bitmap);
         },
-        closed: false,
         height: 1,
         width: 1,
       };
-      bitmaps.push(bitmap);
-      return Promise.resolve(bitmap as unknown as ImageBitmap);
+
+      return Promise.resolve(bitmap);
     });
+
     vi.stubGlobal("createImageBitmap", createImageBitmapMock);
     vi.stubGlobal(
       "fetch",

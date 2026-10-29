@@ -115,9 +115,14 @@ export const DemoNavigationMenu = ({
 
     const step = event.key === "ArrowDown" ? 1 : -1;
     const links = getMenuLinks(menuRef.current);
-    const activeIndex = links.indexOf(
-      document.activeElement as HTMLAnchorElement
-    );
+
+    const { activeElement } = document;
+
+    const activeIndex =
+      activeElement instanceof HTMLAnchorElement
+        ? links.indexOf(activeElement)
+        : -1;
+
     // Nothing in the menu holds the focus while the trigger does, and from
     // there the arrows step onto the end of the menu they point at.
     const fromIndex = activeIndex === -1 && step === -1 ? 0 : activeIndex;

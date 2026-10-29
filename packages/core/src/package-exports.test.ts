@@ -8,6 +8,7 @@ import "@publira/comic-viewer/default.css";
 
 // Vite rewrites `new URL(path, import.meta.url)` written out literally.
 const testFileUrl = import.meta.url;
+
 // turbo.json builds dist before this file runs; a bare vitest run may see a stale one.
 const builtEntry = new URL(`../${packageJson.module}`, testFileUrl);
 const declarationEntry = new URL(`../${packageJson.types}`, testFileUrl);
@@ -18,6 +19,7 @@ const declaredExportNames = async (entry: URL): Promise<Set<string | null>> => {
   const { default: sourceText }: { default: string } = await import(
     `${entry.href}?raw`
   );
+
   const { errors, module } = parseSync(entry.pathname, sourceText);
 
   if (errors.length > 0) {

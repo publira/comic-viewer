@@ -6,24 +6,30 @@ import { useViewerContext } from "./viewer-context";
 import type { PageFitMode, ReadingDirection } from "./viewer-context";
 
 /**
- * The shape every reader-setting toggle shares. Each renders a plain button
- * and takes its visual content through `children`, exactly as the page
- * navigation buttons do, and `onClick` can `preventDefault` to cancel the
- * change the button would otherwise make.
+ * The button attributes every reader-setting toggle passes through. Each
+ * renders a plain button and takes its visual content through `children`,
+ * exactly as the page navigation buttons do.
  */
-type ReaderSettingToggleProps = Omit<
+type ReaderSettingButtonProps = Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
   "children" | "onClick"
 > & {
   children?: ReactNode;
-  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
 };
 
-export type ViewModeToggleProps = ReaderSettingToggleProps;
+type ReaderSettingClickHandler = (event: MouseEvent<HTMLButtonElement>) => void;
 
-export type ReadingDirectionToggleProps = ReaderSettingToggleProps;
+export interface ViewModeToggleProps extends ReaderSettingButtonProps {
+  /** Runs before the view mode switches; `preventDefault` cancels the switch. */
+  onClick?: ReaderSettingClickHandler;
+}
 
-export type PageFitModeToggleProps = ReaderSettingToggleProps & {
+export interface ReadingDirectionToggleProps extends ReaderSettingButtonProps {
+  /** Runs before the reading direction flips; `preventDefault` cancels it. */
+  onClick?: ReaderSettingClickHandler;
+}
+
+export type PageFitModeToggleProps = ReaderSettingButtonProps & {
   /**
    * The mode the button selects, which also makes it report whether that mode
    * is the current one through `aria-pressed`. Give one button each mode to
@@ -31,6 +37,8 @@ export type PageFitModeToggleProps = ReaderSettingToggleProps & {
    * through the modes instead.
    */
   mode?: PageFitMode;
+  /** Runs before the fit mode changes; `preventDefault` cancels the change. */
+  onClick?: ReaderSettingClickHandler;
 };
 
 const readingDirectionLabels: Readonly<Record<ReadingDirection, string>> = {
@@ -68,9 +76,11 @@ export const ViewModeToggle = ({
 }: ViewModeToggleProps): JSX.Element => {
   const { isDoublePageAvailable, setViewMode, viewMode } = useViewerContext();
   const isDoublePage = viewMode === "double";
+
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
+
       if (!event.defaultPrevented) {
         setViewMode(isDoublePage ? "single" : "double");
       }
@@ -106,9 +116,11 @@ export const ReadingDirectionToggle = ({
   ...props
 }: ReadingDirectionToggleProps): JSX.Element => {
   const { readingDirection, setReadingDirection } = useViewerContext();
+
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
+
       if (!event.defaultPrevented) {
         setReadingDirection(readingDirection === "rtl" ? "ltr" : "rtl");
       }
@@ -152,9 +164,11 @@ export const PageFitModeToggle = ({
   // A button that names a mode always sets that one; a cycling button sets
   // whichever mode follows the one the reader is on.
   const targetMode = mode ?? getNextPageFitMode(pageFitMode);
+
   const handleClick = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
       onClick?.(event);
+
       if (!event.defaultPrevented) {
         setPageFitMode(targetMode);
       }

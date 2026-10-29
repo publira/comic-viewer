@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+
+const ariaCurrent = "aria-current";
+
+/** Expects a navigation trigger to have its menu open, or closed. */
+const expectExpanded = async (trigger: Locator, expanded: boolean) => {
+  await expect(trigger).toHaveAttribute("aria-expanded", String(expanded));
+};
 
 /** The demo each project's header links across to, keyed by project name. */
 const counterpartDemos = {
@@ -13,11 +20,19 @@ const counterpartDemos = {
   },
 } as const;
 
+const isDemoProject = (name: string): name is keyof typeof counterpartDemos =>
+  name in counterpartDemos;
+
 test("crosses over to the same page of the counterpart demo", async ({
   page,
 }, testInfo) => {
-  const counterpart =
-    counterpartDemos[testInfo.project.name as keyof typeof counterpartDemos];
+  const projectName = testInfo.project.name;
+
+  if (!isDemoProject(projectName)) {
+    throw new Error(`No counterpart demo is known for ${projectName}.`);
+  }
+
+  const counterpart = counterpartDemos[projectName];
 
   await page.goto("/features/spreads");
   await page.getByRole("link", { name: counterpart.link }).click();
@@ -42,12 +57,12 @@ test("opens a navigation group from a click on its trigger", async ({
   const trigger = getNavigationTrigger(page, "Features");
   const spreadsLink = page.getByRole("link", { name: "Spreads" });
 
-  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expectExpanded(trigger, false);
   await expect(spreadsLink).toBeHidden();
 
   await trigger.click();
 
-  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expectExpanded(trigger, true);
   await expect(spreadsLink).toBeVisible();
 
   await spreadsLink.click();
@@ -65,7 +80,7 @@ test("keeps a hovered navigation group open as the pointer reaches its menu", as
 
   await trigger.hover();
 
-  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expectExpanded(trigger, true);
 
   const triggerBox = await trigger.boundingBox();
   const linkBox = await spreadsLink.boundingBox();
@@ -86,7 +101,7 @@ test("keeps a hovered navigation group open as the pointer reaches its menu", as
     await page.mouse.move(linkBox.x + linkBox.width / 2, y);
   }
 
-  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expectExpanded(trigger, true);
   await expect(spreadsLink).toBeVisible();
 });
 
@@ -100,7 +115,7 @@ test("dismisses an open navigation group from the keyboard", async ({
   await trigger.focus();
   await page.keyboard.press("Enter");
 
-  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expectExpanded(trigger, true);
 
   // The arrow keys walk the menu the trigger opened.
   await page.keyboard.press("ArrowDown");
@@ -110,7 +125,7 @@ test("dismisses an open navigation group from the keyboard", async ({
 
   await page.keyboard.press("Escape");
 
-  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expectExpanded(trigger, false);
   await expect(trigger).toBeFocused();
   await expect(page.getByRole("link", { name: "Progress" })).toBeHidden();
 });
@@ -124,11 +139,11 @@ test("closes an open navigation group on a click outside it", async ({
 
   await trigger.click();
 
-  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expectExpanded(trigger, true);
 
   await page.getByRole("heading", { level: 1 }).click();
 
-  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expectExpanded(trigger, false);
 });
 
 /** How far the page reaches past the edge of the viewport, in pixels. */
@@ -156,6 +171,7 @@ test("fits the navigation on a phone without pushing the page sideways", async (
   await expect.poll(() => getHorizontalOverflow(page)).toBe(0);
 
   const menuBox = await page.locator("nav ul[id]:not([hidden])").boundingBox();
+
   const viewportWidth = await page.evaluate(
     () => document.documentElement.clientWidth
   );
@@ -172,20 +188,20 @@ test("marks the group the page on screen belongs to", async ({ page }) => {
   await page.goto("/recipes/progress");
 
   await expect(getNavigationTrigger(page, "Recipes")).toHaveAttribute(
-    "aria-current",
+    ariaCurrent,
     "true"
   );
   await expect(getNavigationTrigger(page, "Features")).not.toHaveAttribute(
-    "aria-current"
+    ariaCurrent
   );
   await expect(page.getByRole("link", { name: "Basic" })).not.toHaveAttribute(
-    "aria-current"
+    ariaCurrent
   );
 
   await getNavigationTrigger(page, "Recipes").click();
 
   await expect(page.getByRole("link", { name: "Progress" })).toHaveAttribute(
-    "aria-current",
+    ariaCurrent,
     "page"
   );
 });

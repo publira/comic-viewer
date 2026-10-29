@@ -1,8 +1,14 @@
 import { expect, test } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 
 import { revealReaderControls } from "#helpers/reader";
 import { getSliderGeometry, getSliderX } from "#helpers/reading-progress";
-import { progressSlider } from "#helpers/selectors";
+import { pageStatus, progressSlider } from "#helpers/selectors";
+
+/** Expects the slider to name the pages under its thumb as `text`. */
+const expectValueText = async (slider: Locator, text: string) => {
+  await expect(slider).toHaveAttribute("aria-valuetext", text);
+};
 
 test("names the controls and the pages on screen in Japanese", async ({
   page,
@@ -11,19 +17,19 @@ test("names the controls and the pages on screen in Japanese", async ({
   await page.goto("/recipes/localization");
   await revealReaderControls(page);
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("1〜2 / 21 ページ");
+  await expect(page.locator(pageStatus)).toHaveText("1〜2 / 21 ページ");
   await expect(page.getByRole("region", { name: "漫画のページ" })).toHaveClass(
     /pcv-viewport/u
   );
 
   const slider = page.getByRole("slider", { name: "読書の進み具合" });
 
-  await expect(slider).toHaveAttribute("aria-valuetext", "1〜2 / 21 ページ");
+  await expectValueText(slider, "1〜2 / 21 ページ");
 
   await page.getByRole("button", { name: "次のページ" }).click();
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("3〜4 / 21 ページ");
-  await expect(slider).toHaveAttribute("aria-valuetext", "3〜4 / 21 ページ");
+  await expect(page.locator(pageStatus)).toHaveText("3〜4 / 21 ページ");
+  await expectValueText(slider, "3〜4 / 21 ページ");
 });
 
 test("announces the spread under the thumb in Japanese during a drag", async ({
@@ -41,14 +47,9 @@ test("announces the spread under the thumb in Japanese during a drag", async ({
     steps: 10,
   });
 
-  await expect(page.locator(progressSlider)).toHaveAttribute(
-    "aria-valuetext",
-    "11〜12 / 21 ページ"
-  );
+  await expectValueText(page.locator(progressSlider), "11〜12 / 21 ページ");
 
   await page.mouse.up();
 
-  await expect(page.locator(".pcv-page-status")).toHaveText(
-    "11〜12 / 21 ページ"
-  );
+  await expect(page.locator(pageStatus)).toHaveText("11〜12 / 21 ページ");
 });

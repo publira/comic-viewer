@@ -18,6 +18,7 @@ export const FullscreenComicViewer = ({
   pages,
 }: FullscreenComicViewerProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+
   const { isFullscreen, isSupported, toggleFullscreen } =
     useFullscreen(containerRef);
 

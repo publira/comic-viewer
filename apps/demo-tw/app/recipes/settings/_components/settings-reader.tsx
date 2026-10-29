@@ -120,6 +120,7 @@ interface SettingsReaderProps {
 export const SettingsReader = ({ pages }: SettingsReaderProps) => {
   const [readingDirection, setReadingDirection] =
     useState<ReadingDirection>("rtl");
+
   const [viewMode, setViewMode] = useState<ViewMode>("double");
   const [pageFitMode, setPageFitMode] = useState<PageFitMode>("height");
 

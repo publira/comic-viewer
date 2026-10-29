@@ -1,8 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-import { revealReaderControls, turnThroughScreens } from "#helpers/reader";
+import {
+  expectPageLoaded,
+  revealReaderControls,
+  turnThroughScreens,
+} from "#helpers/reader";
 import { getSliderGeometry, getSliderX } from "#helpers/reading-progress";
-import { currentPageSet } from "#helpers/selectors";
+import { currentPageSet, pageStatus } from "#helpers/selectors";
+
+const notSaved = "Not saved yet";
+const firstSpread = "Pages 1-2 of 21";
 
 test("restores the stored reading position after a reload", async ({
   page,
@@ -18,9 +25,9 @@ test("restores the stored reading position after a reload", async ({
   ).toBeVisible();
   // Nothing has been stored for this document yet, so the demo opens on the
   // first page with nothing to start over from.
-  await expect(savedPosition).toHaveText("Not saved yet");
+  await expect(savedPosition).toHaveText(notSaved);
   await expect(startOverButton).toBeDisabled();
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 1-2 of 21");
+  await expect(page.locator(pageStatus)).toHaveText(firstSpread);
 
   await turnThroughScreens(page, ["Pages 3-4 of 21", "Pages 5-6 of 21"]);
 
@@ -30,23 +37,23 @@ test("restores the stored reading position after a reload", async ({
 
   // The position is read back before the reader mounts, so it opens on the
   // stored spread rather than opening on the first page and turning away.
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 5-6 of 21");
+  await expect(page.locator(pageStatus)).toHaveText("Pages 5-6 of 21");
   await expect(savedPosition).toHaveText("Page 5");
-  await expect(
+  await expectPageLoaded(
     page.locator(`${currentPageSet} canvas[aria-label="Page 5"]`)
-  ).toHaveAttribute("data-page-status", "loaded");
+  );
 
   await startOverButton.click();
 
   // The index is controlled, so clearing the stored position also returns the
   // reader to the first page, and leaves nothing behind for the next visit.
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 1-2 of 21");
-  await expect(savedPosition).toHaveText("Not saved yet");
+  await expect(page.locator(pageStatus)).toHaveText(firstSpread);
+  await expect(savedPosition).toHaveText(notSaved);
 
   await page.reload();
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 1-2 of 21");
-  await expect(savedPosition).toHaveText("Not saved yet");
+  await expect(page.locator(pageStatus)).toHaveText(firstSpread);
+  await expect(savedPosition).toHaveText(notSaved);
 });
 
 test("stores the position a scrub is released on, not the pages it passes", async ({
@@ -70,7 +77,7 @@ test("stores the position a scrub is released on, not the pages it passes", asyn
   await expect(
     page.locator(`${currentPageSet} canvas[aria-label="Page 9"]`)
   ).toBeVisible();
-  await expect(savedPosition).toHaveText("Not saved yet");
+  await expect(savedPosition).toHaveText(notSaved);
 
   await page.mouse.up();
 

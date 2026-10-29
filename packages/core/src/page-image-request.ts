@@ -29,6 +29,7 @@ const getRenderedPageWidth = (
   viewMode: ViewMode
 ): number => {
   const page = pages[index];
+
   // An actual-size page is drawn at its own resolution, however wide that is.
   if (pageFitMode === "actual") {
     return page?.width ?? Number.POSITIVE_INFINITY;
@@ -38,6 +39,7 @@ const getRenderedPageWidth = (
     viewMode === "double" && !isSpreadPage(index, pages)
       ? size.width / 2
       : size.width;
+
   if (
     pageFitMode === "width" ||
     page?.width === undefined ||

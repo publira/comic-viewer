@@ -6,6 +6,7 @@ const workspaceRoot = fileURLToPath(new URL("..", import.meta.url));
 const port = process.env.E2E_PORT ?? "3000";
 const tailwindPort = process.env.E2E_TAILWIND_PORT ?? "4000";
 const baseURL = process.env.E2E_BASE_URL ?? `http://127.0.0.1:${port}`;
+
 const tailwindBaseURL =
   process.env.E2E_TAILWIND_BASE_URL ?? `http://127.0.0.1:${tailwindPort}`;
 

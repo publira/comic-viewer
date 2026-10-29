@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import type { Mock } from "vitest";
 
-import type { DecodedPageImage } from "./page-image";
 import {
   definePlugin,
   runDataPipeline,
@@ -8,6 +8,7 @@ import {
   runPageChangeHooks,
 } from "./plugin";
 import type { ViewerPage } from "./viewer-context";
+import type { MockFetch } from "./viewport-test-helpers";
 
 const decodedPage: ViewerPage = {
   id: "page-1",
@@ -16,16 +17,17 @@ const decodedPage: ViewerPage = {
 };
 
 /** A decoded image that records whether the pipeline released it. */
-const createDecodedImage = (name: string): DecodedPageImage =>
-  ({
-    close: vi.fn<() => void>(),
-    height: 2,
-    name,
-    width: 1,
-  }) as unknown as ImageBitmap;
+interface FakeBitmap extends ImageBitmap {
+  close: Mock<() => void>;
+  name: string;
+}
 
-const releaseOf = (image: DecodedPageImage): (() => void) =>
-  (image as ImageBitmap).close;
+const createDecodedImage = (name: string): FakeBitmap => ({
+  close: vi.fn<() => void>(),
+  height: 2,
+  name,
+  width: 1,
+});
 
 describe("plugin pipeline", () => {
   it("defines plugins without changing their hook implementations", () => {
@@ -40,13 +42,15 @@ describe("plugin pipeline", () => {
     const firstBuffer = new ArrayBuffer(1);
     const secondBuffer = new ArrayBuffer(2);
     const finalBuffer = new ArrayBuffer(3);
-    const fetchMock = vi.fn<() => Promise<unknown>>();
+    const fetchMock = vi.fn<MockFetch>();
     const abortController = new AbortController();
+
     const page: ViewerPage = {
       id: "page-1",
       src: "page.jpg",
       title: "Page 1",
     };
+
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await runDataPipeline(
@@ -57,24 +61,28 @@ describe("plugin pipeline", () => {
             events.push(
               `after-1:${url}:${buffer.byteLength}:${contextPage?.id}:${String(signal === abortController.signal)}`
             );
+
             return secondBuffer;
           },
           beforeFetch: ({ page: contextPage, signal, url }) => {
             events.push(
               `before-1:${url}:${contextPage?.id}:${String(signal === abortController.signal)}`
             );
+
             return `secure/${url}`;
           },
           customFetch: ({ page: contextPage, signal, url }) => {
             events.push(
               `custom-1:${url}:${contextPage?.id}:${String(signal === abortController.signal)}`
             );
+
             return firstBuffer;
           },
         }),
         definePlugin({
           afterFetch: ({ buffer, url }) => {
             events.push(`after-2:${url}:${buffer.byteLength}`);
+
             return finalBuffer;
           },
           beforeFetch: ({ url }) => {
@@ -102,7 +110,7 @@ describe("plugin pipeline", () => {
     const events: string[] = [];
     const innerBuffer = new ArrayBuffer(1);
     const outerBuffer = new ArrayBuffer(2);
-    const fetchMock = vi.fn<() => Promise<unknown>>();
+    const fetchMock = vi.fn<MockFetch>();
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await runDataPipeline(
@@ -118,12 +126,14 @@ describe("plugin pipeline", () => {
             // eslint-disable-next-line node/callback-return -- `next` is a middleware continuation, not a Node callback.
             const buffer = await next();
             events.push(`outer-end:${buffer.byteLength}`);
+
             return outerBuffer;
           },
         }),
         definePlugin({
           customFetch: ({ url }) => {
             events.push(`inner:${url}`);
+
             return innerBuffer;
           },
         }),
@@ -142,7 +152,7 @@ describe("plugin pipeline", () => {
   it("skips the later custom fetches when an earlier one returns without calling next", async () => {
     const cachedBuffer = new ArrayBuffer(1);
     const innerFetch = vi.fn<() => ArrayBuffer>(() => new ArrayBuffer(2));
-    const fetchMock = vi.fn<() => Promise<unknown>>();
+    const fetchMock = vi.fn<MockFetch>();
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
@@ -164,10 +174,12 @@ describe("plugin pipeline", () => {
 
   it("runs the rest of the chain once when a hook calls next and returns nothing", async () => {
     const buffer = new ArrayBuffer(4);
-    const fetchMock = vi.fn<() => Promise<unknown>>().mockResolvedValue({
+
+    const fetchMock = vi.fn<MockFetch>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(buffer),
       ok: true,
     });
+
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
@@ -193,15 +205,18 @@ describe("plugin pipeline", () => {
   it("uses the built-in fetch when no custom fetch returns a buffer", async () => {
     const buffer = new ArrayBuffer(4);
     const abortController = new AbortController();
+
     const page: ViewerPage = {
       id: "page-1",
       src: "page.jpg",
       title: "Page 1",
     };
-    const fetchMock = vi.fn<() => Promise<unknown>>().mockResolvedValue({
+
+    const fetchMock = vi.fn<MockFetch>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(buffer),
       ok: true,
     });
+
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
@@ -217,15 +232,18 @@ describe("plugin pipeline", () => {
 
   it("forwards the abort signal to the built-in fetch", async () => {
     const abortController = new AbortController();
+
     const page: ViewerPage = {
       id: "page-1",
       src: "page.jpg",
       title: "Page 1",
     };
-    const fetchMock = vi.fn<() => Promise<unknown>>().mockResolvedValue({
+
+    const fetchMock = vi.fn<MockFetch>().mockResolvedValue({
       arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
       ok: true,
     });
+
     vi.stubGlobal("fetch", fetchMock);
 
     await runDataPipeline(
@@ -257,6 +275,7 @@ describe("plugin pipeline", () => {
             events.push(
               `watermark:${url}:${page.id}:${String(signal === abortController.signal)}:${String(image === decodedImage)}`
             );
+
             return watermarkedImage;
           },
           name: "watermark",
@@ -277,8 +296,8 @@ describe("plugin pipeline", () => {
     ]);
     // The viewer owns the decoded image, so the replaced one is released here
     // rather than left to the garbage collector.
-    expect(releaseOf(decodedImage)).toHaveBeenCalledOnce();
-    expect(releaseOf(watermarkedImage)).not.toHaveBeenCalled();
+    expect(decodedImage.close).toHaveBeenCalledOnce();
+    expect(watermarkedImage.close).not.toHaveBeenCalled();
   });
 
   it("keeps the decoded image when no hook returns one", async () => {
@@ -297,7 +316,7 @@ describe("plugin pipeline", () => {
       )
     ).resolves.toBe(decodedImage);
     expect(inspect).toHaveBeenCalledOnce();
-    expect(releaseOf(decodedImage)).not.toHaveBeenCalled();
+    expect(decodedImage.close).not.toHaveBeenCalled();
   });
 
   it("reports a failing decode hook with the image-transform stage", async () => {
@@ -328,7 +347,7 @@ describe("plugin pipeline", () => {
     });
     expect(followingHook).not.toHaveBeenCalled();
     // A failed pipeline leaves no image for the caller to release.
-    expect(releaseOf(decodedImage)).toHaveBeenCalledOnce();
+    expect(decodedImage.close).toHaveBeenCalledOnce();
   });
 
   it("runs page-change hooks sequentially", async () => {

@@ -1,13 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-import { turnToNextScreen } from "#helpers/reader";
-import { currentPageSet } from "#helpers/selectors";
+import { expectPageLoaded, turnToNextScreen } from "#helpers/reader";
+import { currentPageSet, pageStatus } from "#helpers/selectors";
+
+const lazyDemo = "/recipes/lazy";
 
 test("counts the whole document while its page metadata resolves", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/recipes/lazy");
+  await page.goto(lazyDemo);
 
   await expect(
     page.getByRole("heading", { name: "Lazy page metadata" })
@@ -15,16 +17,16 @@ test("counts the whole document while its page metadata resolves", async ({
 
   // Navigation counts the pages the document holds, not the ones resolved so
   // far, so the status is right before any metadata has arrived.
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 1-2 of 7");
+  await expect(page.locator(pageStatus)).toHaveText("Pages 1-2 of 7");
   // The pages of the spread keep their places while their metadata is on its
   // way, rather than leaving the spread to collapse.
   await expect(page.locator(`${currentPageSet} .pcv-page-pending`)).toHaveCount(
     2
   );
 
-  await expect(
+  await expectPageLoaded(
     page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`)
-  ).toHaveAttribute("data-page-status", "loaded");
+  );
   await expect(page.locator(`${currentPageSet} .pcv-page-pending`)).toHaveCount(
     0
   );
@@ -43,11 +45,11 @@ test("appends the next chapter as the reader reaches the end of the loaded pages
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/recipes/lazy");
+  await page.goto(lazyDemo);
 
-  await expect(
+  await expectPageLoaded(
     page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`)
-  ).toHaveAttribute("data-page-status", "loaded");
+  );
   await expect(
     page.getByRole("status", { name: "Pages available" })
   ).toHaveText("7 of 21");
@@ -63,20 +65,20 @@ test("appends the next chapter as the reader reaches the end of the loaded pages
   await expect(
     page.getByRole("status", { name: "Chapters loaded" })
   ).toHaveText("2 of 3");
-  await expect(
+  await expectPageLoaded(
     page.locator(`${currentPageSet} canvas[aria-label="Page 5"]`)
-  ).toHaveAttribute("data-page-status", "loaded");
+  );
 });
 
 test("offers a retry for a page whose metadata request failed", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/recipes/lazy");
+  await page.goto(lazyDemo);
 
-  await expect(
+  await expectPageLoaded(
     page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`)
-  ).toHaveAttribute("data-page-status", "loaded");
+  );
 
   await page.getByLabel("Fail page-metadata requests").check();
   // Every page asked for from here on fails, page 6 among them.
@@ -86,6 +88,7 @@ test("offers a retry for a page whose metadata request failed", async ({
   const failedPage = page.locator(
     `${currentPageSet} .pcv-page-pending[data-page-status="error"]`
   );
+
   await expect(failedPage.getByRole("alert")).toHaveText(
     /Page 6 could not be resolved\./u
   );
@@ -95,9 +98,9 @@ test("offers a retry for a page whose metadata request failed", async ({
   await failedPage.getByRole("button", { name: "Try again" }).click();
 
   // The page is asked for once more and takes its place in the spread.
-  await expect(
+  await expectPageLoaded(
     page.locator(`${currentPageSet} canvas[aria-label="Page 6"]`)
-  ).toHaveAttribute("data-page-status", "loaded");
+  );
   await expect(page.locator(`${currentPageSet} .pcv-page-pending`)).toHaveCount(
     0
   );

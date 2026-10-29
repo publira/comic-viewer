@@ -10,9 +10,9 @@ const mockResolutionQueries = () => {
 
   vi.stubGlobal(
     "matchMedia",
-    vi.fn<(query: string) => Partial<MediaQueryList>>((query) => ({
-      addEventListener: (_type: string, listener: unknown) => {
-        listeners.set(query, listener as () => void);
+    vi.fn((query: string) => ({
+      addEventListener: (_type: string, listener: () => void) => {
+        listeners.set(query, listener);
       },
       matches: true,
       removeEventListener: () => {
@@ -26,6 +26,7 @@ const mockResolutionQueries = () => {
 
 const renderViewportSize = () => {
   const ref = { current: document.createElement("div") };
+
   return renderHook(() => useViewportSize(ref));
 };
 

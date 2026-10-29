@@ -1,13 +1,18 @@
 import { expect, test } from "@playwright/test";
 
-import { revealReaderControls } from "#helpers/reader";
+import { expectPageCount, revealReaderControls } from "#helpers/reader";
 import {
   dragSliderThumbTo,
   dragSliderThumbToFraction,
   getSliderGeometry,
   getSliderX,
 } from "#helpers/reading-progress";
-import { currentPageSet, progressSlider, toolbar } from "#helpers/selectors";
+import {
+  currentPageSet,
+  pageStatus,
+  progressSlider,
+  toolbar,
+} from "#helpers/selectors";
 
 test("scrubs to a page by dragging the reading-progress thumb", async ({
   page,
@@ -28,9 +33,7 @@ test("scrubs to a page by dragging the reading-progress thumb", async ({
 
   // The pages follow the thumb while it is still held, and the rail is dragged
   // part of the way into the next spread rather than resting on a whole one.
-  await expect(page.locator(".pcv-page-status")).toHaveText(
-    "Pages 11-12 of 21"
-  );
+  await expect(page.locator(pageStatus)).toHaveText("Pages 11-12 of 21");
   await expect(
     page.locator(`${currentPageSet} canvas[aria-label="Page 11"]`)
   ).toBeVisible();
@@ -50,19 +53,14 @@ test("scrubs to a page by dragging the reading-progress thumb", async ({
 
   await page.mouse.up();
 
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "2"
-  );
+  await expectPageCount(page, 2);
   await expect(
     page.locator(`${currentPageSet} canvas[aria-label="Page 11"]`)
   ).toBeVisible();
   await expect(
     page.locator(`${currentPageSet} canvas[aria-label="Page 12"]`)
   ).toBeVisible();
-  await expect(page.locator(".pcv-page-status")).toHaveText(
-    "Pages 11-12 of 21"
-  );
+  await expect(page.locator(pageStatus)).toHaveText("Pages 11-12 of 21");
 });
 
 test("steps through the document with the arrow keys on the reading progress", async ({
@@ -78,24 +76,21 @@ test("steps through the document with the arrow keys on the reading progress", a
   // on to the spread it was heading for.
   await page.keyboard.press("ArrowRight");
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 21");
+  await expect(page.locator(pageStatus)).toHaveText("Pages 3-4 of 21");
   await expect(
     page.locator(`${currentPageSet} canvas[aria-label="Page 3"]`)
   ).toBeVisible();
 
   await page.keyboard.press("ArrowLeft");
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 1-2 of 21");
+  await expect(page.locator(pageStatus)).toHaveText("Pages 1-2 of 21");
 
   await page.keyboard.press("End");
 
   // The last page of an odd document has no page to face, and the slider ends
   // on it as the page-turn controls do.
-  await expect(page.locator(".pcv-page-status")).toHaveText("Page 21 of 21");
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "1"
-  );
+  await expect(page.locator(pageStatus)).toHaveText("Page 21 of 21");
+  await expectPageCount(page, 1);
 });
 
 test("snaps a scrub to the page a spread starts from", async ({ page }) => {
@@ -103,7 +98,7 @@ test("snaps a scrub to the page a spread starts from", async ({ page }) => {
   await page.goto("/features/spreads");
   await revealReaderControls(page);
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("Page 1 of 8");
+  await expect(page.locator(pageStatus)).toHaveText("Page 1 of 8");
 
   await dragSliderThumbTo(page, 3.6);
 
@@ -112,11 +107,8 @@ test("snaps a scrub to the page a spread starts from", async ({ page }) => {
   // thumb released short of halfway between them comes to rest on the page
   // the first of them starts from.
   await expect(page.locator(progressSlider)).toHaveValue("3");
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 4-5 of 8");
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "2"
-  );
+  await expect(page.locator(pageStatus)).toHaveText("Pages 4-5 of 8");
+  await expectPageCount(page, 2);
 });
 
 test("runs the reading progress the way the reader turns pages", async ({
@@ -130,20 +122,19 @@ test("runs the reading progress the way the reader turns pages", async ({
   // a document read from right to left.
   await dragSliderThumbToFraction(page, 0.2);
 
-  await expect(page.locator(".pcv-page-status")).toHaveText(
-    "Pages 17-18 of 21"
-  );
+  await expect(page.locator(pageStatus)).toHaveText("Pages 17-18 of 21");
 
   await page.goto("/features/ltr");
   await revealReaderControls(page);
   await dragSliderThumbToFraction(page, 0.2);
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 5-6 of 21");
+  await expect(page.locator(pageStatus)).toHaveText("Pages 5-6 of 21");
 });
 
 test("keeps the reader controls up for the length of a scrub", async ({
   page,
 }) => {
+  await page.clock.install();
   await page.setViewportSize({ height: 900, width: 1280 });
   await page.goto("/");
   await revealReaderControls(page);
@@ -157,10 +148,11 @@ test("keeps the reader controls up for the length of a scrub", async ({
   await page.mouse.move(getSliderX(geometry, 6), geometry.centreY - 300, {
     steps: 10,
   });
-  await page.waitForTimeout(2500);
+  // Outlast the delay the controls hide after.
+  await page.clock.runFor(2500);
 
   await expect(page.locator(toolbar)).toHaveAttribute("aria-hidden", "false");
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 7-8 of 21");
+  await expect(page.locator(pageStatus)).toHaveText("Pages 7-8 of 21");
 
   await page.mouse.up();
 
@@ -174,7 +166,7 @@ test("keeps the reader controls up for the length of a scrub", async ({
   // it. The drag holds the controls on top of both, and this is what shows
   // that its own hold ended with it rather than outlasting it.
   await page.mouse.move(getSliderX(geometry, 6) - 20, geometry.centreY - 300);
-  await page.locator(progressSlider).blur();
+  await page.getByRole("button", { name: "Features" }).focus();
 
   await expect(page.locator(toolbar)).toHaveAttribute("aria-hidden", "true");
 });

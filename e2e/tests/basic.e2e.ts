@@ -1,6 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-import { currentPageSet, viewport, viewportTrack } from "#helpers/selectors";
+import {
+  expectPageCount,
+  expectPageLoaded,
+  expectViewMode,
+} from "#helpers/reader";
+import {
+  currentPageSet,
+  pageStatus,
+  viewport,
+  viewportTrack,
+} from "#helpers/selectors";
 
 test("renders the basic reader and navigates through a double-page spread", async ({
   page,
@@ -11,27 +21,18 @@ test("renders the basic reader and navigates through a double-page spread", asyn
   await expect(
     page.getByRole("heading", { name: "Basic image loading" })
   ).toBeVisible();
-  await expect(page.locator(viewport)).toHaveAttribute(
-    "data-view-mode",
-    "double"
-  );
+  await expectViewMode(page, "double");
   await expect(page.getByRole("region", { name: "Comic pages" })).toHaveClass(
     /pcv-viewport/u
   );
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "2"
-  );
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 1-2 of 21");
+  await expectPageCount(page, 2);
+  await expect(page.locator(pageStatus)).toHaveText("Pages 1-2 of 21");
 
   await page.locator(viewport).click({ position: { x: 640, y: 300 } });
   await page.getByRole("button", { name: "Next page" }).click();
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 21");
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "2"
-  );
+  await expect(page.locator(pageStatus)).toHaveText("Pages 3-4 of 21");
+  await expectPageCount(page, 2);
   await expect(page.locator(viewportTrack)).toHaveCSS(
     "transition-duration",
     "0s"
@@ -42,15 +43,9 @@ test("uses a single page at a narrow viewport", async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 600 });
   await page.goto("/");
 
-  await expect(page.locator(viewport)).toHaveAttribute(
-    "data-view-mode",
-    "single"
-  );
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "1"
-  );
-  await expect(page.locator(".pcv-page-status")).toHaveText("Page 1 of 21");
+  await expectViewMode(page, "single");
+  await expectPageCount(page, 1);
+  await expect(page.locator(pageStatus)).toHaveText("Page 1 of 21");
 });
 
 test("keeps the two pages of a spread meeting at the gutter", async ({
@@ -68,14 +63,8 @@ test("keeps the two pages of a spread meeting at the gutter", async ({
 
   const pageCanvases = page.locator(`${currentPageSet} canvas`);
   await expect(pageCanvases).toHaveCount(2);
-  await expect(pageCanvases.first()).toHaveAttribute(
-    "data-page-status",
-    "loaded"
-  );
-  await expect(pageCanvases.last()).toHaveAttribute(
-    "data-page-status",
-    "loaded"
-  );
+  await expectPageLoaded(pageCanvases.first());
+  await expectPageLoaded(pageCanvases.last());
 
   const pageSetBox = await page.locator(currentPageSet).boundingBox();
   const leftPageBox = await pageCanvases.first().boundingBox();

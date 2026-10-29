@@ -8,12 +8,14 @@ const ascii = (text: string): number[] =>
 const uint16 = (value: number, littleEndian = false): number[] => {
   const view = new DataView(new ArrayBuffer(2));
   view.setUint16(0, value, littleEndian);
+
   return [...new Uint8Array(view.buffer)];
 };
 
 const uint32 = (value: number, littleEndian = false): number[] => {
   const view = new DataView(new ArrayBuffer(4));
   view.setUint32(0, value, littleEndian);
+
   return [...new Uint8Array(view.buffer)];
 };
 

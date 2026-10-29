@@ -24,7 +24,10 @@ export const DemoNavigation = () => {
     }
 
     const handlePointerDown = (event: globalThis.PointerEvent) => {
-      if (!navigationRef.current?.contains(event.target as Node)) {
+      if (
+        !(event.target instanceof Node) ||
+        !navigationRef.current?.contains(event.target)
+      ) {
         setOpenGroup(null);
       }
     };

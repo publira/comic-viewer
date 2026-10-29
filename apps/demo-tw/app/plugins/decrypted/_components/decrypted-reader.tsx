@@ -19,10 +19,12 @@ const initializationVectorLength = 12;
 
 const decryptPage = async (encryptedBuffer: ArrayBuffer) => {
   const encryptedPage = new Uint8Array(encryptedBuffer);
+
   const initializationVector = encryptedPage.slice(
     0,
     initializationVectorLength
   );
+
   const key = await crypto.subtle.importKey(
     "raw",
     encryptionKey,

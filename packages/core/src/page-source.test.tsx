@@ -40,6 +40,7 @@ const resolvedIndices = (resolvePage: Mock<PageResolver>): number[] =>
 describe("lazy page metadata", () => {
   it("resolves only the pages within the overscan window", async () => {
     const resolvePage = vi.fn<PageResolver>((index) => makePage(index));
+
     const { result } = renderViewerContext({
       pageCount: 20,
       pageResolveOverscan: 2,
@@ -59,6 +60,7 @@ describe("lazy page metadata", () => {
   it("keeps the statically provided pages instead of resolving them", async () => {
     const resolvePage = vi.fn<PageResolver>((index) => makePage(index));
     const pages = [makePage(0, "static")];
+
     const { result } = renderViewerContext({
       pageCount: 3,
       pageResolveOverscan: 4,
@@ -76,10 +78,13 @@ describe("lazy page metadata", () => {
 
   it("resolves a page again after it leaves the window, for a fresh URL", async () => {
     let requestCount = 0;
+
     const resolvePage = vi.fn<PageResolver>((index) => {
       requestCount += 1;
+
       return makePage(index, `token-${requestCount}`);
     });
+
     const { result } = renderViewerContext({
       pageCount: 20,
       pageResolveOverscan: 1,
@@ -113,6 +118,7 @@ describe("lazy page metadata", () => {
 
   it("keeps the metadata of a page the rail still renders", async () => {
     const resolvePage = vi.fn<PageResolver>((index) => makePage(index));
+
     const { result } = renderViewerContext({
       pageCount: 20,
       pageResolveOverscan: 0,
@@ -155,13 +161,16 @@ describe("lazy page metadata", () => {
 
   it("aborts the request of a page that leaves the window", async () => {
     const signals: AbortSignal[] = [];
+
     const resolvePage = vi.fn<PageResolver>((_index, { signal }) => {
       signals.push(signal);
+
       // eslint-disable-next-line promise/avoid-new -- The request stays in flight until the viewer aborts it.
       return new Promise<ViewerPage>(() => {
         // The viewer keeps the request open until it aborts the signal.
       });
     });
+
     const { result } = renderViewerContext({
       pageCount: 20,
       pageResolveOverscan: 0,
@@ -183,6 +192,7 @@ describe("lazy page metadata", () => {
     const cause = new Error("The page metadata request failed.");
     const resolvePage = vi.fn<PageResolver>(() => Promise.reject(cause));
     const onPageResolveError = vi.fn<(error: PageResolveError) => void>();
+
     const { result } = renderViewerContext({
       onPageResolveError,
       pageCount: 1,
@@ -199,10 +209,12 @@ describe("lazy page metadata", () => {
 
   it("resolves a failed page again once a retry is asked for", async () => {
     const cause = new Error("The page metadata request failed.");
+
     const resolvePage = vi
       .fn<PageResolver>()
       .mockRejectedValueOnce(cause)
       .mockImplementation((index) => makePage(index));
+
     const { result } = renderResolveState(0, { pageCount: 1, resolvePage });
 
     await waitFor(() => {
@@ -237,7 +249,9 @@ describe("lazy page metadata", () => {
     const resolvePage = vi.fn<PageResolver>(() =>
       Promise.reject(new Error("The page metadata request failed."))
     );
+
     const onPageResolveError = vi.fn<(error: PageResolveError) => void>();
+
     const { result } = renderResolveState(0, {
       onPageResolveError,
       pageCount: 1,
@@ -285,6 +299,7 @@ describe("lazy page metadata", () => {
       .fn<PageResolver>()
       .mockRejectedValueOnce(new Error("The page metadata request failed."))
       .mockImplementation((index) => makePage(index));
+
     const { result } = renderResolveState(0, {
       pageCount: 20,
       pageResolveOverscan: 1,
@@ -299,10 +314,8 @@ describe("lazy page metadata", () => {
       result.current.viewer.goTo(10);
     });
 
-    expect(result.current.resolveState).toMatchObject({
-      error: undefined,
-      status: "idle",
-    });
+    expect(result.current.resolveState.status).toBe("idle");
+    expect(result.current.resolveState.error).toBeUndefined();
   });
 
   it("reports a resolved status for a statically provided page", () => {
@@ -367,6 +380,7 @@ describe("onEndReached", () => {
 
   it("is called again once the page count grows", () => {
     const onEndReached = vi.fn<() => void>();
+
     const { rerender } = render(
       <ViewerProvider
         currentIndex={9}

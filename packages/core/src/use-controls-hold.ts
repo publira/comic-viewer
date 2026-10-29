@@ -29,6 +29,7 @@ export const useControlsHold = (): ControlsHoldHandlers => {
     }
 
     holdControls(true);
+
     return () => {
       holdControls(false);
     };
@@ -42,14 +43,17 @@ export const useControlsHold = (): ControlsHoldHandlers => {
     hasFocusRef.current = false;
     syncHold();
   }, [syncHold]);
+
   const onFocus = useCallback(() => {
     hasFocusRef.current = true;
     syncHold();
   }, [syncHold]);
+
   const onPointerEnter = useCallback(() => {
     hasPointerRef.current = true;
     syncHold();
   }, [syncHold]);
+
   const onPointerLeave = useCallback(() => {
     hasPointerRef.current = false;
     syncHold();

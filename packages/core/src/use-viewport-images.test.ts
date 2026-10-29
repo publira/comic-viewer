@@ -78,6 +78,7 @@ describe(useViewportImages, () => {
 
   it("loads the preload window once the pages of the rail have loaded", async () => {
     const fetchedUrls = mockPageLoading();
+
     const { result } = renderHook(() =>
       useViewportImages({
         cachedIndices: [2, 3],
@@ -106,6 +107,7 @@ describe(useViewportImages, () => {
 
   it("keeps a preloaded image until it leaves the wider window", async () => {
     const fetchedUrls = mockPageLoading();
+
     const { rerender, result } = renderHook(
       (props: Parameters<typeof useViewportImages<ViewerPage>>[0]) =>
         useViewportImages(props),
@@ -157,6 +159,7 @@ describe(useViewportImages, () => {
 
   it("restarts an image load after Strict Mode aborts the initial effect", async () => {
     mockPageLoading();
+
     const fetchMock = vi.fn<MockFetch>((_input, init) => {
       const signal = init?.signal;
 
@@ -165,6 +168,7 @@ describe(useViewportImages, () => {
         signal?.addEventListener("abort", () => reject(signal.reason), {
           once: true,
         });
+
         if (fetchMock.mock.calls.length === 2) {
           resolve({
             arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
@@ -173,6 +177,7 @@ describe(useViewportImages, () => {
         }
       });
     });
+
     vi.stubGlobal("fetch", fetchMock);
 
     const { result } = renderHook(
@@ -203,7 +208,6 @@ describe(useViewportImages, () => {
     renderHook(() =>
       useViewportImages({
         cachedIndices: [0],
-        getPageRequirement: undefined,
         keepImages: false,
         pages: testPages,
         plugins: [],
@@ -261,6 +265,19 @@ const getHeldImage = (result: {
   current: ReturnType<typeof useViewportImages>;
 }) => result.current.images.get("0:page0.png")?.bitmap;
 
+/** The bitmap the page holds, which these tests decode through createImageBitmap. */
+const getHeldBitmap = (result: {
+  current: ReturnType<typeof useViewportImages>;
+}): ImageBitmap => {
+  const image = getHeldImage(result);
+
+  if (image === undefined || !("close" in image)) {
+    throw new Error("The page holds no decoded bitmap.");
+  }
+
+  return image;
+};
+
 describe("useViewportImages with srcset", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
@@ -269,6 +286,7 @@ describe("useViewportImages with srcset", () => {
   it("hands the pipeline the candidate the page is drawn at", async () => {
     const fetchedUrls = mockPageLoading();
     const hookUrls: string[] = [];
+
     const { result } = renderSrcsetImages(700, {
       plugins: [
         {
@@ -304,18 +322,16 @@ describe("useViewportImages with srcset", () => {
     await waitFor(() => {
       expect(getHeldImage(result)).toBeDefined();
     });
-    const smallImage = getHeldImage(result) as ImageBitmap;
+    const smallImage = getHeldBitmap(result);
 
     let finishUpgrade: (() => void) | undefined;
     vi.mocked(fetch).mockImplementationOnce((input) => {
       fetchedUrls.push(String(input));
+
       // eslint-disable-next-line promise/avoid-new -- The upgrade is held back until the test inspects the page in between.
       return new Promise((resolve) => {
         finishUpgrade = () => {
-          resolve({
-            arrayBuffer: () => Promise.resolve(new ArrayBuffer(1)),
-            ok: true,
-          } as Response);
+          resolve(new Response(new ArrayBuffer(1)));
         };
       });
     });
@@ -370,6 +386,7 @@ describe("useViewportImages with srcset", () => {
 
     vi.mocked(fetch).mockImplementationOnce((input) => {
       fetchedUrls.push(String(input));
+
       return Promise.reject(new Error("offline"));
     });
     resize(700);
@@ -394,10 +411,11 @@ describe("useViewportImages with srcset", () => {
         // eslint-disable-next-line promise/avoid-new -- The first placeholder decode is held back until the larger load has finished.
         new Promise((resolve) => {
           finishFirstPlaceholder = () => {
-            resolve(lateBitmap as unknown as ImageBitmap);
+            resolve(lateBitmap);
           };
         })
     );
+
     const { resize, result } = renderSrcsetImages(300, {
       pages: [{ ...srcsetPages[0], placeholder: "preview.png" }],
     });
@@ -432,6 +450,7 @@ const pngHeader = (width: number, height: number): ArrayBuffer => {
   bytes.set([0x49, 0x48, 0x44, 0x52], 12);
   view.setUint32(16, width);
   view.setUint32(20, height);
+
   return bytes.buffer;
 };
 
@@ -450,6 +469,7 @@ const mockSizedPageLoading = (naturalWidth: number) => {
       });
     })
   );
+
   const decode = vi.fn<
     (image: Blob, options?: ImageBitmapOptions) => Promise<ImageBitmap>
   >((_image, options) =>
@@ -457,8 +477,9 @@ const mockSizedPageLoading = (naturalWidth: number) => {
       close: vi.fn<() => void>(),
       height: 1,
       width: options?.resizeWidth ?? naturalWidth,
-    } as unknown as ImageBitmap)
+    })
   );
+
   vi.stubGlobal("createImageBitmap", decode);
 
   return { decode, fetchedUrls };
@@ -511,6 +532,7 @@ describe("useViewportImages decoding at the drawn size", () => {
 
   it("decodes a page of no known width at its own size", async () => {
     const { decode } = mockSizedPageLoading(4000);
+
     const { result } = renderSrcsetImages(Number.POSITIVE_INFINITY, {
       pages: singleSourcePages,
     });
@@ -524,6 +546,7 @@ describe("useViewportImages decoding at the drawn size", () => {
 
   it("leaves the placeholder at its own size", async () => {
     const { decode } = mockSizedPageLoading(4000);
+
     const { result } = renderSrcsetImages(400, {
       pages: [{ ...singleSourcePages[0], placeholder: "preview.png" }],
     });
@@ -543,6 +566,7 @@ describe("useViewportImages decoding at the drawn size", () => {
   it("decodes the page wider from the data it kept as the slot grows", async () => {
     const { decode, fetchedUrls } = mockSizedPageLoading(4000);
     const hookWidths: number[] = [];
+
     const { resize, result } = renderSrcsetImages(400, {
       pages: singleSourcePages,
       plugins: [
@@ -557,7 +581,7 @@ describe("useViewportImages decoding at the drawn size", () => {
     await waitFor(() => {
       expect(getHeldImage(result)).toBeDefined();
     });
-    const narrowImage = getHeldImage(result) as ImageBitmap;
+    const narrowImage = getHeldBitmap(result);
 
     resize(1200);
 
@@ -577,6 +601,7 @@ describe("useViewportImages decoding at the drawn size", () => {
 
   it("keeps the wider image when the slot shrinks", async () => {
     const { decode } = mockSizedPageLoading(4000);
+
     const { resize, result } = renderSrcsetImages(1200, {
       pages: singleSourcePages,
     });
@@ -596,6 +621,7 @@ describe("useViewportImages decoding at the drawn size", () => {
 
   it("stops at the file's own size as the slot outgrows it", async () => {
     const { decode, fetchedUrls } = mockSizedPageLoading(1000);
+
     const { resize, result } = renderSrcsetImages(400, {
       pages: singleSourcePages,
     });
@@ -637,6 +663,7 @@ describe("useViewportImages decoding at the drawn size", () => {
   it("does not decode again after a wider decode fails", async () => {
     const { decode } = mockSizedPageLoading(4000);
     const onPageLoadError = vi.fn<(error: PageLoadError) => void>();
+
     const { resize, result } = renderSrcsetImages(400, {
       onPageLoadError,
       pages: singleSourcePages,

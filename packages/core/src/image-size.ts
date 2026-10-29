@@ -46,6 +46,7 @@ const readGifSize = (view: DataView): ImageSize | undefined =>
 
 const readWebpSize = (view: DataView): ImageSize | undefined => {
   const chunk = readAscii(view, 12, 4);
+
   if (chunk === "VP8 " && view.byteLength >= 30) {
     // The two bits above each 14-bit dimension hold its upscaling factor.
     return toSize(
@@ -53,18 +54,23 @@ const readWebpSize = (view: DataView): ImageSize | undefined => {
       view.getUint16(28, true) % FOURTEEN_BITS
     );
   }
+
   if (chunk === "VP8L" && view.byteLength >= 25) {
     const bits = view.getUint32(21, true);
+
     return toSize(
       (bits % FOURTEEN_BITS) + 1,
       (Math.floor(bits / FOURTEEN_BITS) % FOURTEEN_BITS) + 1
     );
   }
+
   if (chunk === "VP8X" && view.byteLength >= 30) {
     const readUint24 = (offset: number): number =>
       view.getUint16(offset, true) + view.getUint8(offset + 2) * 0x1_00_00;
+
     return toSize(readUint24(24) + 1, readUint24(27) + 1);
   }
+
   return undefined;
 };
 
@@ -81,16 +87,20 @@ const readExifOrientation = (
   const tiff = start + 6;
   const littleEndian = readAscii(view, tiff, 2) === "II";
   const firstIfd = tiff + view.getUint32(tiff + 4, littleEndian);
+
   if (firstIfd + 2 > end) {
     return undefined;
   }
 
   const entryCount = view.getUint16(firstIfd, littleEndian);
+
   for (let entry = 0; entry < entryCount; entry += 1) {
     const offset = firstIfd + 2 + entry * 12;
+
     if (offset + 12 > end) {
       return undefined;
     }
+
     if (view.getUint16(offset, littleEndian) === 0x01_12) {
       return view.getUint16(offset + 8, littleEndian);
     }
@@ -98,6 +108,12 @@ const readExifOrientation = (
 
   return undefined;
 };
+
+/** DHT, JPG, and DAC share the SOF range without holding the frame size. */
+const NON_FRAME_MARKERS = new Set([0xc4, 0xc8, 0xcc]);
+
+const isStartOfFrame = (marker: number): boolean =>
+  marker >= 0xc0 && marker <= 0xcf && !NON_FRAME_MARKERS.has(marker);
 
 const readJpegSize = (view: DataView): ImageSize | undefined => {
   let orientation: number | undefined;
@@ -109,6 +125,7 @@ const readJpegSize = (view: DataView): ImageSize | undefined => {
     }
 
     const marker = view.getUint8(offset + 1);
+
     // Fill bytes and markers without a length carry no segment to skip.
     if (
       marker === 0xff ||
@@ -121,17 +138,12 @@ const readJpegSize = (view: DataView): ImageSize | undefined => {
 
     const length = view.getUint16(offset + 2);
     const segmentEnd = Math.min(offset + 2 + length, view.byteLength);
+
     if (marker === 0xe1 && orientation === undefined) {
       orientation = readExifOrientation(view, offset + 4, segmentEnd);
     }
-    // Every SOF marker but DHT, JPG, and DAC holds the frame size.
-    if (
-      marker >= 0xc0 &&
-      marker <= 0xcf &&
-      marker !== 0xc4 &&
-      marker !== 0xc8 &&
-      marker !== 0xcc
-    ) {
+
+    if (isStartOfFrame(marker)) {
       return offset + 9 <= view.byteLength
         ? toSize(
             view.getUint16(offset + 7),
@@ -160,18 +172,21 @@ const readAvifProperties = (
     let size = view.getUint32(offset);
     const type = readAscii(view, offset + 4, 4);
     let header = 8;
+
     if (size === 1 && offset + 16 <= end) {
       size = Number(view.getBigUint64(offset + 8));
       header = 16;
     } else if (size === 0) {
       size = end - offset;
     }
+
     if (size < header || offset + size > end) {
       return;
     }
 
     const body = offset + header;
     const boxEnd = offset + size;
+
     if (type === "meta") {
       // `meta` is a full box: a version and flags precede its children.
       readAvifProperties(view, body + 4, boxEnd, properties);
@@ -179,6 +194,7 @@ const readAvifProperties = (
       readAvifProperties(view, body, boxEnd, properties);
     } else if (type === "ispe" && body + 12 <= boxEnd) {
       const ispe = toSize(view.getUint32(body + 4), view.getUint32(body + 8));
+
       if (ispe !== undefined) {
         properties.sizes.push(ispe);
       }
@@ -192,10 +208,12 @@ const readAvifProperties = (
 };
 
 const readAvifSize = (view: DataView): ImageSize | undefined => {
-  const properties = { rotated: false, sizes: [] as ImageSize[] };
+  const sizes: ImageSize[] = [];
+  const properties = { rotated: false, sizes };
   readAvifProperties(view, 0, view.byteLength, properties);
   // Thumbnails and auxiliary images are no larger than the primary image.
   let largest: ImageSize | undefined;
+
   for (const size of properties.sizes) {
     if (
       largest === undefined ||
@@ -222,15 +240,19 @@ export const readImageSize = (buffer: ArrayBuffer): ImageSize | undefined => {
     if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
       return readPngSize(view);
     }
+
     if (startsWith(bytes, [0xff, 0xd8])) {
       return readJpegSize(view);
     }
+
     if (readAscii(view, 0, 4) === "GIF8") {
       return readGifSize(view);
     }
+
     if (readAscii(view, 0, 4) === "RIFF" && readAscii(view, 8, 4) === "WEBP") {
       return readWebpSize(view);
     }
+
     if (readAscii(view, 4, 4) === "ftyp") {
       return readAvifSize(view);
     }

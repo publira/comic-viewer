@@ -6,9 +6,9 @@ import { useViewportGestures } from "./use-viewport-gestures";
 import { ViewerProvider } from "./viewer-context";
 import type { PageFitMode } from "./viewer-context";
 import { Viewport } from "./viewport";
+import { CurrentIndexIndicator } from "./viewport-test-components";
 import type { TestPage } from "./viewport-test-helpers";
 import {
-  CurrentIndexIndicator,
   MockResizeObserver,
   pages,
   pressViewportKey,
@@ -18,8 +18,8 @@ import {
 } from "./viewport-test-helpers";
 
 const renderControlledViewport = ({
-  initialPageFitMode = "height" as PageFitMode,
-} = {}) =>
+  initialPageFitMode = "height",
+}: { initialPageFitMode?: PageFitMode } = {}) =>
   render(
     <ViewerProvider
       pages={pages}
@@ -39,6 +39,7 @@ const getControlElements = (container: HTMLElement) => {
   const navigation = container.querySelector<HTMLElement>(
     ".pcv-page-navigation"
   );
+
   const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
 
   if (navigation === null || viewport === null) {
@@ -135,6 +136,7 @@ describe(useViewportGestures, () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const { navigation } = getControlElements(container);
 
     expect(pressViewportKey("ArrowLeft")).toBeTruthy();
@@ -157,7 +159,7 @@ describe(useViewportGestures, () => {
               <select aria-label="Page size">
                 <option>One page</option>
               </select>
-              <div aria-label="Notes" contentEditable />
+              <div contentEditable data-testid="notes" />
               <button type="button">Open menu</button>
             </>
           )}
@@ -170,7 +172,7 @@ describe(useViewportGestures, () => {
       withinCurrentPageSet().getByRole("textbox", { name: "Title" }),
       withinCurrentPageSet().getByRole("textbox", { name: "Description" }),
       withinCurrentPageSet().getByRole("combobox", { name: "Page size" }),
-      withinCurrentPageSet().getByLabelText("Notes"),
+      withinCurrentPageSet().getByTestId("notes"),
       withinCurrentPageSet().getByRole("button", { name: "Open menu" }),
     ]) {
       expect(fireEvent.keyDown(control, { key: "ArrowRight" })).toBeTruthy();
@@ -183,9 +185,11 @@ describe(useViewportGestures, () => {
       initialIndex: 1,
       initialReadingDirection: "ltr",
     });
+
     const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
 
     expect(viewport).not.toBeNull();
+
     if (viewport === null) {
       return;
     }
@@ -200,6 +204,7 @@ describe(useViewportGestures, () => {
       initialIndex: 1,
       initialReadingDirection: "ltr",
     });
+
     const viewport = container.querySelector(".pcv-viewport");
 
     expect(viewport).not.toBeNull();
@@ -221,6 +226,7 @@ describe(useViewportGestures, () => {
       initialIndex: 1,
       initialReadingDirection: "rtl",
     });
+
     const viewport = container.querySelector(".pcv-viewport");
 
     expect(viewport).not.toBeNull();
@@ -247,6 +253,7 @@ describe(useViewportGestures, () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const { navigation, viewport } = getControlElements(container);
 
     setViewportRect(viewport);
@@ -266,6 +273,7 @@ describe(useViewportGestures, () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const { navigation, viewport } = getControlElements(container);
 
     setViewportRect(viewport);
@@ -284,6 +292,7 @@ describe(useViewportGestures, () => {
       initialIndex: 1,
       initialReadingDirection: "ltr",
     });
+
     const viewport = container.querySelector(".pcv-viewport");
 
     expect(viewport).not.toBeNull();
@@ -322,6 +331,7 @@ describe(useViewportGestures, () => {
       initialIndex: 1,
       initialReadingDirection: "rtl",
     });
+
     const viewport = container.querySelector(".pcv-viewport");
 
     expect(viewport).not.toBeNull();
@@ -360,6 +370,7 @@ describe(useViewportGestures, () => {
       initialIndex: 1,
       initialReadingDirection: "ltr",
     });
+
     const viewport = container.querySelector(".pcv-viewport");
 
     expect(viewport).not.toBeNull();
@@ -386,6 +397,7 @@ describe(useViewportGestures, () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector(".pcv-viewport");
     const track = container.querySelector(".pcv-viewport-track");
 
@@ -411,6 +423,7 @@ describe(useViewportGestures, () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector(".pcv-viewport");
     const track = container.querySelector(".pcv-viewport-track");
 
@@ -440,6 +453,7 @@ describe(useViewportGestures, () => {
         <Viewport gestures={{ swipe: { enabled: false } }} />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector(".pcv-viewport");
 
     if (viewport === null) {
@@ -468,6 +482,7 @@ describe(useViewportGestures, () => {
         <Viewport />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector(".pcv-viewport");
     const track = container.querySelector(".pcv-viewport-track");
 
@@ -510,6 +525,7 @@ describe(useViewportGestures, () => {
     const { container } = renderControlledViewport({
       initialPageFitMode: "actual",
     });
+
     const { navigation, viewport } = getControlElements(container);
 
     setViewportRect(viewport);
@@ -533,6 +549,7 @@ describe(useViewportGestures, () => {
 
   it("does not bubble viewport touch gestures to its parent", () => {
     const onTouch = vi.fn<() => void>();
+
     const { container } = render(
       <div
         onTouchCancel={onTouch}
@@ -545,6 +562,7 @@ describe(useViewportGestures, () => {
         </ViewerProvider>
       </div>
     );
+
     const viewport = container.querySelector(".pcv-viewport");
 
     if (viewport === null) {

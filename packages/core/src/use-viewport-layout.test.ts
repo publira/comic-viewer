@@ -39,7 +39,7 @@ const renderLayout = ({
   imagePreloadSpreads = 0,
   minIndex = 0,
   pages = railPages,
-  transitionToIndex = undefined as number | undefined,
+  transitionToIndex,
 }: {
   displayedIndex?: number;
   imagePreloadSpreads?: number;

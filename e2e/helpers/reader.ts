@@ -3,6 +3,30 @@ import type { Locator, Page } from "@playwright/test";
 
 import { currentPageSet, toolbar, viewport } from "#helpers/selectors";
 
+/** Expects the viewer to show one page at a time, or a spread of two. */
+export const expectViewMode = async (
+  page: Page,
+  viewMode: "single" | "double"
+) => {
+  await expect(page.locator(viewport)).toHaveAttribute(
+    "data-view-mode",
+    viewMode
+  );
+};
+
+/** Expects a page to be drawn from its image. */
+export const expectPageLoaded = async (pageCanvas: Locator) => {
+  await expect(pageCanvas).toHaveAttribute("data-page-status", "loaded");
+};
+
+/** Expects the spread on screen to hold `count` pages. */
+export const expectPageCount = async (page: Page, count: number) => {
+  await expect(page.locator(currentPageSet)).toHaveAttribute(
+    "data-page-count",
+    String(count)
+  );
+};
+
 /**
  * Opens one of the demo readers at its own size. Both demos size a reader to
  * the aspect ratio of a full spread, so a page that is a whole spread fills
@@ -12,10 +36,7 @@ export const openReader = async (page: Page, path: string) => {
   await page.setViewportSize({ height: 900, width: 1280 });
   await page.goto(path);
 
-  await expect(page.locator(viewport)).toHaveAttribute(
-    "data-view-mode",
-    "double"
-  );
+  await expectViewMode(page, "double");
 };
 
 /**
@@ -31,10 +52,7 @@ export const openShortenedReader = async (page: Page, path: string) => {
     content: ".pcv-root { height: 420px !important; }",
   });
 
-  await expect(page.locator(viewport)).toHaveAttribute(
-    "data-view-mode",
-    "double"
-  );
+  await expectViewMode(page, "double");
 };
 
 /**

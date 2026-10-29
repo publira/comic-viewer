@@ -10,7 +10,9 @@ const portrait: ViewerPage = {
   title: "Page 0",
   width: 800,
 };
+
 const unsized: ViewerPage = { id: "p1", src: "page1.png", title: "Page 1" };
+
 const spread: ViewerPage = {
   height: 1000,
   id: "p2",
@@ -19,6 +21,7 @@ const spread: ViewerPage = {
   title: "Page 2",
   width: 1600,
 };
+
 const pages = [portrait, unsized, spread];
 const size = { density: 2, height: 500, width: 1200 };
 

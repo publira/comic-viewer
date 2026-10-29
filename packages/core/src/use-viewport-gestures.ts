@@ -18,6 +18,7 @@ const DEFAULT_EDGE_CLICK_RATIO = 0.3;
 const MAX_EDGE_CLICK_RATIO = 0.5;
 const MIN_SWIPE_THRESHOLD_PX = 48;
 const SWIPE_THRESHOLD_RATIO = 0.12;
+
 const INTERACTIVE_ELEMENT_SELECTOR = [
   "a[href]",
   "audio[controls]",
@@ -105,10 +106,13 @@ interface UseViewportGesturesOptions {
   viewMode: ViewMode;
 }
 
-interface UseViewportGesturesResult extends Pick<
+/** The zoom state the gestures pass on from useViewportZoom. */
+type ViewportZoomGestureState = Pick<
   UseViewportZoomResult,
   "activePan" | "activeZoom" | "isPannable" | "isPanning"
-> {
+>;
+
+interface UseViewportGesturesResult extends ViewportZoomGestureState {
   isDragging: boolean;
   viewportProps: DOMAttributes<HTMLDivElement>;
 }
@@ -145,6 +149,7 @@ export const useViewportGestures = ({
   const isKeyboardEnabled = gestures?.keyboard?.enabled ?? true;
   const isKeyboardGlobal = gestures?.keyboard?.scope === "global";
   const isSwipeEnabled = gestures?.swipe?.enabled ?? true;
+
   const touchStateRef = useRef<{
     startX: number;
     startY: number;
@@ -158,7 +163,9 @@ export const useViewportGestures = ({
     startX: 0,
     startY: 0,
   });
+
   const [isDragging, setIsDragging] = useState(false);
+
   const {
     activePan,
     activeZoom,
@@ -190,6 +197,7 @@ export const useViewportGestures = ({
         } else {
           goToPrev();
         }
+
         return;
       }
 
@@ -209,6 +217,7 @@ export const useViewportGestures = ({
 
     const onKeyDown = (event: KeyboardEvent): void => {
       const direction = getHorizontalDirection(event.key);
+
       if (direction === undefined || isInteractiveTarget(event.target)) {
         return;
       }
@@ -218,6 +227,7 @@ export const useViewportGestures = ({
     };
 
     window.addEventListener("keydown", onKeyDown);
+
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
@@ -234,16 +244,19 @@ export const useViewportGestures = ({
       if (beginPinch(touches)) {
         touchStateRef.current.active = false;
         setIsDragging(false);
+
         return;
       }
 
       const touch = getFirstTouch(touches);
+
       if (touch === null) {
         return;
       }
 
       if (isPannable) {
         beginPan("touch", touch.clientX, touch.clientY);
+
         return;
       }
 
@@ -272,7 +285,9 @@ export const useViewportGestures = ({
       if (movePinch(touches)) {
         return;
       }
+
       const touch = getFirstTouch(touches);
+
       if (touch === null) {
         return;
       }
@@ -280,15 +295,18 @@ export const useViewportGestures = ({
       if (movePan("touch", touch.clientX, touch.clientY)) {
         return;
       }
+
       if (!touchStateRef.current.active) {
         return;
       }
 
       touchStateRef.current.currentX = touch.clientX;
       touchStateRef.current.currentY = touch.clientY;
+
       if (isSwipeEnabled && usesPageRail) {
         const offset =
           touchStateRef.current.currentX - touchStateRef.current.startX;
+
         const containerWidth = containerRef.current?.clientWidth ?? 0;
         setDragOffset(
           containerWidth === 0
@@ -311,30 +329,39 @@ export const useViewportGestures = ({
     (changedTouches?: TouchInput): void => {
       if (isPinching()) {
         endPinch();
+
         return;
       }
+
       const changedTouch =
         changedTouches === undefined ? null : getFirstTouch(changedTouches);
+
       if (isTouchPanning()) {
         const wasPanned = didPanRef.current;
         endPan("touch");
+
         if (!wasPanned && changedTouch !== null) {
           registerTap(changedTouch.clientX, changedTouch.clientY);
         }
+
         return;
       }
+
       if (!touchStateRef.current.active) {
         if (!didPanRef.current && changedTouch !== null) {
           registerTap(changedTouch.clientX, changedTouch.clientY);
         }
+
         return;
       }
 
       const containerWidth = containerRef.current?.clientWidth ?? 0;
+
       const threshold = Math.max(
         MIN_SWIPE_THRESHOLD_PX,
         containerWidth * SWIPE_THRESHOLD_RATIO
       );
+
       const deltaX =
         touchStateRef.current.currentX - touchStateRef.current.startX;
 
@@ -347,15 +374,19 @@ export const useViewportGestures = ({
           changedTouch?.clientX ?? touchStateRef.current.currentX,
           changedTouch?.clientY ?? touchStateRef.current.currentY
         );
+
         return;
       }
+
       // A swipe disabled mid-drag would otherwise leave the rail displaced.
       if (!isSwipeEnabled) {
         setDragOffset(0);
+
         return;
       }
 
       const direction = deltaX > 0 ? "left" : "right";
+
       // The target index is only a boundary probe: a swipe past the first or
       // last spread has to snap the rail back instead of leaving it dragged.
       // Navigation itself stays with the viewer context so that a swipe and an
@@ -373,6 +404,7 @@ export const useViewportGestures = ({
 
       if (targetIndex === undefined) {
         setDragOffset(0);
+
         return;
       }
 
@@ -402,12 +434,16 @@ export const useViewportGestures = ({
   const cancelTouch = useCallback((): void => {
     if (isPinching()) {
       endPinch();
+
       return;
     }
+
     if (isTouchPanning()) {
       endPan("touch");
+
       return;
     }
+
     if (!touchStateRef.current.active) {
       return;
     }
@@ -420,6 +456,7 @@ export const useViewportGestures = ({
   const handleViewportClick = (event: MouseEvent<HTMLDivElement>): void => {
     if (didPanRef.current) {
       didPanRef.current = false;
+
       return;
     }
 
@@ -428,6 +465,7 @@ export const useViewportGestures = ({
     if (isInteractiveTarget(event.target)) {
       return;
     }
+
     const rect = event.currentTarget.getBoundingClientRect();
     const offsetX = event.clientX - rect.left;
     const edgeWidth = rect.width * edgeClickRatio;
@@ -440,6 +478,7 @@ export const useViewportGestures = ({
       (offsetX > edgeWidth && offsetX < rect.width - edgeWidth)
     ) {
       toggleControls();
+
       return;
     }
 
@@ -455,10 +494,12 @@ export const useViewportGestures = ({
       event.preventDefault();
       event.stopPropagation();
       toggleControls();
+
       return;
     }
 
     const direction = getHorizontalDirection(event.key);
+
     if (!isKeyboardEnabled || direction === undefined) {
       return;
     }
@@ -504,14 +545,17 @@ export const useViewportGestures = ({
     onTouchEnd: (event) => {
       event.stopPropagation();
       endTouch(event.changedTouches);
+
       if (didPanRef.current && event.cancelable) {
         event.preventDefault();
       }
+
       didPanRef.current = false;
     },
     onTouchMove: (event) => {
       event.stopPropagation();
       moveTouch(event.touches);
+
       if (isPinching() && event.cancelable) {
         event.preventDefault();
       }

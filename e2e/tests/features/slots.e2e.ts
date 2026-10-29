@@ -1,18 +1,25 @@
 import { expect, test } from "@playwright/test";
 
-import { turnThroughScreens, turnToNextScreen } from "#helpers/reader";
+import {
+  expectPageCount,
+  expectViewMode,
+  turnThroughScreens,
+  turnToNextScreen,
+} from "#helpers/reader";
 import {
   currentPageSet,
   endSlotPage,
+  pageStatus,
   startSlotPage,
-  viewport,
 } from "#helpers/selectors";
+
+const slotsDemo = "/features/slots";
 
 test("turns through the start pages without counting them as pages", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/features/slots");
+  await page.goto(slotsDemo);
 
   await expect(
     page.getByRole("heading", { name: "Pages around the chapter" })
@@ -22,19 +29,14 @@ test("turns through the start pages without counting them as pages", async ({
   await expect(page.locator(`${currentPageSet} ${startSlotPage}`)).toHaveCount(
     2
   );
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "2"
-  );
+  await expectPageCount(page, 2);
   await expect(
     page.locator(`${currentPageSet} ${startSlotPage}[data-slot-page="2"]`)
   ).toBeVisible();
   // An extra page is turned to like any other, yet the numbering the reader
   // sees stays the numbering of the document, so the status names the places
   // they take in their slot rather than giving them page numbers.
-  await expect(page.locator(".pcv-page-status")).toHaveText(
-    "Start pages 1-2 of 2"
-  );
+  await expect(page.locator(pageStatus)).toHaveText("Start pages 1-2 of 2");
 
   await turnToNextScreen(page, "Pages 1-2 of 7");
   await expect(page.locator(`${currentPageSet} ${startSlotPage}`)).toHaveCount(
@@ -46,7 +48,7 @@ test("pairs the first end page with the last page of an odd chapter", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 1280 });
-  await page.goto("/features/slots");
+  await page.goto(slotsDemo);
 
   await turnThroughScreens(page, [
     "Pages 1-2 of 7",
@@ -57,13 +59,9 @@ test("pairs the first end page with the last page of an odd chapter", async ({
 
   // The last page has no facing page of its own, so the first end page takes
   // the half of the spread next to it without being counted in the status.
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "2"
-  );
+  await expectPageCount(page, 2);
   await expect(page.locator(`${currentPageSet} ${endSlotPage}`)).toBeVisible();
-  await expect(page.locator(`${currentPageSet} canvas`)).toHaveAttribute(
-    "aria-label",
+  await expect(page.locator(`${currentPageSet} canvas`)).toHaveAccessibleName(
     "Page 7"
   );
   // The viewport is a region rather than a button, so the link the end page
@@ -77,10 +75,7 @@ test("pairs the first end page with the last page of an odd chapter", async ({
   // The end page that follows opens a spread of its own, and is the last
   // screen the reader can reach.
   await turnToNextScreen(page, "End page 2 of 2");
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "1"
-  );
+  await expectPageCount(page, 1);
   await expect(
     page.locator(`${currentPageSet} ${endSlotPage}`)
   ).toHaveAttribute("data-slot-page", "2");
@@ -91,15 +86,10 @@ test("leaves a control on a slot page out of the page-turn edge", async ({
   page,
 }) => {
   await page.setViewportSize({ height: 900, width: 600 });
-  await page.goto("/features/slots");
+  await page.goto(slotsDemo);
 
-  await expect(page.locator(viewport)).toHaveAttribute(
-    "data-view-mode",
-    "single"
-  );
-  await expect(page.locator(".pcv-page-status")).toHaveText(
-    "Start page 1 of 2"
-  );
+  await expectViewMode(page, "single");
+  await expect(page.locator(pageStatus)).toHaveText("Start page 1 of 2");
 
   const startPage = page.locator(`${currentPageSet} ${startSlotPage}`);
 
@@ -110,7 +100,5 @@ test("leaves a control on a slot page out of the page-turn edge", async ({
     .click({ position: { x: 4, y: 4 } });
 
   await expect(startPage.getByText("Early access comes with")).toBeVisible();
-  await expect(page.locator(".pcv-page-status")).toHaveText(
-    "Start page 1 of 2"
-  );
+  await expect(page.locator(pageStatus)).toHaveText("Start page 1 of 2");
 });

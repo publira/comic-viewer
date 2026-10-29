@@ -80,6 +80,7 @@ interface SettingsComicViewerProps {
 export const SettingsComicViewer = ({ pages }: SettingsComicViewerProps) => {
   const [readingDirection, setReadingDirection] =
     useState<ReadingDirection>("rtl");
+
   const [viewMode, setViewMode] = useState<ViewMode>("double");
   const [pageFitMode, setPageFitMode] = useState<PageFitMode>("height");
 

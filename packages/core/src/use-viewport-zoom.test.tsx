@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useViewportZoom } from "./use-viewport-zoom";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
 import { Viewport } from "./viewport";
+import { CurrentIndexIndicator } from "./viewport-test-components";
 import {
-  CurrentIndexIndicator,
   MockResizeObserver,
   pages,
   setViewportRect,
@@ -86,7 +86,9 @@ describe(useViewportZoom, () => {
         <Viewport />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
+
     const pageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -137,7 +139,9 @@ describe(useViewportZoom, () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
+
     const pageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -175,7 +179,9 @@ describe(useViewportZoom, () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
+
     const pageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -229,7 +235,9 @@ describe(useViewportZoom, () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
+
     const pageSet = container.querySelector<HTMLDivElement>(
       '.pcv-viewport-page-set[data-rail-slot="current"]'
     );
@@ -269,7 +277,9 @@ const renderZoomableViewport = () => {
       <CurrentIndexIndicator />
     </ViewerProvider>
   );
+
   const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
+
   const pageSet = container.querySelector<HTMLDivElement>(
     '.pcv-viewport-page-set[data-rail-slot="current"]'
   );
@@ -350,6 +360,7 @@ describe("zoom scale on the viewer context", () => {
         <Viewport gestures={{ doubleTap: { enabled: false } }} />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector<HTMLDivElement>(".pcv-viewport");
 
     if (viewport === null) {
@@ -408,6 +419,7 @@ describe("setZoomScale on the viewer context", () => {
   it("keeps the point under the focal point where it is", () => {
     const { pageSet, viewport } = renderZoomableViewport();
     setViewportRect(viewport);
+
     const zoomInOnRightHalf = screen.getByRole("button", {
       name: "Zoom in on the right half",
     });

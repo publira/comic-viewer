@@ -48,6 +48,7 @@ describe(Toolbar, () => {
         <Toolbar />
       </ViewerProvider>
     );
+
     toggleControls();
 
     const slider = screen.getByRole("slider", { name: "Reading progress" });
@@ -84,6 +85,7 @@ describe(Toolbar, () => {
           <Toolbar />
         </ViewerProvider>
       );
+
       const toolbar = getToolbar(container);
 
       toggleControls();
@@ -116,10 +118,12 @@ describe(Toolbar, () => {
           <PageNavigation />
         </ViewerProvider>
       );
+
       const controls = [
         getToolbar(container),
         getByClassName(container, "pcv-page-navigation"),
       ];
+
       const expectHidden = (hidden: boolean): void => {
         for (const control of controls) {
           expect(control).toHaveAttribute("aria-hidden", String(hidden));
@@ -148,6 +152,7 @@ describe(Toolbar, () => {
           <Toolbar />
         </ViewerProvider>
       );
+
       const toolbar = getToolbar(container);
 
       toggleControls();
@@ -169,6 +174,7 @@ describe(Toolbar, () => {
         <Toolbar />
       </ViewerProvider>
     );
+
     const toolbar = getToolbar(container);
 
     expect(toolbar).toHaveAttribute("dir", "rtl");
@@ -185,6 +191,7 @@ describe(Toolbar, () => {
           <Toolbar />
         </ViewerProvider>
       );
+
       const toolbar = getToolbar(container);
 
       toggleControls();
@@ -207,6 +214,7 @@ describe(Toolbar, () => {
           <Toolbar />
         </ViewerProvider>
       );
+
       const toolbar = getToolbar(container);
 
       toggleControls();
@@ -236,6 +244,7 @@ describe(Toolbar, () => {
           </Toolbar>
         </ViewerProvider>
       );
+
       const toolbar = getToolbar(container);
 
       toggleControls();

@@ -29,6 +29,7 @@ export const GesturesComicViewer = ({ pages }: GesturesComicViewerProps) => {
     keyboard: true,
     swipe: true,
   });
+
   const [isKeyboardGlobal, setIsKeyboardGlobal] = useState(false);
 
   return (

@@ -11,17 +11,21 @@ const encryptionKey = new Uint8Array([
   45, 128, 94, 16, 201, 73, 5, 164, 220, 39, 177, 8, 93, 251, 14, 66, 57, 186,
   109, 34, 240, 12, 154, 80, 28, 198, 71, 115, 9, 166, 42, 203,
 ]);
+
 const initializationVectorLength = 12;
 
 const decryptPage = async (
   encryptedBuffer: ArrayBuffer
 ): Promise<ArrayBuffer> => {
   const encryptedPage = new Uint8Array(encryptedBuffer);
+
   const initializationVector = encryptedPage.slice(
     0,
     initializationVectorLength
   );
+
   const encryptedData = encryptedPage.slice(initializationVectorLength);
+
   const key = await crypto.subtle.importKey(
     "raw",
     encryptionKey,

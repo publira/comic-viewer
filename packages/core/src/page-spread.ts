@@ -32,6 +32,7 @@ export const getPageSetOffset = (
   }
 
   let offset = 0;
+
   for (let page = spreadStartIndex; page < index; page += 1) {
     // A spread that lands mid-sheet costs the blank half before it as well.
     offset += isSpreadPage(page, pages) ? 2 + (offset % 2) : 1;

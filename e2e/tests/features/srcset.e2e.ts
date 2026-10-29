@@ -1,19 +1,27 @@
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Page, Request } from "@playwright/test";
 
-import { currentPageSet, viewport } from "#helpers/selectors";
+import { expectPageLoaded, expectViewMode } from "#helpers/reader";
+import { currentPageSet } from "#helpers/selectors";
+
+const srcsetDemo = "/features/srcset";
 
 const phone = { height: 844, width: 390 };
 const desktop = { height: 900, width: 1280 };
+
+/** The rendition of page 1 a request asks for, if it asks for one. */
+const getFirstPageRendition = (request: Request): string | undefined =>
+  /^\/srcset-pages\/page-1-(?<width>\d+w)\.jpg$/u.exec(
+    new URL(request.url()).pathname
+  )?.groups?.width;
 
 /** Records the rendition of page 1 the reader requests each time it asks. */
 const recordFirstPageRequests = (page: Page): string[] => {
   const renditions: string[] = [];
 
   page.on("request", (request) => {
-    const rendition = /^\/srcset-pages\/page-1-(?<width>\d+w)\.jpg$/u.exec(
-      new URL(request.url()).pathname
-    )?.groups?.width;
+    const rendition = getFirstPageRendition(request);
+
     if (rendition !== undefined) {
       renditions.push(rendition);
     }
@@ -28,9 +36,9 @@ const firstPage = (page: Page) =>
 test("fetches the smallest rendition on a phone", async ({ page }) => {
   const renditions = recordFirstPageRequests(page);
   await page.setViewportSize(phone);
-  await page.goto("/features/srcset");
+  await page.goto(srcsetDemo);
 
-  await expect(firstPage(page)).toHaveAttribute("data-page-status", "loaded");
+  await expectPageLoaded(firstPage(page));
   // A phone draws the page narrower than 400 pixels.
   expect(renditions).toEqual(["400w"]);
 });
@@ -38,9 +46,9 @@ test("fetches the smallest rendition on a phone", async ({ page }) => {
 test("fetches the middle rendition on a desktop display", async ({ page }) => {
   const renditions = recordFirstPageRequests(page);
   await page.setViewportSize(desktop);
-  await page.goto("/features/srcset");
+  await page.goto(srcsetDemo);
 
-  await expect(firstPage(page)).toHaveAttribute("data-page-status", "loaded");
+  await expectPageLoaded(firstPage(page));
   expect(renditions).toEqual(["800w"]);
 });
 
@@ -50,9 +58,9 @@ test.describe("on a high-density display", () => {
   test("fetches the largest rendition", async ({ page }) => {
     const renditions = recordFirstPageRequests(page);
     await page.setViewportSize(desktop);
-    await page.goto("/features/srcset");
+    await page.goto(srcsetDemo);
 
-    await expect(firstPage(page)).toHaveAttribute("data-page-status", "loaded");
+    await expectPageLoaded(firstPage(page));
     expect(renditions).toEqual(["1600w"]);
   });
 });
@@ -62,33 +70,39 @@ test("upgrades the rendition as the viewport grows and keeps it as it shrinks", 
 }) => {
   const renditions = recordFirstPageRequests(page);
   await page.setViewportSize(phone);
-  await page.goto("/features/srcset");
+  await page.goto(srcsetDemo);
 
-  await expect(firstPage(page)).toHaveAttribute("data-page-status", "loaded");
+  await expectPageLoaded(firstPage(page));
   expect(renditions).toEqual(["400w"]);
 
   await page.setViewportSize(desktop);
 
   await expect.poll(() => renditions).toEqual(["400w", "800w"]);
   // The page stays drawn while the larger rendition replaces the smaller one.
-  await expect(firstPage(page)).toHaveAttribute("data-page-status", "loaded");
+  await expectPageLoaded(firstPage(page));
 
   await page.setViewportSize(phone);
-  await expect(page.locator(viewport)).toHaveAttribute(
-    "data-view-mode",
-    "single"
-  );
-  // Leave the loader time to start a request it should not make.
-  await page.waitForTimeout(500);
-
-  // A page that holds a larger image keeps it rather than fetching a smaller one.
+  await expectViewMode(page, "single");
+  // A page that holds a larger image keeps it rather than fetching a smaller
+  // one, so no request for the page goes out after the resize.
+  await expect(
+    page.waitForRequest(
+      (request) => getFirstPageRendition(request) !== undefined,
+      { timeout: 500 }
+    )
+  ).rejects.toThrow();
   expect(renditions).toEqual(["400w", "800w"]);
-  await expect(firstPage(page)).toHaveAttribute("data-page-status", "loaded");
+  await expectPageLoaded(firstPage(page));
 });
 
 interface Decode {
   resizeWidth?: number;
   width: number;
+}
+
+declare global {
+  /** The decodes recordDecodes has seen in the page. */
+  var decodes: Decode[] | undefined;
 }
 
 /** Records the width every image is decoded at, and the width asked for. */
@@ -106,16 +120,14 @@ const recordDecodes = async (page: Page): Promise<() => Promise<Decode[]>> => {
           resizeWidth: options?.resizeWidth,
           width: bitmap.width,
         });
+
         return bitmap;
       },
       decodes,
     });
   });
 
-  return () =>
-    page.evaluate(
-      () => (globalThis as unknown as { decodes: Decode[] }).decodes
-    );
+  return () => page.evaluate(() => globalThis.decodes ?? []);
 };
 
 const drawnWidth = (page: Page) =>
@@ -126,9 +138,9 @@ test("decodes a rendition no wider than the page is drawn", async ({
 }) => {
   const readDecodes = await recordDecodes(page);
   await page.setViewportSize(phone);
-  await page.goto("/features/srcset");
+  await page.goto(srcsetDemo);
 
-  await expect(firstPage(page)).toHaveAttribute("data-page-status", "loaded");
+  await expectPageLoaded(firstPage(page));
   const width = Math.ceil(await drawnWidth(page));
   const decodes = await readDecodes();
 
@@ -144,9 +156,9 @@ test("decodes a page wider without a new request as it widens", async ({
   const renditions = recordFirstPageRequests(page);
   const readDecodes = await recordDecodes(page);
   await page.setViewportSize(phone);
-  await page.goto("/features/srcset");
+  await page.goto(srcsetDemo);
 
-  await expect(firstPage(page)).toHaveAttribute("data-page-status", "loaded");
+  await expectPageLoaded(firstPage(page));
   const narrowWidth = Math.ceil(await drawnWidth(page));
 
   // Still narrower than the 400w rendition, so no other one is selected.
@@ -158,9 +170,10 @@ test("decodes a page wider without a new request as it widens", async ({
   await expect
     .poll(async () => {
       const decodes = await readDecodes();
+
       return decodes.map((decode) => decode.width);
     })
     .toContain(wideWidth);
   expect(renditions).toEqual(["400w"]);
-  await expect(firstPage(page)).toHaveAttribute("data-page-status", "loaded");
+  await expectPageLoaded(firstPage(page));
 });

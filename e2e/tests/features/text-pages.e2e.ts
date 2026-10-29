@@ -7,7 +7,12 @@ import {
   revealReaderControl,
   turnToNextScreen,
 } from "#helpers/reader";
-import { currentPageSet, viewport } from "#helpers/selectors";
+import { currentPageSet, pageStatus, viewport } from "#helpers/selectors";
+
+const lastSpread = "Pages 3-4 of 4";
+const characterNotes = "Character notes";
+
+const textPagesDemo = "/features/text-pages";
 
 type TouchType = "touchStart" | "touchMove" | "touchEnd";
 
@@ -49,7 +54,7 @@ test("draws pages without an image and loads none", async ({ page }) => {
     }
   });
 
-  await openShortenedReader(page, "/features/text-pages");
+  await openShortenedReader(page, textPagesDemo);
 
   const textPages = page.locator(`${currentPageSet} article`);
 
@@ -61,17 +66,17 @@ test("draws pages without an image and loads none", async ({ page }) => {
   await expectPageOnHalf(page, textPages.first(), "left");
   await expectPageOnHalf(page, textPages.last(), "right");
 
-  await turnToNextScreen(page, "Pages 3-4 of 4");
-  await expect(textPages.first()).toHaveAccessibleName("Character notes");
+  await turnToNextScreen(page, lastSpread);
+  await expect(textPages.first()).toHaveAccessibleName(characterNotes);
   await expect(textPages.last()).toHaveAccessibleName("Credits");
   expect(imageRequests).toEqual([]);
 });
 
 test("shows one text page at a time on a phone", async ({ page }) => {
   await page.setViewportSize({ height: 844, width: 390 });
-  await page.goto("/features/text-pages");
+  await page.goto(textPagesDemo);
 
-  await expect(page.locator(".pcv-page-status")).toHaveText("Page 1 of 4");
+  await expect(page.locator(pageStatus)).toHaveText("Page 1 of 4");
   await expect(page.locator(`${currentPageSet} article`)).toHaveAccessibleName(
     "Afterword, page 1"
   );
@@ -83,7 +88,7 @@ test("shows one text page at a time on a phone", async ({ page }) => {
 });
 
 test("slides the text pages onto the next spread", async ({ page }) => {
-  await openShortenedReader(page, "/features/text-pages");
+  await openShortenedReader(page, textPagesDemo);
 
   // The rail holds the next spread beside the one on screen, as it does for
   // image pages.
@@ -92,6 +97,7 @@ test("slides the text pages onto the next spread", async ({ page }) => {
   ).toHaveCount(2);
 
   const nextPageButton = await revealReaderControl(page, "Next page");
+
   // The track is sampled on every frame of the turn: a slide passes through
   // positions between the two spreads, where a jump would show none.
   const trackPositions = page.locator(viewport).evaluate(
@@ -102,14 +108,17 @@ test("slides the text pages onto the next spread", async ({ page }) => {
         const positions: number[] = [];
         const startedAt = performance.now();
         let hasTurned = false;
+
         const sample = () => {
           if (track !== null) {
             positions.push(
               new DOMMatrix(getComputedStyle(track).transform).m41
             );
           }
+
           const state = element.dataset.transitionState;
           hasTurned ||= state === "active";
+
           if (
             (hasTurned && state === "idle") ||
             performance.now() - startedAt > 3000
@@ -125,11 +134,12 @@ test("slides the text pages onto the next spread", async ({ page }) => {
   );
 
   await nextPageButton.click();
-  await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 4");
+  await expect(page.locator(pageStatus)).toHaveText(lastSpread);
 
   const positions = await trackPositions;
   const [restingPosition] = positions;
   const settledPosition = positions.at(-1) ?? restingPosition;
+
   // The track comes back to rest once the turn is over, so the positions
   // between the two ends are the ones a slide passes through.
   const travelledPositions = positions.filter(
@@ -141,7 +151,7 @@ test("slides the text pages onto the next spread", async ({ page }) => {
   expect(travelledPositions.length).toBeGreaterThan(1);
   await expect(
     page.locator(`${currentPageSet} article`).first()
-  ).toHaveAccessibleName("Character notes");
+  ).toHaveAccessibleName(characterNotes);
 });
 
 test.describe("on a touchscreen", () => {
@@ -150,7 +160,7 @@ test.describe("on a touchscreen", () => {
   test("lets a text page follow the finger during a swipe", async ({
     page,
   }) => {
-    await openShortenedReader(page, "/features/text-pages");
+    await openShortenedReader(page, textPagesDemo);
 
     const firstPage = page.locator(`${currentPageSet} article`).first();
     const restingBox = await firstPage.boundingBox();
@@ -174,7 +184,7 @@ test.describe("on a touchscreen", () => {
 
     await touch("touchEnd");
 
-    await expect(page.locator(".pcv-page-status")).toHaveText("Pages 3-4 of 4");
-    await expect(firstPage).toHaveAccessibleName("Character notes");
+    await expect(page.locator(pageStatus)).toHaveText(lastSpread);
+    await expect(firstPage).toHaveAccessibleName(characterNotes);
   });
 });
