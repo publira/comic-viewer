@@ -4,6 +4,8 @@
 
 This repository is a monorepo configured with Turborepo and managed via `pnpm`.
 
+The root `package.json` pins the toolchain: Node.js through `devEngines.runtime` (with `onFail: "download"`, pnpm downloads that version when the active one differs) and pnpm through `packageManager`. The workflows read both from there, so change these versions in `package.json` only.
+
 ### Directory Structure
 
 - `apps/`: Applications directory
