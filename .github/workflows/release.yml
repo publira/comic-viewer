@@ -21,27 +21,32 @@ jobs:
       issues: write
       pull-requests: write
     steps:
-      - id: release
+      - name: Release / Run release-please
+        id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      - if: ${{ steps.release.outputs['packages/core--release_created'] == 'true' }}
+      - name: Setup / Checkout
+        if: ${{ steps.release.outputs['packages/core--release_created'] == 'true' }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # pnpm comes from `packageManager` and Node.js from `devEngines.runtime`,
       # and the step installs the dependencies itself.
-      - if: ${{ steps.release.outputs['packages/core--release_created'] == 'true' }}
+      - name: Setup / pnpm
+        if: ${{ steps.release.outputs['packages/core--release_created'] == 'true' }}
         uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
           cache: true
           require-lockfile: true
 
-      - if: ${{ steps.release.outputs['packages/core--release_created'] == 'true' }}
-        name: Build package
+      - name: Build / Package
+        if: ${{ steps.release.outputs['packages/core--release_created'] == 'true' }}
         run: pnpm --filter @publira/comic-viewer build
 
-      - if: ${{ steps.release.outputs['packages/core--release_created'] == 'true' }}
-        name: Publish package
+      - name: Release / Publish package
+        if: ${{ steps.release.outputs['packages/core--release_created'] == 'true' }}
         run: pnpm --filter @publira/comic-viewer publish --access public --no-git-checks
