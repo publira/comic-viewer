@@ -3,16 +3,12 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useReducer,
   useRef,
-  useState,
 } from "react";
-import type {
-  Dispatch,
-  RefObject,
-  SetStateAction,
-  TransitionEvent as ReactTransitionEvent,
-} from "react";
+import type { RefObject, TransitionEvent as ReactTransitionEvent } from "react";
 
+import { isAvailable } from "./browser-api";
 import { getPageRequirement } from "./page-image-request";
 import type { PageLoadError } from "./page-load";
 import { runPageChangeHooks } from "./plugin";
@@ -44,6 +40,95 @@ interface PageTurnTransition {
   phase: "waiting" | "prepared" | "active";
   toIndex: number;
 }
+
+/** The spread the rail rests on, how far it is dragged, and the turn in progress. */
+interface RailState {
+  displayedIndex: number;
+  dragOffset: number;
+  transition: PageTurnTransition | null;
+}
+
+type RailAction =
+  /** Follows a drag or a swipe, or returns the rail to rest at `0`. */
+  | { offset: number; type: "drag" }
+  /** Puts the rail on a spread at once, without a turn. */
+  | { index: number; offset: number; type: "place" }
+  /** Starts a turn, unless one is already running. */
+  | { transition: PageTurnTransition; type: "start" }
+  /** Lets a turn that waited for its images go ahead. */
+  | { id: number; type: "prepare" }
+  /** Slides the rail from where it was dragged to the spread it turns to. */
+  | { id: number; type: "activate" }
+  /** Rests the rail on the spread a turn reached. */
+  | { id: number; toIndex: number; type: "finish" };
+
+const updateTransition = (
+  state: RailState,
+  id: number,
+  transition: PageTurnTransition | null
+): PageTurnTransition | null =>
+  state.transition?.id === id ? transition : state.transition;
+
+const reduceRail = (state: RailState, action: RailAction): RailState => {
+  switch (action.type) {
+    case "drag": {
+      return { ...state, dragOffset: action.offset };
+    }
+
+    case "place": {
+      return {
+        displayedIndex: action.index,
+        dragOffset: action.offset,
+        transition: null,
+      };
+    }
+
+    case "start": {
+      return state.transition === null
+        ? { ...state, transition: action.transition }
+        : state;
+    }
+
+    case "prepare": {
+      return {
+        ...state,
+        transition:
+          state.transition === null
+            ? null
+            : updateTransition(state, action.id, {
+                ...state.transition,
+                phase: "prepared",
+              }),
+      };
+    }
+
+    case "activate": {
+      return {
+        ...state,
+        dragOffset: 0,
+        transition:
+          state.transition === null
+            ? null
+            : updateTransition(state, action.id, {
+                ...state.transition,
+                phase: "active",
+              }),
+      };
+    }
+
+    case "finish": {
+      return {
+        ...state,
+        displayedIndex: action.toIndex,
+        transition: updateTransition(state, action.id, null),
+      };
+    }
+
+    default: {
+      return state;
+    }
+  }
+};
 
 interface UsePageTurnOptions<TPage extends ViewerPage> {
   /** The element the width of one spread of the rail is measured from. */
@@ -82,7 +167,7 @@ interface UsePageTurnResult<TPage extends ViewerPage> {
   pageLoadStates: ReadonlyMap<string, PageLoadEntry<TPage>>;
   railSpreadIndices: (number | undefined)[];
   retryPage: (index: number) => void;
-  setDragOffset: Dispatch<SetStateAction<number>>;
+  setDragOffset: (offset: number) => void;
   slideDirection: PageTurnDirection | undefined;
   transitionState: "idle" | PageTurnTransition["phase"];
 }
@@ -117,16 +202,27 @@ export const usePageTurn = <TPage extends ViewerPage>({
   const isScrubbing = scrubSpread !== null && usesPageRail;
   const scrubIndex = scrubSpread?.index;
   const scrubFraction = scrubSpread?.fraction ?? 0;
+
   // A viewport without the rail has nothing to drag, so it shows the spread
   // nearest the scrub instead.
   const targetIndex =
     !usesPageRail && scrubSpread !== null
       ? scrubSpread.nearestIndex
       : currentIndex;
-  const [pageTurnTransition, setPageTurnTransition] =
-    useState<PageTurnTransition | null>(null);
-  const [displayedIndex, setDisplayedIndex] = useState(currentIndex);
-  const [dragOffset, setDragOffset] = useState(0);
+
+  const [
+    { displayedIndex, dragOffset, transition: pageTurnTransition },
+    dispatchRail,
+  ] = useReducer(reduceRail, {
+    displayedIndex: currentIndex,
+    dragOffset: 0,
+    transition: null,
+  });
+
+  const setDragOffset = useCallback((offset: number) => {
+    dispatchRail({ offset, type: "drag" });
+  }, []);
+
   const {
     cachedIndices,
     orderedIndices,
@@ -145,7 +241,9 @@ export const usePageTurn = <TPage extends ViewerPage>({
     usesPageRail,
     viewMode,
   });
+
   const viewportSize = useViewportSize(containerRef);
+
   // The rail and the preload window share one measure, so a turn onto a
   // preloaded spread draws the image already fetched for it.
   const getRequirement = useMemo(
@@ -162,6 +260,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
             ),
     [pageFitMode, pages, viewMode, viewportSize]
   );
+
   const {
     images: pageImages,
     loadStates: pageLoadStates,
@@ -176,6 +275,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
     preloadIndices,
     shouldLoadImages: usesManagedImageLoading,
   });
+
   const isIncomingPageSetReady =
     pageTurnTransition !== null &&
     getVisibleIndices(
@@ -192,6 +292,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
       }
 
       const page = pages[index];
+
       return page !== undefined && pageImages.has(getPageImageKey(index, page));
     });
 
@@ -204,16 +305,13 @@ export const usePageTurn = <TPage extends ViewerPage>({
     }
 
     const width = containerRef.current?.clientWidth ?? 0;
+
     const offset =
       (readingDirection === "rtl" ? 1 : -1) * scrubFraction * width;
 
     endsScrubRef.current = true;
-    // oxlint-disable-next-line react/set-state-in-effect -- A scrub takes the rail over from a running transition before the next paint.
-    setPageTurnTransition(null);
-    // oxlint-disable-next-line react/set-state-in-effect -- The rail follows the scrub before the next paint.
-    setDisplayedIndex(scrubIndex);
-    // oxlint-disable-next-line react/set-state-in-effect -- The rail follows the scrub before the next paint.
-    setDragOffset(offset);
+    // A scrub takes the rail over from a running transition before the next paint.
+    dispatchRail({ index: scrubIndex, offset, type: "place" });
   }, [containerRef, isScrubbing, readingDirection, scrubFraction, scrubIndex]);
 
   useLayoutEffect(() => {
@@ -223,6 +321,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
 
     const endsScrub = endsScrubRef.current;
     endsScrubRef.current = false;
+
     const movesWithoutAnimation =
       !usesPageRail ||
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -232,16 +331,18 @@ export const usePageTurn = <TPage extends ViewerPage>({
       // the one it had passed.
       if (endsScrub && !movesWithoutAnimation) {
         transitionIdRef.current += 1;
-        // oxlint-disable-next-line react/set-state-in-effect -- The rail leaves the position a scrub was released at before the next paint.
-        setPageTurnTransition({
-          id: transitionIdRef.current,
-          phase: "prepared",
-          toIndex: targetIndex,
+        dispatchRail({
+          transition: {
+            id: transitionIdRef.current,
+            phase: "prepared",
+            toIndex: targetIndex,
+          },
+          type: "start",
         });
       } else if (endsScrub) {
-        // oxlint-disable-next-line react/set-state-in-effect -- The rail leaves the position a scrub was released at before the next paint.
-        setDragOffset(0);
+        dispatchRail({ offset: 0, type: "drag" });
       }
+
       return;
     }
 
@@ -252,6 +353,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
       viewMode,
       pages
     );
+
     const nextIndex = getNextSpreadIndex(
       displayedIndex,
       maxIndex,
@@ -259,31 +361,33 @@ export const usePageTurn = <TPage extends ViewerPage>({
       viewMode,
       pages
     );
+
     const isAdjacent =
       targetIndex === previousIndex || targetIndex === nextIndex;
 
+    // A non-adjacent change cannot use the three-spread rail, so it puts the
+    // rail on the spread at rest before the next paint.
     if (movesWithoutAnimation || !isAdjacent) {
-      // oxlint-disable-next-line react/set-state-in-effect -- Canceling a running transition must happen before the next paint.
-      setPageTurnTransition(null);
-      // oxlint-disable-next-line react/set-state-in-effect -- A transition that cannot run must restore the rail to its resting position before paint.
-      setDragOffset(0);
-      // oxlint-disable-next-line react/set-state-in-effect -- A non-adjacent programmatic change cannot use the three-spread rail.
-      setDisplayedIndex(targetIndex);
+      dispatchRail({ index: targetIndex, offset: 0, type: "place" });
+
       return;
     }
 
     transitionIdRef.current += 1;
-    setPageTurnTransition({
-      direction: getPageTurnDirection(
-        displayedIndex,
-        targetIndex,
-        readingDirection
-      ),
-      id: transitionIdRef.current,
-      // A scrub already shows the spread it was released towards, placeholder
-      // and all, so the rest of the turn does not stop to wait for its images.
-      phase: usesManagedImageLoading && !endsScrub ? "waiting" : "prepared",
-      toIndex: targetIndex,
+    dispatchRail({
+      transition: {
+        direction: getPageTurnDirection(
+          displayedIndex,
+          targetIndex,
+          readingDirection
+        ),
+        id: transitionIdRef.current,
+        // A scrub already shows the spread it was released towards, placeholder
+        // and all, so the rest of the turn does not stop to wait for its images.
+        phase: usesManagedImageLoading && !endsScrub ? "waiting" : "prepared",
+        toIndex: targetIndex,
+      },
+      type: "start",
     });
   }, [
     displayedIndex,
@@ -304,11 +408,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
     if (pageTurnTransition?.phase === "waiting") {
       if (!isIncomingPageSetReady) {
         const waitTimeout = setTimeout(() => {
-          setPageTurnTransition((transition) =>
-            transition?.id === pageTurnTransition.id
-              ? { ...transition, phase: "prepared" }
-              : transition
-          );
+          dispatchRail({ id: pageTurnTransition.id, type: "prepare" });
         }, PAGE_TURN_IMAGE_WAIT_TIMEOUT_MS);
 
         return () => {
@@ -316,12 +416,9 @@ export const usePageTurn = <TPage extends ViewerPage>({
         };
       }
 
-      // oxlint-disable-next-line react/set-state-in-effect -- The waiting state becomes renderable only after its image cache is ready.
-      setPageTurnTransition((transition) =>
-        transition?.id === pageTurnTransition.id
-          ? { ...transition, phase: "prepared" }
-          : transition
-      );
+      // The waiting state becomes renderable only after its image cache is ready.
+      dispatchRail({ id: pageTurnTransition.id, type: "prepare" });
+
       return;
     }
 
@@ -329,23 +426,17 @@ export const usePageTurn = <TPage extends ViewerPage>({
       return;
     }
 
-    const requestFrame =
-      typeof requestAnimationFrame === "function"
-        ? requestAnimationFrame
-        : // oxlint-disable-next-line promise/prefer-await-to-callbacks -- This is the browser's frame callback API fallback.
-          (callback: FrameRequestCallback) =>
-            setTimeout(callback, 0) as unknown as number;
-    const cancelFrame =
-      typeof cancelAnimationFrame === "function"
-        ? cancelAnimationFrame
-        : clearTimeout;
+    const requestFrame = isAvailable(globalThis.requestAnimationFrame)
+      ? requestAnimationFrame
+      : // oxlint-disable-next-line promise/prefer-await-to-callbacks -- This is the browser's frame callback API fallback.
+        (callback: FrameRequestCallback) => window.setTimeout(callback, 0);
+
+    const cancelFrame = isAvailable(globalThis.cancelAnimationFrame)
+      ? cancelAnimationFrame
+      : clearTimeout;
+
     const animationFrame = requestFrame(() => {
-      setDragOffset(0);
-      setPageTurnTransition((transition) =>
-        transition?.id === pageTurnTransition.id
-          ? { ...transition, phase: "active" }
-          : transition
-      );
+      dispatchRail({ id: pageTurnTransition.id, type: "activate" });
     });
 
     return () => {
@@ -358,12 +449,10 @@ export const usePageTurn = <TPage extends ViewerPage>({
       return;
     }
 
-    const transitionId = pageTurnTransition.id;
+    const { id, toIndex } = pageTurnTransition;
+
     const timeout = setTimeout(() => {
-      setDisplayedIndex(pageTurnTransition.toIndex);
-      setPageTurnTransition((transition) =>
-        transition?.id === transitionId ? null : transition
-      );
+      dispatchRail({ id, toIndex, type: "finish" });
     }, PAGE_TURN_FALLBACK_DURATION_MS);
 
     return () => {
@@ -394,10 +483,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
       }
 
       const { id, toIndex } = pageTurnTransition;
-      setPageTurnTransition((transition) =>
-        transition?.id === id ? null : transition
-      );
-      setDisplayedIndex(toIndex);
+      dispatchRail({ id, toIndex, type: "finish" });
     },
     [pageTurnTransition]
   );
