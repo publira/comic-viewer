@@ -10,9 +10,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { usePageTurn } from "./use-page-turn";
 import { useViewerContext, ViewerProvider } from "./viewer-context";
 import { Viewport } from "./viewport";
-import type { MockFetch } from "./viewport-test-helpers";
+import { CurrentIndexIndicator } from "./viewport-test-components";
+import type { FakeResponse, MockFetch } from "./viewport-test-helpers";
 import {
-  CurrentIndexIndicator,
   MockResizeObserver,
   mockPageImages,
   pages,
@@ -44,6 +44,7 @@ const ScrubControls = ({ position }: { position: number }) => {
 /** Renders a left-to-right single-page viewport one hundred pixels wide. */
 const renderScrubbedViewport = (position: number) => {
   vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(100);
+
   const { container } = render(
     <ViewerProvider pages={pages} initialReadingDirection="ltr">
       <Viewport />
@@ -51,6 +52,7 @@ const renderScrubbedViewport = (position: number) => {
       <ScrubControls position={position} />
     </ViewerProvider>
   );
+
   const viewport = container.querySelector(".pcv-viewport");
   const track = container.querySelector(".pcv-viewport-track");
 
@@ -69,7 +71,8 @@ describe(usePageTurn, () => {
 
   it("waits for the incoming page image before starting a slide", async () => {
     // eslint-disable-next-line promise/avoid-new -- The unresolved promise models an in-flight image request.
-    const pendingResponse = new Promise<unknown>(() => {});
+    const pendingResponse = new Promise<FakeResponse>(() => {});
+
     const { restore } = mockPageImages({
       fetch: (url) =>
         url === "page1.png"
@@ -86,9 +89,11 @@ describe(usePageTurn, () => {
           <Viewport />
         </ViewerProvider>
       );
+
       const viewport = container.querySelector(".pcv-viewport");
 
       expect(viewport).not.toBeNull();
+
       if (viewport === null) {
         return;
       }
@@ -167,6 +172,7 @@ describe(usePageTurn, () => {
           <Viewport />
         </ViewerProvider>
       );
+
       const viewport = container.querySelector(".pcv-viewport");
 
       if (viewport === null) {
@@ -231,9 +237,11 @@ describe(usePageTurn, () => {
           <Viewport />
         </ViewerProvider>
       );
+
       const viewport = container.querySelector(".pcv-viewport");
 
       expect(viewport).not.toBeNull();
+
       if (viewport === null) {
         return;
       }
@@ -267,6 +275,7 @@ describe(usePageTurn, () => {
         // oxlint-disable-next-line promise/prefer-await-to-callbacks -- The test deliberately captures animation-frame callbacks for manual execution.
         vi.fn((callback: FrameRequestCallback) => {
           animationFrames.push(callback);
+
           return animationFrames.length;
         })
       );
@@ -283,6 +292,7 @@ describe(usePageTurn, () => {
             <CurrentIndexIndicator />
           </ViewerProvider>
         );
+
         const viewport = container.querySelector(".pcv-viewport");
         const track = container.querySelector(".pcv-viewport-track");
 

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { expectPageLoaded } from "#helpers/reader";
 import { currentPageSet } from "#helpers/selectors";
 
 test("decrypts and renders encrypted pages", async ({ page }) => {
@@ -9,9 +10,9 @@ test("decrypts and renders encrypted pages", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Decrypted plugin sample" })
   ).toBeVisible();
-  await expect(
+  await expectPageLoaded(
     page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`)
-  ).toHaveAttribute("data-page-status", "loaded");
+  );
 });
 
 test("applies the watermark plugin before rendering a page", async ({
@@ -24,5 +25,5 @@ test("applies the watermark plugin before rendering a page", async ({
     page.getByRole("heading", { name: "Text watermark plugin sample" })
   ).toBeVisible();
   const canvas = page.locator(`${currentPageSet} canvas[aria-label="Page 1"]`);
-  await expect(canvas).toHaveAttribute("data-page-status", "loaded");
+  await expectPageLoaded(canvas);
 });

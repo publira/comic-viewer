@@ -5,34 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useViewMode } from "./use-view-mode";
 import { useViewerContext, ViewerProvider } from "./viewer-context";
 import type { ViewMode } from "./viewer-context";
-
-// eslint-disable-next-line eslint-plugin-promise/prefer-await-to-callbacks
-class MockResizeObserver {
-  static callback: ResizeObserverCallback | null = null;
-  static instance: MockResizeObserver | null = null;
-
-  // eslint-disable-next-line promise/prefer-await-to-callbacks
-  constructor(callback: ResizeObserverCallback) {
-    MockResizeObserver.callback = callback;
-    MockResizeObserver.instance = this;
-  }
-
-  observe = vi.fn<() => void>();
-  disconnect = vi.fn<() => void>();
-  unobserve = vi.fn<() => void>();
-
-  // Test helper: fires the callback with the given width
-  static trigger(width: number) {
-    MockResizeObserver.callback?.(
-      [
-        {
-          contentRect: { width } as DOMRectReadOnly,
-        } as ResizeObserverEntry,
-      ],
-      MockResizeObserver.instance as unknown as ResizeObserver
-    );
-  }
-}
+import { MockResizeObserver } from "./viewport-test-helpers";
 
 const pages = [{ id: "p1", src: "page1.png", title: "Page 1" }];
 
@@ -43,14 +16,14 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => (
 describe(useViewMode, () => {
   beforeEach(() => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
-    MockResizeObserver.callback = null;
-    MockResizeObserver.instance = null;
+    MockResizeObserver.reset();
   });
 
   it("returns the initial viewMode from ViewerProvider", () => {
     const { result } = renderHook(
       () => {
         const ref = useRef<HTMLDivElement>(null);
+
         return useViewMode(ref);
       },
       { wrapper: Wrapper }
@@ -63,6 +36,7 @@ describe(useViewMode, () => {
     const { result } = renderHook(
       () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
+
         return useViewMode(ref, 768);
       },
       { wrapper: Wrapper }
@@ -78,9 +52,11 @@ describe(useViewMode, () => {
   it("opens in the mode a laid-out width calls for before it is observed", () => {
     const element = document.createElement("div");
     vi.spyOn(element, "clientWidth", "get").mockReturnValue(1024);
+
     const { result } = renderHook(
       () => {
         const ref = useRef<HTMLDivElement>(element);
+
         return useViewMode(ref, 768);
       },
       { wrapper: Wrapper }
@@ -93,6 +69,7 @@ describe(useViewMode, () => {
     const { result } = renderHook(
       () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
+
         return useViewMode(ref, 768);
       },
       { wrapper: Wrapper }
@@ -113,6 +90,7 @@ describe(useViewMode, () => {
     const { result } = renderHook(
       () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
+
         return useViewMode(ref, 768);
       },
       { wrapper: Wrapper }
@@ -178,6 +156,7 @@ describe(useViewMode, () => {
 
   it("shows a controlled double-page mode as single pages while a spread does not fit", () => {
     const onViewModeChange = vi.fn<(mode: ViewMode) => void>();
+
     const { result } = renderHook(
       () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
@@ -220,9 +199,11 @@ describe(useViewMode, () => {
 
   it("keeps a controlled single-page mode when the container widens", () => {
     const onViewModeChange = vi.fn<(mode: ViewMode) => void>();
+
     const { result } = renderHook(
       () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
+
         return useViewMode(ref, 768);
       },
       {
@@ -247,20 +228,19 @@ describe(useViewMode, () => {
   });
 
   it("disconnects ResizeObserver on unmount", () => {
-    const { result, unmount } = renderHook(
+    const { unmount } = renderHook(
       () => {
         const ref = useRef<HTMLDivElement>(document.createElement("div"));
+
         return useViewMode(ref);
       },
       { wrapper: Wrapper }
     );
 
+    const [observer] = MockResizeObserver.observers.values();
+
     unmount();
 
-    expect(MockResizeObserver.instance?.disconnect).toHaveBeenCalledOnce();
-
-    // suppress unused variable lint error
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _unused = result;
+    expect(observer?.disconnect).toHaveBeenCalledOnce();
   });
 });

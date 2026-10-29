@@ -117,6 +117,7 @@ describe(ViewModeToggle, () => {
         event.preventDefault();
       }
     );
+
     renderSettings(<ViewModeToggle onClick={onClick} />);
 
     clickButton("Double-page view");
@@ -143,6 +144,7 @@ describe(ReadingDirectionToggle, () => {
     const toggle = screen.getByRole("button", {
       name: "Reading direction: Right to left",
     });
+
     expect(toggle).toHaveAttribute("data-reading-direction", "rtl");
     expect(toggle).toHaveTextContent("Right to left");
   });
@@ -155,6 +157,7 @@ describe(ReadingDirectionToggle, () => {
     const toggle = screen.getByRole("button", {
       name: "Reading direction: Left to right",
     });
+
     expect(toggle).toHaveAttribute("data-reading-direction", "ltr");
 
     fireEvent.click(toggle);

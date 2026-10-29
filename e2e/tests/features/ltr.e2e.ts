@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  expectPageCount,
   expectPageOnHalf,
   openShortenedReader,
   turnThroughScreens,
@@ -17,8 +18,8 @@ test("opens a left-to-right spread in reading order", async ({ page }) => {
     "ltr"
   );
   await expect(pageCanvases).toHaveCount(2);
-  await expect(pageCanvases.first()).toHaveAttribute("aria-label", "Page 1");
-  await expect(pageCanvases.last()).toHaveAttribute("aria-label", "Page 2");
+  await expect(pageCanvases.first()).toHaveAccessibleName("Page 1");
+  await expect(pageCanvases.last()).toHaveAccessibleName("Page 2");
   await expectPageOnHalf(page, pageCanvases.first(), "left");
   await expectPageOnHalf(page, pageCanvases.last(), "right");
 });
@@ -36,14 +37,11 @@ test("keeps the unpaired last page of a left-to-right reader on the left", async
 
   const lastPageCanvas = page.locator(`${currentPageSet} canvas`);
 
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "1"
-  );
+  await expectPageCount(page, 1);
   await expect(page.locator(currentPageSet)).toHaveAttribute(
     "data-page-side",
     "left"
   );
-  await expect(lastPageCanvas).toHaveAttribute("aria-label", "Page 21");
+  await expect(lastPageCanvas).toHaveAccessibleName("Page 21");
   await expectPageOnHalf(page, lastPageCanvas, "left");
 });

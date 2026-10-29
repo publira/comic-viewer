@@ -1,11 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 import {
+  expectPageCount,
+  expectViewMode,
   openReader,
   turnThroughScreens,
   turnToNextScreen,
 } from "#helpers/reader";
-import { currentPageSet, viewport } from "#helpers/selectors";
+import { currentPageSet } from "#helpers/selectors";
 
 test("gives a page that is a whole spread both halves of the page set", async ({
   page,
@@ -17,19 +19,17 @@ test("gives a page that is a whole spread both halves of the page set", async ({
   await turnThroughScreens(page, ["Page 3 of 8", "Page 4 of 8"]);
 
   const spreadCanvas = page.locator(`${currentPageSet} canvas`);
+
   const spreadPage = page
     .locator(`${currentPageSet} [data-page-layout="spread"]`)
     .first();
 
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "1"
-  );
+  await expectPageCount(page, 1);
   // A spread covers both halves, so it takes neither side of the gutter.
   await expect(page.locator(currentPageSet)).not.toHaveAttribute(
     "data-page-side"
   );
-  await expect(spreadCanvas).toHaveAttribute("aria-label", "Page 4");
+  await expect(spreadCanvas).toHaveAccessibleName("Page 4");
   await expect(spreadCanvas).toHaveAttribute("width", "1600");
 
   const pageSetBox = await page.locator(currentPageSet).boundingBox();
@@ -53,23 +53,18 @@ test("shows a page that is a whole spread whole at a narrow viewport", async ({
   await page.setViewportSize({ height: 900, width: 600 });
   await page.goto("/features/spread-page");
 
-  await expect(page.locator(viewport)).toHaveAttribute(
-    "data-view-mode",
-    "single"
-  );
+  await expectViewMode(page, "single");
 
   await turnThroughScreens(page, ["Page 2 of 8", "Page 3 of 8", "Page 4 of 8"]);
 
   const spreadCanvas = page.locator(`${currentPageSet} canvas`);
+
   const spreadPage = page
     .locator(`${currentPageSet} [data-page-layout="spread"]`)
     .first();
 
-  await expect(page.locator(currentPageSet)).toHaveAttribute(
-    "data-page-count",
-    "1"
-  );
-  await expect(spreadCanvas).toHaveAttribute("aria-label", "Page 4");
+  await expectPageCount(page, 1);
+  await expect(spreadCanvas).toHaveAccessibleName("Page 4");
   // The whole landscape image is drawn on one canvas and fitted inside it, so
   // the reader is never shown one half of the picture.
   await expect(spreadCanvas).toHaveAttribute("width", "1600");

@@ -16,7 +16,7 @@ import type { ViewerPage } from "./viewer-context";
 import { Viewport } from "./viewport";
 import { PageCanvas, ViewportPage, usePageLoadState } from "./viewport-page";
 import type { MockFetch } from "./viewport-test-helpers";
-import { MockResizeObserver } from "./viewport-test-helpers";
+import { MockResizeObserver, stubCanvasContext } from "./viewport-test-helpers";
 
 const singlePage: ViewerPage = {
   height: 1,
@@ -67,6 +67,7 @@ const renderPageLoad = ({
           ok: true,
         }))
   );
+
   vi.stubGlobal("fetch", fetchMock);
 
   render(
@@ -88,16 +89,14 @@ describe("page load state", () => {
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
     MockResizeObserver.reset();
     drawImage = vi.fn<() => void>();
-    getContext = vi
-      .spyOn(HTMLCanvasElement.prototype, "getContext")
-      .mockReturnValue({
-        clearRect: vi.fn<() => void>(),
-        drawImage,
-      } as unknown as CanvasRenderingContext2D);
+    getContext = stubCanvasContext({
+      clearRect: vi.fn<() => void>(),
+      drawImage,
+    });
     vi.stubGlobal(
       "createImageBitmap",
       vi
-        .fn<() => Promise<unknown>>()
+        .fn<() => Promise<ImageBitmap>>()
         .mockResolvedValue({ close: vi.fn<() => void>(), height: 1, width: 1 })
     );
   });
@@ -202,6 +201,7 @@ describe("page load state", () => {
     const decode = vi
       .fn<() => Promise<void>>()
       .mockRejectedValue(new Error("corrupt image data"));
+
     Object.defineProperty(HTMLImageElement.prototype, "decode", {
       configurable: true,
       value: decode,
@@ -263,11 +263,12 @@ describe("page load state", () => {
   });
 
   it("draws the image an afterDecode hook returns", async () => {
-    const watermarkedImage = {
+    const watermarkedImage: ImageBitmap = {
       close: vi.fn<() => void>(),
       height: 1,
       width: 1,
-    } as unknown as ImageBitmap;
+    };
+
     renderPageLoad({
       plugins: [
         definePlugin({
@@ -339,6 +340,7 @@ describe("page load state", () => {
         ok: true,
       })
     );
+
     vi.stubGlobal("fetch", fetchMock);
 
     render(
@@ -362,6 +364,7 @@ describe("page load state", () => {
 
   it("retries a failed page and clears its error once it succeeds", async () => {
     const onPageLoadError = vi.fn<(error: PageLoadError) => void>();
+
     const { fetchMock } = renderPageLoad({
       fetch: () => Promise.reject(new Error("offline")),
       onPageLoadError,
@@ -424,6 +427,7 @@ describe("page load state", () => {
         title: "Page 1",
       },
     });
+
     const fetchedUrls = () => fetchMock.mock.calls.map(([url]) => String(url));
 
     await waitFor(() => {
@@ -456,6 +460,7 @@ describe("page load state", () => {
     const clientWidth = vi
       .spyOn(HTMLElement.prototype, "clientWidth", "get")
       .mockReturnValue(1200);
+
     const { fetchMock } = renderPageLoad({
       page: {
         id: "p1",
@@ -482,7 +487,7 @@ describe("page load state", () => {
       close: vi.fn<() => void>(),
       height: 500,
       width: 400,
-    } as unknown as ImageBitmap);
+    });
     renderPageLoad({
       page: { id: "p1", src: "page1.png", title: "Page 1", width: 800 },
     });

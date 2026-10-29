@@ -6,9 +6,9 @@ import { PageStatus, PageProgressTrack } from "./page-navigation";
 import { ViewerProvider } from "./viewer-context";
 import { EndPage, StartPage } from "./viewer-slots";
 import { Viewport } from "./viewport";
+import { CurrentIndexIndicator } from "./viewport-test-components";
 import type { TestPage } from "./viewport-test-helpers";
 import {
-  CurrentIndexIndicator,
   MockResizeObserver,
   pages,
   pressViewportKey,
@@ -22,6 +22,7 @@ const renderPage = (page: TestPage) => (
 
 /** The content of the start pages, in the order they are written. */
 const startPageLabels = ["Cover notice", "Publisher card", "Chapter title"];
+
 /** The content of the end pages, in the order they are written. */
 const endPageLabels = ["Next chapter", "Afterword", "Recommendations"];
 
@@ -189,6 +190,7 @@ describe("viewer slot pages", () => {
       initialViewMode: "double",
       startPageCount: 0,
     });
+
     const currentPageSet = getCurrentPageSet(container);
 
     expect(currentPageSet).toHaveAttribute("data-page-count", "2");
@@ -204,6 +206,7 @@ describe("viewer slot pages", () => {
       initialIndex: 4,
       initialViewMode: "double",
     });
+
     const currentPageSet = getCurrentPageSet(container);
 
     expect(currentPageSet).toHaveAttribute("data-page-count", "1");
@@ -255,6 +258,7 @@ describe("viewer slot pages", () => {
 
   it("lets a control on a slot page take its own click", () => {
     const onClick = vi.fn<() => void>();
+
     const { container } = render(
       <ViewerProvider pages={pages} initialViewMode="single">
         <StartPage>
@@ -266,6 +270,7 @@ describe("viewer slot pages", () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector(".pcv-viewport");
 
     if (viewport === null) {
@@ -296,6 +301,7 @@ describe("viewer slot pages", () => {
         <CurrentIndexIndicator />
       </ViewerProvider>
     );
+
     const viewport = container.querySelector(".pcv-viewport");
     const link = screen.getByTestId("next-chapter");
 
@@ -416,6 +422,7 @@ describe("viewer slot pages", () => {
 
   it("hands each extra page its position within the slot", () => {
     const { container } = renderSlotViewer({ startPageCount: 3 });
+
     const startPage = getCurrentPageSet(container).querySelector(
       '.pcv-page-slot[data-page-slot="start"]'
     );
@@ -551,6 +558,7 @@ describe("viewer slot pages", () => {
         initialReadingDirection,
         startPageCount: 0,
       });
+
       const forwardKey =
         initialReadingDirection === "rtl" ? "ArrowLeft" : "ArrowRight";
 

@@ -3,7 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { definePlugin } from "./plugin";
 import { ViewerProvider, useViewerContext } from "./viewer-context";
-import type { ViewerPage, ViewerProviderProps } from "./viewer-context";
+import type {
+  ViewerContextValue,
+  ViewerPage,
+  ViewerProviderProps,
+} from "./viewer-context";
 import { getScrubSpread } from "./viewer-spreads";
 
 const pages: ViewerPage[] = [
@@ -27,6 +31,11 @@ const makeWrapper = (props?: Partial<ViewerProviderProps>) =>
       </ViewerProvider>
     );
   };
+
+// Each controllable setting is set to the first or the second of two values.
+const viewModeValues = ["single", "double"] as const;
+const pageFitModeValues = ["height", "width"] as const;
+const readingDirectionValues = ["rtl", "ltr"] as const;
 
 /** Steps forward and reports where the reading position landed. */
 const NextPageTrigger = () => {
@@ -529,32 +538,32 @@ describe("ViewerProvider / useViewerContext", () => {
       callbackName: "onViewModeChange",
       initialName: "initialViewMode",
       name: "viewMode",
-      setterName: "setViewMode",
-      values: ["single", "double"],
+      select: (context: ViewerContextValue, position: 0 | 1) => {
+        context.setViewMode(viewModeValues[position]);
+      },
+      values: viewModeValues,
     },
     {
       callbackName: "onPageFitModeChange",
       initialName: "initialPageFitMode",
       name: "pageFitMode",
-      setterName: "setPageFitMode",
-      values: ["height", "width"],
+      select: (context: ViewerContextValue, position: 0 | 1) => {
+        context.setPageFitMode(pageFitModeValues[position]);
+      },
+      values: pageFitModeValues,
     },
     {
       callbackName: "onReadingDirectionChange",
       initialName: "initialReadingDirection",
       name: "readingDirection",
-      setterName: "setReadingDirection",
-      values: ["rtl", "ltr"],
+      select: (context: ViewerContextValue, position: 0 | 1) => {
+        context.setReadingDirection(readingDirectionValues[position]);
+      },
+      values: readingDirectionValues,
     },
   ] as const)(
     "controlled $name",
-    ({
-      callbackName,
-      initialName,
-      name,
-      setterName,
-      values: [first, second],
-    }) => {
+    ({ callbackName, initialName, name, select, values: [first, second] }) => {
       const SettingOutput = () => (
         <output data-testid="setting">{useViewerContext()[name]}</output>
       );
@@ -569,14 +578,14 @@ describe("ViewerProvider / useViewerContext", () => {
         expect(result.current[name]).toBe(first);
 
         act(() => {
-          (result.current[setterName] as (value: string) => void)(second);
+          select(result.current, 1);
         });
 
         expect(result.current[name]).toBe(first);
         expect(onChange).toHaveBeenCalledExactlyOnceWith(second);
 
         act(() => {
-          (result.current[setterName] as (value: string) => void)(first);
+          select(result.current, 0);
         });
 
         expect(onChange).toHaveBeenCalledOnce();
@@ -617,14 +626,14 @@ describe("ViewerProvider / useViewerContext", () => {
         });
 
         act(() => {
-          (result.current[setterName] as (value: string) => void)(second);
+          select(result.current, 1);
         });
 
         expect(result.current[name]).toBe(second);
         expect(onChange).toHaveBeenCalledExactlyOnceWith(second);
 
         act(() => {
-          (result.current[setterName] as (value: string) => void)(second);
+          select(result.current, 1);
         });
 
         expect(onChange).toHaveBeenCalledOnce();

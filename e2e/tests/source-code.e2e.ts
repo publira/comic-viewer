@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 
 /** The panel every demo page prints its sample code in. */
 const panel = "section[aria-labelledby='source-code-heading']";
+
 /** The block Sugar High highlights the sample into, and the parts of it. */
 const codeBlock = `${panel} [data-sh-code]`;
 const keywords = `${codeBlock} [data-sh-token-type="keyword"]`;

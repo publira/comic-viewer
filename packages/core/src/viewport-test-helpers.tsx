@@ -1,55 +1,63 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { RenderResult } from "@testing-library/react";
-import type { JSX } from "react";
 import { vi } from "vitest";
-import type { Mock } from "vitest";
+import type { Mock, MockInstance } from "vitest";
 
 import type { ViewerPlugin } from "./plugin";
 import type { ViewportGestures } from "./use-viewport-gestures";
 import type { ReadingDirection } from "./viewer-context";
-import { ViewerProvider, useViewerContext } from "./viewer-context";
+import { ViewerProvider } from "./viewer-context";
 import { Viewport } from "./viewport";
+import { CurrentIndexIndicator } from "./viewport-test-components";
+
+/** The part of a `Response` the page loader reads. */
+export type FakeResponse = Pick<Response, "ok"> &
+  Partial<Pick<Response, "arrayBuffer" | "status" | "statusText">>;
 
 export type MockFetch = (
   input: RequestInfo | URL,
   init?: RequestInit
-) => Promise<unknown>;
+) => Promise<FakeResponse>;
+
+/** A resize of the observed element to `width` by `height` pixels. */
+export const createResizeEntry = (
+  width: number,
+  height = 100
+): ResizeObserverEntry => ({
+  borderBoxSize: [],
+  contentBoxSize: [],
+  contentRect: new DOMRectReadOnly(0, 0, width, height),
+  devicePixelContentBoxSize: [],
+  target: document.body,
+});
 
 /** Stands in for every ResizeObserver the viewport creates until disconnected. */
 // eslint-disable-next-line eslint-plugin-promise/prefer-await-to-callbacks
-export class MockResizeObserver {
-  static callbacks: Set<ResizeObserverCallback> =
-    new Set<ResizeObserverCallback>();
+export class MockResizeObserver implements ResizeObserver {
+  static readonly observers: Map<ResizeObserverCallback, MockResizeObserver> =
+    new Map<ResizeObserverCallback, MockResizeObserver>();
 
   readonly #callback: ResizeObserverCallback;
 
   // eslint-disable-next-line promise/prefer-await-to-callbacks
   constructor(callback: ResizeObserverCallback) {
     this.#callback = callback;
-    MockResizeObserver.callbacks.add(callback);
+    MockResizeObserver.observers.set(callback, this);
   }
 
   observe: Mock<() => void> = vi.fn<() => void>();
   disconnect: Mock<() => void> = vi.fn<() => void>(() => {
-    MockResizeObserver.callbacks.delete(this.#callback);
+    MockResizeObserver.observers.delete(this.#callback);
   });
   unobserve: Mock<() => void> = vi.fn<() => void>();
 
   static reset(): void {
-    MockResizeObserver.callbacks.clear();
+    MockResizeObserver.observers.clear();
   }
 
   static trigger(width: number, height = 100): void {
-    for (const notify of MockResizeObserver.callbacks) {
-      notify(
-        [
-          {
-            contentRect: { height, width } as DOMRectReadOnly,
-          } as ResizeObserverEntry,
-        ],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        null as any
-      );
+    for (const [notify, observer] of MockResizeObserver.observers) {
+      notify([createResizeEntry(width, height)], observer);
     }
   }
 }
@@ -68,17 +76,9 @@ export const pages: TestPage[] = [
 ];
 
 export const setViewportRect = (viewport: Element, width = 100): void => {
-  vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue({
-    bottom: 100,
-    height: 100,
-    left: 0,
-    right: width,
-    toJSON: () => ({}),
-    top: 0,
-    width,
-    x: 0,
-    y: 0,
-  } as DOMRect);
+  vi.spyOn(viewport, "getBoundingClientRect").mockReturnValue(
+    new DOMRect(0, 0, width, 100)
+  );
 };
 
 /**
@@ -89,6 +89,7 @@ export const withinCurrentPageSet = (): ReturnType<typeof within> => {
   const pageSet = document.querySelector<HTMLElement>(
     '.pcv-viewport-page-set[data-rail-slot="current"]'
   );
+
   if (pageSet === null) {
     throw new Error("No page set is on screen.");
   }
@@ -101,11 +102,6 @@ export const pressViewportKey = (key: string): boolean =>
   fireEvent.keyDown(screen.getByRole("region", { name: "Comic pages" }), {
     key,
   });
-
-export const CurrentIndexIndicator = (): JSX.Element => {
-  const { currentIndex } = useViewerContext();
-  return <div data-testid="current-index">{currentIndex}</div>;
-};
 
 interface RenderViewportOptions {
   gestures?: ViewportGestures;
@@ -141,6 +137,19 @@ export const renderViewport = ({
     </ViewerProvider>
   );
 
+/**
+ * Gives every canvas a 2D context that records what is drawn, since jsdom has
+ * no canvas of its own.
+ */
+export const stubCanvasContext = (
+  context: Partial<CanvasRenderingContext2D>
+): MockInstance<HTMLCanvasElement["getContext"]> =>
+  vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(
+    // SAFETY: the viewer draws a page through clearRect, drawImage, and
+    // filter alone, which is all a test needs to provide.
+    context as CanvasRenderingContext2D
+  );
+
 interface MockPageImagesOptions {
   fetch?: MockFetch;
 }
@@ -156,18 +165,19 @@ interface MockPageImages {
 export const mockPageImages = ({
   fetch,
 }: MockPageImagesOptions = {}): MockPageImages => {
-  const image = {
+  const image: ImageBitmap = {
     close: vi.fn<() => void>(),
     height: 1,
     width: 1,
-  } as unknown as ImageBitmap;
+  };
+
   const drawImage = vi.fn<() => void>();
-  const getContext = vi
-    .spyOn(HTMLCanvasElement.prototype, "getContext")
-    .mockReturnValue({
-      clearRect: vi.fn<() => void>(),
-      drawImage,
-    } as unknown as CanvasRenderingContext2D);
+
+  const getContext = stubCanvasContext({
+    clearRect: vi.fn<() => void>(),
+    drawImage,
+  });
+
   const fetchMock = vi.fn<MockFetch>(
     fetch ??
       (() =>
@@ -176,9 +186,10 @@ export const mockPageImages = ({
           ok: true,
         }))
   );
+
   vi.stubGlobal(
     "createImageBitmap",
-    vi.fn<() => Promise<unknown>>().mockResolvedValue(image)
+    vi.fn<() => Promise<ImageBitmap>>().mockResolvedValue(image)
   );
   vi.stubGlobal("fetch", fetchMock);
 

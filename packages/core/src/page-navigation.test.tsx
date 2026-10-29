@@ -98,6 +98,7 @@ const renderPageNavigation = ({
       </PageNavigation>
     </ViewerProvider>
   );
+
   toggleControls();
 
   return result;
@@ -344,6 +345,7 @@ describe(PageNavigation, () => {
       // oxlint-disable-next-line promise/prefer-await-to-callbacks -- The test deliberately captures animation-frame callbacks for manual execution.
       vi.fn((callback: FrameRequestCallback) => {
         animationFrames.push(callback);
+
         return animationFrames.length;
       })
     );
@@ -358,7 +360,7 @@ describe(PageNavigation, () => {
         </ViewerProvider>
       );
 
-      const slider = screen.getByRole("slider") as HTMLInputElement;
+      const slider = screen.getByRole<HTMLInputElement>("slider");
 
       fireEvent.pointerDown(slider);
       fireEvent.change(slider, { target: { value: "3.2" } });
@@ -391,6 +393,7 @@ describe(PageNavigation, () => {
 
   it("scrubs over the index a host controls until the drag is released", () => {
     const onIndexChange = vi.fn<(index: number) => void>();
+
     const ControlledViewer = () => {
       const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -410,6 +413,7 @@ describe(PageNavigation, () => {
         </ViewerProvider>
       );
     };
+
     render(<ControlledViewer />);
 
     const slider = screen.getByRole("slider");

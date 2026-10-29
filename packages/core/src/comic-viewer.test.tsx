@@ -24,6 +24,7 @@ type TestPage = (typeof pages)[number];
 
 const PluginCount = () => {
   const { plugins } = useViewerContext();
+
   return <output data-testid="plugin-count">{plugins.length}</output>;
 };
 
@@ -38,6 +39,7 @@ describe(ComicViewer, () => {
       src: `page${index + 1}.png`,
       title: `Page ${index + 1}`,
     }));
+
     render(
       <ComicViewer<TestPage> pageCount={40} resolvePage={resolvePage}>
         <PageStatus />
