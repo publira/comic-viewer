@@ -37,8 +37,10 @@ const formatPageStatus = ({
  */
 const PageNavigation = () => {
   const { readingDirection } = ComicViewer.useViewerContext();
+
   const previousPath =
     readingDirection === "rtl" ? "m10 6 6 6-6 6" : "m14 6-6 6 6 6";
+
   const nextPath =
     readingDirection === "rtl" ? "m14 6-6 6 6 6" : "m10 6 6 6-6 6";
 

@@ -122,6 +122,10 @@ const runStage = async <TResult>(
   }
 };
 
+/** A hook that returns nothing leaves the URL as it was. */
+const isReplacedUrl = (value: unknown): value is string =>
+  typeof value === "string";
+
 /** Runs the registered URL, fetch, and buffer transforms in registration order. */
 export const runDataPipeline = async (
   initialContext: PageLoadContext,
@@ -136,7 +140,8 @@ export const runDataPipeline = async (
         ...initialContext,
         url: currentUrl,
       });
-      if (typeof nextUrl === "string") {
+
+      if (isReplacedUrl(nextUrl)) {
         currentUrl = nextUrl;
       }
     }
@@ -149,6 +154,7 @@ export const runDataPipeline = async (
 
     const runFetcher = async (index: number): Promise<ArrayBuffer> => {
       const hook = hooks[index];
+
       if (!hook) {
         return fetchPage(context);
       }
@@ -173,6 +179,7 @@ export const runDataPipeline = async (
         ...context,
         buffer: result,
       });
+
       if (nextBuffer instanceof ArrayBuffer) {
         result = nextBuffer;
       }
@@ -203,6 +210,7 @@ export const runDecodePipeline = (
       for (const plugin of plugins) {
         // eslint-disable-next-line no-await-in-loop -- Each hook receives the previous hook's image.
         const nextImage = await plugin.afterDecode?.({ ...context, image });
+
         if (!isDecodedImage(nextImage) || nextImage === image) {
           continue;
         }
@@ -224,12 +232,18 @@ export const runPageChangeHooks = async (
   index: number,
   total: number
 ): Promise<void> => {
-  for (const plugin of plugins) {
-    try {
-      // eslint-disable-next-line no-await-in-loop -- Page-change hooks are ordered for deterministic analytics.
-      await plugin.onPageChange?.(index, total);
-    } catch {
-      // One plugin must not block page-change reporting for the others.
-    }
+  const [plugin, ...laterPlugins] = plugins;
+
+  if (plugin === undefined) {
+    return;
   }
+
+  try {
+    await plugin.onPageChange?.(index, total);
+  } catch {
+    // One plugin must not block page-change reporting for the others.
+  }
+
+  // Each hook waits for the one before it, so analytics see a fixed order.
+  await runPageChangeHooks(laterPlugins, index, total);
 };

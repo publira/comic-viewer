@@ -61,6 +61,7 @@ export const GesturesReader = ({ pages }: GesturesReaderProps) => {
     keyboard: true,
     swipe: true,
   });
+
   const [isKeyboardGlobal, setIsKeyboardGlobal] = useState(false);
 
   return (

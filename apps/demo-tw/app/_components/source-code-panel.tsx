@@ -5,12 +5,11 @@ import type { CodeProps } from "@sugar-high/react/core";
 import { vercel } from "@sugar-high/react/themes";
 import * as typescript from "sugar-high/lang/typescript";
 
-/**
- * The language configuration `Code` tokenizes with. `CodeProps` intersects
- * React's `HTMLAttributes`, whose `lang` is the HTML language attribute, so the
- * two leave no type a configuration object can be declared as.
- */
-const typescriptLang = typescript as unknown as CodeProps["lang"];
+/** The language configuration `Code` tokenizes with. */
+// SAFETY: `CodeProps` intersects React's `HTMLAttributes`, whose `lang` is the
+// HTML language attribute, so the two leave no type an object can be declared
+// as; `Code` reads the configuration alone.
+const typescriptLang = typescript as CodeProps["lang"];
 
 interface SourceCodePanelProps {
   /** The file as it stands on disk, highlighted as TypeScript. */

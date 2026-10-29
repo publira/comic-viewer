@@ -60,6 +60,7 @@ export const useFullscreen = (
       document.fullscreenElement === targetRef.current,
     getServerSnapshot
   );
+
   // Until the browser has hydrated the markup there is no API to ask, so a
   // control renders unavailable and turns usable where fullscreen is offered.
   const isSupported = useSyncExternalStore(
@@ -77,6 +78,7 @@ export const useFullscreen = (
 
     if (document.fullscreenElement === null) {
       await target.requestFullscreen();
+
       return;
     }
 
@@ -122,6 +124,7 @@ interface FullscreenReaderProps {
 /** Renders the reader with a control that hands its container to the screen. */
 export const FullscreenReader = ({ pages }: FullscreenReaderProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+
   const { isFullscreen, isSupported, toggleFullscreen } =
     useFullscreen(containerRef);
 

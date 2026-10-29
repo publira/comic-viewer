@@ -7,12 +7,11 @@ import * as typescript from "sugar-high/lang/typescript";
 
 import styles from "./source-code-panel.module.css";
 
-/**
- * The language configuration `Code` tokenizes with. `CodeProps` intersects
- * React's `HTMLAttributes`, whose `lang` is the HTML language attribute, so the
- * two leave no type a configuration object can be declared as.
- */
-const typescriptLang = typescript as unknown as CodeProps["lang"];
+/** The language configuration `Code` tokenizes with. */
+// SAFETY: `CodeProps` intersects React's `HTMLAttributes`, whose `lang` is the
+// HTML language attribute, so the two leave no type an object can be declared
+// as; `Code` reads the configuration alone.
+const typescriptLang = typescript as CodeProps["lang"];
 
 interface SourceCodePanelProps {
   code: string;

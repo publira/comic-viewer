@@ -16,6 +16,7 @@ const addWatermark = (image: DecodedPageImage): Promise<ImageBitmap> => {
   canvas.width = width;
 
   const context = canvas.getContext("2d");
+
   if (context === null) {
     throw new Error("Canvas 2D rendering is unavailable.");
   }

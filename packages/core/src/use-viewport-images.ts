@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { isAvailable } from "./browser-api";
 import { readImageSize } from "./image-size";
 import { closeDecodedImages } from "./page-image";
 import type { DecodedPageImage } from "./page-image";
@@ -12,6 +13,16 @@ import { runDataPipeline, runDecodePipeline } from "./plugin";
 import type { ViewerPlugin } from "./plugin";
 import type { ViewerPage } from "./viewer-context";
 
+const imageMimeTypes = new Map([
+  ["avif", "image/avif"],
+  ["gif", "image/gif"],
+  ["jpeg", "image/jpeg"],
+  ["jpg", "image/jpeg"],
+  ["png", "image/png"],
+  ["svg", "image/svg+xml"],
+  ["webp", "image/webp"],
+]);
+
 export const getImageMimeType = (
   url: string,
   mimeType?: string
@@ -21,6 +32,7 @@ export const getImageMimeType = (
   }
 
   const dataUriMatch = /^data:(?<mimeType>[^;,]+)/u.exec(url);
+
   if (dataUriMatch?.groups?.mimeType?.startsWith("image/")) {
     return dataUriMatch.groups.mimeType;
   }
@@ -28,17 +40,8 @@ export const getImageMimeType = (
   const extension = /\.(?<extension>[a-z0-9]+)(?:[?#]|$)/iu
     .exec(url)
     ?.groups?.extension?.toLowerCase();
-  const mimeTypes: Record<string, string> = {
-    avif: "image/avif",
-    gif: "image/gif",
-    jpeg: "image/jpeg",
-    jpg: "image/jpeg",
-    png: "image/png",
-    svg: "image/svg+xml",
-    webp: "image/webp",
-  };
 
-  return extension === undefined ? undefined : mimeTypes[extension];
+  return extension === undefined ? undefined : imageMimeTypes.get(extension);
 };
 
 export interface PageImage {
@@ -66,6 +69,7 @@ const decodeWithImageElement = async (
   const image = new Image();
   image.src = `data:${mimeType};base64,${btoa(binary)}`;
   await image.decode();
+
   return image;
 };
 
@@ -87,10 +91,11 @@ const decodeImage = async (
 ): Promise<DecodedImage> => {
   const imageMimeType = getImageMimeTypeOrFallback(sourceUrl, mimeType);
   const blob = new Blob([buffer], { type: imageMimeType });
+
   const naturalWidth =
     maxWidth === undefined ? undefined : readImageSize(buffer)?.width;
 
-  if (typeof createImageBitmap === "function") {
+  if (isAvailable(globalThis.createImageBitmap)) {
     try {
       if (
         maxWidth !== undefined &&
@@ -101,6 +106,7 @@ const decodeImage = async (
           resizeQuality: "high",
           resizeWidth: maxWidth,
         });
+
         // A browser that ignores the resize options decodes the full size.
         return image.width < naturalWidth
           ? { image, resizedWidth: maxWidth }
@@ -140,10 +146,11 @@ const getWiderSourceBuffer = (
 const waitForAnimationFrame = (): Promise<void> =>
   // eslint-disable-next-line promise/avoid-new -- The browser exposes a paint boundary through this callback API.
   new Promise((resolve) => {
-    if (typeof requestAnimationFrame === "function") {
+    if (isAvailable(globalThis.requestAnimationFrame)) {
       requestAnimationFrame(() => {
         resolve();
       });
+
       return;
     }
 
@@ -179,7 +186,7 @@ interface UseViewportImagesOptions<TPage extends ViewerPage> {
    * `srcset` candidate is selected for. No page loads while it is `undefined`,
    * before the viewport has been measured.
    */
-  getPageRequirement: ((index: number) => SrcsetRequirement) | undefined;
+  getPageRequirement?: (index: number) => SrcsetRequirement;
   keepImages: boolean;
   onPageLoadError?: (error: PageLoadError<TPage>) => void;
   /** An entry is `undefined` while the metadata of that page is unresolved. */
@@ -208,14 +215,18 @@ export const useViewportImages = <TPage extends ViewerPage>({
   const [pageImages, setPageImages] = useState<ReadonlyMap<string, PageImage>>(
     () => new Map()
   );
+
   const [pageLoadStates, setPageLoadStates] = useState<
     ReadonlyMap<string, PageLoadEntry<TPage>>
   >(() => new Map());
+
   const [retryNonce, setRetryNonce] = useState(0);
   const pageImagesRef = useRef<ReadonlyMap<string, PageImage>>(new Map());
+
   const pageLoadStatesRef = useRef<ReadonlyMap<string, PageLoadEntry<TPage>>>(
     new Map()
   );
+
   const cachedImageKeysRef = useRef<ReadonlySet<string>>(new Set());
   const pageLoadControllersRef = useRef(new Map<string, AbortController>());
   // The candidate each cached page was last asked for, which only grows.
@@ -230,36 +241,45 @@ export const useViewportImages = <TPage extends ViewerPage>({
     onPageLoadErrorRef.current = onPageLoadError;
   }, [onPageLoadError, pages]);
 
-  const commitLoadStates = useCallback(
-    (update: (states: Map<string, PageLoadEntry<TPage>>) => void): void => {
+  /** Records the load state of one page. */
+  const setLoadState = useCallback(
+    (imageKey: string, entry: PageLoadEntry<TPage>): void => {
       const nextStates = new Map(pageLoadStatesRef.current);
-      update(nextStates);
+      nextStates.set(imageKey, entry);
       pageLoadStatesRef.current = nextStates;
       setPageLoadStates(nextStates);
     },
     []
   );
 
+  /** Forgets the load state of one page. */
+  const deleteLoadState = useCallback((imageKey: string): void => {
+    const nextStates = new Map(pageLoadStatesRef.current);
+    nextStates.delete(imageKey);
+    pageLoadStatesRef.current = nextStates;
+    setPageLoadStates(nextStates);
+  }, []);
+
   const retryPage = useCallback(
     (index: number) => {
       const page = pagesRef.current[index];
+
       if (page === undefined) {
         return;
       }
 
       const imageKey = getPageImageKey(index, page);
+
       if (pageLoadStatesRef.current.get(imageKey)?.status !== "error") {
         return;
       }
 
       // A decoded placeholder stays in the cache so it remains visible while
       // the page is fetched again.
-      commitLoadStates((states) => {
-        states.delete(imageKey);
-      });
+      deleteLoadState(imageKey);
       setRetryNonce((nonce) => nonce + 1);
     },
-    [commitLoadStates]
+    [deleteLoadState]
   );
 
   useEffect(() => {
@@ -270,24 +290,32 @@ export const useViewportImages = <TPage extends ViewerPage>({
     const requestedImageKeys = new Set(
       [...cachedIndices, ...preloadIndices].flatMap((index) => {
         const page = pages[index];
+
         return page === undefined ? [] : [getPageImageKey(index, page)];
       })
     );
+
     cachedImageKeysRef.current = requestedImageKeys;
+
     const setPageImage = (index: number, image: PageImage): boolean => {
       const page = pages[index];
+
       if (page === undefined) {
         closeDecodedImages([image.bitmap]);
+
         return false;
       }
 
       const imageKey = getPageImageKey(index, page);
+
       if (!cachedImageKeysRef.current.has(imageKey)) {
         closeDecodedImages([image.bitmap]);
+
         return false;
       }
 
       const previousImage = pageImagesRef.current.get(imageKey);
+
       if (previousImage !== undefined && previousImage !== image) {
         retiredImageBitmapsRef.current.push(previousImage.bitmap);
       }
@@ -296,25 +324,31 @@ export const useViewportImages = <TPage extends ViewerPage>({
         ...pageImagesRef.current.entries(),
         [imageKey, image],
       ]);
+
       pageImagesRef.current = nextImages;
       setPageImages(nextImages);
+
       return true;
     };
 
     const loadPage = async (index: number): Promise<void> => {
       const page = pages[index];
+
       if (page === undefined) {
         return;
       }
 
       const imageKey = getPageImageKey(index, page);
       const previousRequest = pageImageRequestsRef.current.get(imageKey);
+
       const request = getPageImageRequest(
         page,
         getPageRequirement(index),
         previousRequest
       );
+
       const { url } = request;
+
       // A preload queued behind the rail is dropped when the reader moves away
       // from the page before its load starts.
       if (!cachedImageKeysRef.current.has(imageKey)) {
@@ -326,6 +360,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
         pageSourcesRef.current.get(imageKey),
         request
       );
+
       // A page loading or settled on its candidate is reloaded only after an
       // eviction or an explicit retry.
       if (
@@ -336,6 +371,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
       ) {
         // A load on its way reads the grown requirement once it starts decoding.
         pageImageRequestsRef.current.set(imageKey, request);
+
         return;
       }
 
@@ -346,35 +382,38 @@ export const useViewportImages = <TPage extends ViewerPage>({
       pageImageRequestsRef.current.set(imageKey, request);
       // The load takes the kept data, so a decode that fails is not retried.
       pageSourcesRef.current.delete(imageKey);
+
       // A page already drawn stays loaded while a larger candidate replaces it.
       const holdsPage = (): boolean =>
         pageImagesRef.current.get(imageKey)?.placeholder === false;
+
       if (!holdsPage()) {
-        commitLoadStates((states) => {
-          states.set(imageKey, { status: "loading" });
-        });
+        setLoadState(imageKey, { status: "loading" });
       }
+
       const releasePageLoad = (): void => {
         if (pageLoadControllersRef.current.get(imageKey) === abortController) {
           pageLoadControllersRef.current.delete(imageKey);
         }
       };
+
       /** Drops the load state of a page the rail no longer wants cached. */
       const abandonPageLoad = (): void => {
         releasePageLoad();
+
         if (!pageLoadStatesRef.current.has(imageKey)) {
           return;
         }
 
-        commitLoadStates((states) => {
-          states.delete(imageKey);
-        });
+        deleteLoadState(imageKey);
       };
+
       const failPageLoad = (
-        error: unknown,
+        cause: unknown,
         fallbackStage: PageLoadStage
       ): void => {
         releasePageLoad();
+
         if (
           abortController.signal.aborted ||
           !cachedImageKeysRef.current.has(imageKey)
@@ -383,16 +422,16 @@ export const useViewportImages = <TPage extends ViewerPage>({
         }
 
         const pageLoadError: PageLoadError<TPage> = {
-          ...toPageLoadFailure(error, fallbackStage),
+          ...toPageLoadFailure(cause, fallbackStage),
           index,
           page,
         };
+
         // A failed upgrade leaves the page drawn from the image it holds.
         if (!holdsPage()) {
-          commitLoadStates((states) => {
-            states.set(imageKey, { error: pageLoadError, status: "error" });
-          });
+          setLoadState(imageKey, { error: pageLoadError, status: "error" });
         }
+
         onPageLoadErrorRef.current?.(pageLoadError);
       };
 
@@ -401,6 +440,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
         getDecodeWidth(
           (pageImageRequestsRef.current.get(imageKey) ?? request).requirement
         );
+
       /** Keeps the data of a page decoded narrower than its file. */
       const keepPageSource = (
         buffer: ArrayBuffer,
@@ -408,6 +448,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
       ): void => {
         if (resizedWidth === undefined) {
           pageSourcesRef.current.delete(imageKey);
+
           return;
         }
 
@@ -448,16 +489,20 @@ export const useViewportImages = <TPage extends ViewerPage>({
             { page, signal: abortController.signal, url: page.placeholder },
             []
           );
+
           const { image: placeholderBitmap } = await decodeImage(
             placeholderBuffer,
             page.placeholder
           );
+
           // A superseded load must not cover the image a later one has drawn.
           if (abortController.signal.aborted) {
             closeDecodedImages([placeholderBitmap]);
             releasePageLoad();
+
             return;
           }
+
           if (
             !setPageImage(index, {
               bitmap: placeholderBitmap,
@@ -465,8 +510,10 @@ export const useViewportImages = <TPage extends ViewerPage>({
             })
           ) {
             abandonPageLoad();
+
             return;
           }
+
           await waitForVisiblePaint();
         } catch {
           // A placeholder is best-effort: only the full page decides the outcome.
@@ -474,13 +521,16 @@ export const useViewportImages = <TPage extends ViewerPage>({
       }
 
       const result = await bufferPromise;
+
       if ("error" in result) {
         failPageLoad(result.error, "fetch");
+
         return;
       }
 
       let bitmap: DecodedPageImage;
       let resizedWidth: number | undefined;
+
       try {
         ({ image: bitmap, resizedWidth } = await decodeImage(
           result.buffer,
@@ -490,6 +540,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
         ));
       } catch (error) {
         failPageLoad(error, "decode");
+
         return;
       }
 
@@ -507,6 +558,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
         );
       } catch (error) {
         failPageLoad(error, "image-transform");
+
         return;
       }
 
@@ -514,15 +566,15 @@ export const useViewportImages = <TPage extends ViewerPage>({
       if (abortController.signal.aborted) {
         closeDecodedImages([bitmap]);
         releasePageLoad();
+
         return;
       }
 
       if (setPageImage(index, { bitmap, placeholder: false })) {
-        commitLoadStates((states) => {
-          states.set(imageKey, { status: "loaded" });
-        });
+        setLoadState(imageKey, { status: "loaded" });
         releasePageLoad();
         keepPageSource(result.buffer, resizedWidth);
+
         return;
       }
 
@@ -537,13 +589,14 @@ export const useViewportImages = <TPage extends ViewerPage>({
     })();
   }, [
     cachedIndices,
-    commitLoadStates,
+    deleteLoadState,
     getPageRequirement,
     pages,
     plugins,
     preloadIndices,
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- A retry re-runs the loader for a page that has already settled.
     retryNonce,
+    setLoadState,
     shouldLoadImages,
   ]);
 
@@ -555,9 +608,11 @@ export const useViewportImages = <TPage extends ViewerPage>({
     const retainedImageKeys = new Set(
       [...cachedIndices, ...preloadIndices].flatMap((index) => {
         const page = pages[index];
+
         return page === undefined ? [] : [getPageImageKey(index, page)];
       })
     );
+
     const nextImages = new Map(pageImagesRef.current);
     const expiredImages: DecodedPageImage[] = [];
 
@@ -583,6 +638,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
     }
 
     const nextLoadStates = new Map(pageLoadStatesRef.current);
+
     for (const key of nextLoadStates.keys()) {
       if (!retainedImageKeys.has(key)) {
         nextLoadStates.delete(key);
@@ -618,6 +674,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
       for (const controller of pageLoadControllersRef.current.values()) {
         controller.abort();
       }
+
       pageLoadControllersRef.current.clear();
       closeDecodedImages([
         ...[...pageImagesRef.current.values()].map((image) => image.bitmap),

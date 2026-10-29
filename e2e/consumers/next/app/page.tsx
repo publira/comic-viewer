@@ -1,5 +1,6 @@
 import * as ComicViewer from "@publira/comic-viewer";
 import type { ViewerPage } from "@publira/comic-viewer";
+import type { Metadata } from "next";
 
 import { SlotReader } from "./slot-reader";
 import { ZoomStatus } from "./zoom-status";
@@ -8,6 +9,8 @@ const pages: ViewerPage[] = [
   { id: "page-1", src: "/pages/1.jpg", title: "Page 1" },
   { id: "page-2", src: "/pages/2.jpg", title: "Page 2" },
 ];
+
+export const metadata: Metadata = { title: "Comic viewer consumer check" };
 
 // A server component, so every part of the viewer is a client reference here.
 const Home = () => (

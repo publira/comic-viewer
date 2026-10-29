@@ -58,9 +58,9 @@ export class PageDataError extends Error {
 
 /** Unwraps a pipeline error into the stage and cause reported to consumers. */
 export const toPageLoadFailure = (
-  error: unknown,
+  cause: unknown,
   fallbackStage: PageLoadStage
 ): { cause: unknown; stage: PageLoadStage } =>
-  error instanceof PageDataError
-    ? { cause: error.cause, stage: error.stage }
-    : { cause: error, stage: fallbackStage };
+  cause instanceof PageDataError
+    ? { cause: cause.cause, stage: cause.stage }
+    : { cause, stage: fallbackStage };

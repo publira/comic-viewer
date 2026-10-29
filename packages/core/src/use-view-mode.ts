@@ -21,6 +21,7 @@ export const useViewMode = (
   // its page images chosen, in the mode the viewport will keep.
   useLayoutEffect(() => {
     const el = containerRef.current;
+
     if (el === null || el === undefined) {
       return;
     }

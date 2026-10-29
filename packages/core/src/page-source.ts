@@ -74,6 +74,7 @@ export const PageResolveStoreProvider: Provider<PageResolveStore | null> =
 /** Reads the store of the enclosing ViewerProvider. */
 export const usePageResolveStore = (consumerName: string): PageResolveStore => {
   const store = useContext(PageResolveStoreContext);
+
   if (store === null) {
     throw new Error(`${consumerName} must be used within a ViewerProvider`);
   }
@@ -97,8 +98,10 @@ export const usePageResolveState = (index: number): PageResolveState => {
   const store = usePageResolveStore("usePageResolveState");
   const { retryPageResolution } = store;
   const status = getPageResolveStatus(store, index);
+
   const error =
     status === "resolved" ? undefined : store.requestStates.get(index)?.error;
+
   const retry = useCallback(() => {
     retryPageResolution(index);
   }, [index, retryPageResolution]);
@@ -164,13 +167,17 @@ export const usePageSource = <TPage extends PageMetadata>({
   const [resolvedPages, setResolvedPages] = useState<
     ReadonlyMap<number, TPage>
   >(() => new Map());
+
   const resolvedPagesRef = useRef<ReadonlyMap<number, TPage>>(new Map());
+
   const [requestStates, setRequestStates] = useState<
     ReadonlyMap<number, PageRequestState>
   >(() => new Map());
+
   const requestStatesRef = useRef<ReadonlyMap<number, PageRequestState>>(
     new Map()
   );
+
   const pageRequestsRef = useRef(new Map<number, AbortController>());
   // An index that failed, or that the resolver declined, is not asked again
   // until it leaves the resolve window or a retry is asked for, so a failure
@@ -225,6 +232,7 @@ export const usePageSource = <TPage extends PageMetadata>({
         const page = await resolvePageRef.current?.(index, {
           signal: controller.signal,
         });
+
         if (controller.signal.aborted) {
           return;
         }
@@ -233,8 +241,10 @@ export const usePageSource = <TPage extends PageMetadata>({
         commitRequestStates((nextStates) => {
           nextStates.delete(index);
         });
+
         if (page === undefined) {
           settledIndicesRef.current.add(index);
+
           return;
         }
 
@@ -293,7 +303,9 @@ export const usePageSource = <TPage extends PageMetadata>({
 
       return indices;
     };
+
     const resolveWindow = pageWindow(overscan);
+
     // A page the rail still renders keeps its metadata even once it falls
     // outside the resolve window, so a narrow window cannot turn the spread a
     // page turn is leaving behind into pending placeholders.
@@ -318,6 +330,7 @@ export const usePageSource = <TPage extends PageMetadata>({
     const leftRequestIndices = [...requestStatesRef.current.keys()].filter(
       (index) => !retainedWindow.has(index)
     );
+
     if (leftRequestIndices.length > 0) {
       // oxlint-disable-next-line react/set-state-in-effect -- A page leaving the window forgets its failure along with the request it aborts.
       commitRequestStates((nextStates) => {
@@ -330,6 +343,7 @@ export const usePageSource = <TPage extends PageMetadata>({
     const expiredIndices = [...resolvedPagesRef.current.keys()].filter(
       (index) => !retainedWindow.has(index)
     );
+
     if (expiredIndices.length > 0) {
       // oxlint-disable-next-line react/set-state-in-effect -- A page leaving the window must forget its metadata so it resolves again with a fresh URL.
       commitResolvedPages((nextPages) => {
@@ -364,6 +378,7 @@ export const usePageSource = <TPage extends PageMetadata>({
       for (const controller of pageRequestsRef.current.values()) {
         controller.abort();
       }
+
       pageRequestsRef.current.clear();
       settledIndicesRef.current.clear();
     },

@@ -42,6 +42,7 @@ const IMAGE_PRELOAD_SPREADS = 1;
 /** Renders a reader whose page metadata arrives as the reader reaches it. */
 export const LazyComicViewer = ({ pages }: LazyComicViewerProps) => {
   const [decodedImageCount, setDecodedImageCount] = useState(0);
+
   // The hook reads each decoded page without returning one of its own, so the
   // viewer keeps drawing the image it decoded.
   const plugins = useMemo(
@@ -55,6 +56,7 @@ export const LazyComicViewer = ({ pages }: LazyComicViewerProps) => {
     ],
     []
   );
+
   const {
     chapterCount,
     failsRequests,

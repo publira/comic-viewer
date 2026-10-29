@@ -146,7 +146,7 @@ export const useReadingProgress = (
     setProgress(documentId, null);
   }, [documentId]);
 
-  const restoredIndex = typeof storedIndex === "number" ? storedIndex : null;
+  const restoredIndex = storedIndex === unrestored ? null : storedIndex;
 
   return {
     // A document can be shorter than it was when the position was stored, so

@@ -34,7 +34,7 @@ const createPages = (
     return {
       height: 1000,
       id: `page-${pageNumber}`,
-      ...(mimeType === undefined ? {} : { mimeType }),
+      mimeType,
       placeholder,
       src: srcForPage(pageNumber),
       title: `Page ${pageNumber}`,

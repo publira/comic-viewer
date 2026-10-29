@@ -5,8 +5,10 @@ import { useCallback, useState } from "react";
 
 /** How many pages one chapter of the sample document holds. */
 const CHAPTER_LENGTH = 7;
+
 /** How long the imaginary page-metadata endpoint takes to answer. */
 const PAGE_RESOLVE_DELAY_MS = 1200;
+
 /** How long the imaginary chapter index takes to answer. */
 const CHAPTER_LOAD_DELAY_MS = 400;
 
@@ -57,6 +59,7 @@ export const useLazyChapters = (pages: readonly ViewerPage[]): LazyChapters => {
   const [pageCount, setPageCount] = useState(() =>
     Math.min(CHAPTER_LENGTH, pages.length)
   );
+
   const [isLoadingChapter, setIsLoadingChapter] = useState(false);
   const [requestCount, setRequestCount] = useState(0);
   const [failsRequests, setFailsRequests] = useState(false);

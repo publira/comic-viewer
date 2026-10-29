@@ -8,14 +8,17 @@ const readme = await readFile(
   new URL("node_modules/@publira/comic-viewer/README.md", import.meta.url),
   "utf-8"
 );
+
 const codeBlocks = [
   ...readme.matchAll(/^```tsx\n(?<code>[\s\S]*?)^```$/gmu),
 ].map(({ groups }) => groups.code);
+
 const imports = new Set(
   codeBlocks.flatMap((code) =>
     [...code.matchAll(/^import [^;]+;$/gmu)].map(([statement]) => statement)
   )
 );
+
 const members = new Set(
   codeBlocks.flatMap((code) =>
     [...code.matchAll(/\bComicViewer\.(?<name>\w+)/gu)].map(
@@ -53,6 +56,7 @@ ${[...members].map((name) => `  ComicViewer.${name},`).join("\n")}
 ];
 `
 );
+
 console.log(
   `The README's ${imports.size} imports and ${members.size} members resolve.`
 );

@@ -5,6 +5,7 @@ import "./globals.css";
 /** The apex domain this site is published at. */
 const SITE_URL = "https://comic-viewer.publira.dev";
 const SITE_NAME = "Publira Comic Viewer";
+
 const SITE_DESCRIPTION =
   "A composable, headless-UI React viewer for comics and manga, with responsive spreads, a plugin pipeline, and virtualized pages.";
 

@@ -17,12 +17,14 @@ export const useViewportSize = (
 
   useLayoutEffect(() => {
     const el = containerRef.current;
+
     if (el === null) {
       return;
     }
 
     let width = el.clientWidth;
     let height = el.clientHeight;
+
     const update = (): void => {
       const density = getDensity();
       setSize((current) =>
@@ -42,17 +44,20 @@ export const useViewportSize = (
         update();
       }
     });
+
     observer.observe(el);
 
     // Moving to a display of another density leaves the CSS size as it was,
     // so the density is watched on its own, one resolution at a time.
     let densityQuery: MediaQueryList | undefined;
+
     const onDensityChange = (): void => {
       update();
       densityQuery?.removeEventListener?.("change", onDensityChange);
       densityQuery = window.matchMedia?.(`(resolution: ${getDensity()}dppx)`);
       densityQuery?.addEventListener?.("change", onDensityChange);
     };
+
     densityQuery = window.matchMedia?.(`(resolution: ${getDensity()}dppx)`);
     densityQuery?.addEventListener?.("change", onDensityChange);
 
