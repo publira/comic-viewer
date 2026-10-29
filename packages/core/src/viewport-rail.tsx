@@ -1,6 +1,7 @@
 import { cloneElement, Fragment } from "react";
 import type {
   CSSProperties,
+  ReactElement,
   ReactNode,
   TransitionEvent as ReactTransitionEvent,
 } from "react";
@@ -91,7 +92,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
   startPages,
   transitionState,
   viewMode,
-}: ViewportRailProps<TPage>) => {
+}: ViewportRailProps<TPage>): ReactElement => {
   const resolveStore = usePageResolveStore("Viewport");
   const trackTemplate = layoutTemplate?.track;
   const pageSetTemplate = layoutTemplate?.pageSet;

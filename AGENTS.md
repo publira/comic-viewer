@@ -43,3 +43,8 @@ The root `package.json` pins the toolchain: Node.js through `devEngines.runtime`
 - **Note:** Since GitHub settings may use the PR title and description as the commit message upon merging, PRs must follow the exact same rules as the **Commit Messages** section:
   - Format the PR title according to Conventional Commits.
   - Append the `Assisted-by` trailer (as defined above) at the very end of the PR description.
+
+### TypeScript
+
+- `packages/core` builds its declarations with Oxc through tsdown, because TypeScript 7 has no compiler API for `tsc`'s declaration emit. Oxc reads each file on its own, so `isolatedDeclarations` requires every export to carry the types its declaration needs, such as a component's `JSX.Element` return type, and `pnpm typecheck` reports a missing one.
+- The code stays within erasable syntax (`erasableSyntaxOnly`).

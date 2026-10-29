@@ -12,6 +12,7 @@ import type {
   ChangeEvent,
   ComponentPropsWithoutRef,
   CSSProperties,
+  JSX,
   MouseEvent,
   PointerEvent,
   PropsWithChildren,
@@ -97,7 +98,7 @@ export const PreviousPageButton = ({
   disabled = false,
   onClick,
   ...props
-}: PageNavigationButtonProps) => {
+}: PageNavigationButtonProps): JSX.Element => {
   const { currentIndex, goToPrev, minIndex } = useViewerContext();
   const isDisabled = disabled || currentIndex <= minIndex;
   const handleClick = useCallback(
@@ -131,7 +132,7 @@ export const NextPageButton = ({
   disabled = false,
   onClick,
   ...props
-}: PageNavigationButtonProps) => {
+}: PageNavigationButtonProps): JSX.Element => {
   const {
     currentIndex,
     goToNext,
@@ -330,7 +331,10 @@ const useProgressIndex = (): number => {
 };
 
 /** Announces the current visible page or spread. */
-export const PageStatus = ({ className, format }: PageStatusProps) => {
+export const PageStatus = ({
+  className,
+  format,
+}: PageStatusProps): JSX.Element => {
   const {
     endPages,
     maxIndex,
@@ -382,7 +386,7 @@ export const PageProgress = ({
   className,
   children,
   visible = true,
-}: PageProgressProps & PropsWithChildren) => {
+}: PageProgressProps & PropsWithChildren): JSX.Element => {
   const progressValue = useMemo(() => ({ ariaLabel }), [ariaLabel]);
 
   return (
@@ -406,7 +410,7 @@ export const PageProgressTrack = ({
   max,
   value,
   ...props
-}: PageProgressTrackProps) => {
+}: PageProgressTrackProps): JSX.Element => {
   const pageProgress = useContext(PageProgressContext);
   const { maxIndex, pageCount, pages, spreadStartIndex, viewMode } =
     useViewerContext();
@@ -474,7 +478,7 @@ export const PageProgressSlider = ({
   onPointerDown,
   style,
   ...props
-}: PageProgressSliderProps) => {
+}: PageProgressSliderProps): JSX.Element => {
   const pageProgress = useContext(PageProgressContext);
   const {
     currentIndex,
@@ -756,7 +760,7 @@ export const PageNavigation = ({
   "aria-label": ariaLabel = "Page navigation",
   children,
   className,
-}: PageNavigationProps) => {
+}: PageNavigationProps): JSX.Element => {
   const { areControlsVisible, readingDirection } = useViewerContext();
   const holdHandlers = useControlsHold();
 

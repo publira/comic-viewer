@@ -131,6 +131,14 @@ interface UseViewportLayoutOptions {
   viewMode: ViewMode;
 }
 
+interface UseViewportLayoutResult {
+  cachedIndices: number[];
+  orderedIndices: number[];
+  orderedIndicesFor: (index: number) => number[];
+  preloadIndices: number[];
+  railSpreadIndices: (number | undefined)[];
+}
+
 /** Calculates visible, rail, and image-cache page indices for the viewport. */
 export const useViewportLayout = ({
   displayedIndex,
@@ -143,7 +151,7 @@ export const useViewportLayout = ({
   transitionToIndex,
   usesPageRail,
   viewMode,
-}: UseViewportLayoutOptions) => {
+}: UseViewportLayoutOptions): UseViewportLayoutResult => {
   const visibleIndices = useMemo(
     () =>
       getVisibleIndices(

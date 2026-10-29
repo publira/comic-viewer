@@ -1,4 +1,4 @@
-import ts from "typescript";
+import { parseSync } from "rolldown/utils";
 import { describe, expect, it } from "vitest";
 
 import packageJson from "../package.json" with { type: "json" };
@@ -13,28 +13,22 @@ const builtEntry = new URL(`../${packageJson.module}`, testFileUrl);
 const declarationEntry = new URL(`../${packageJson.types}`, testFileUrl);
 const sourceEntry = new URL("index.ts", testFileUrl);
 
-const declaredExportNames = (...entries: URL[]) => {
-  const fileNames = entries.map(({ pathname }) => decodeURIComponent(pathname));
-  const program = ts.createProgram(fileNames, {
-    jsx: ts.JsxEmit.ReactJSX,
-    module: ts.ModuleKind.ESNext,
-    moduleResolution: ts.ModuleResolutionKind.Bundler,
-    noEmit: true,
-  });
-  const checker = program.getTypeChecker();
+// Vite's `?raw` query reads the file as text, so no Node.js types are needed.
+const declaredExportNames = async (entry: URL): Promise<Set<string | null>> => {
+  const { default: sourceText }: { default: string } = await import(
+    `${entry.href}?raw`
+  );
+  const { errors, module } = parseSync(entry.pathname, sourceText);
 
-  return fileNames.map((fileName) => {
-    const sourceFile = program.getSourceFile(fileName);
-    const moduleSymbol = sourceFile && checker.getSymbolAtLocation(sourceFile);
+  if (errors.length > 0) {
+    throw new Error(`${entry.pathname} does not parse.`);
+  }
 
-    if (moduleSymbol === undefined) {
-      throw new Error(`${fileName} is not a module.`);
-    }
-
-    return new Set(
-      checker.getExportsOfModule(moduleSymbol).map(({ name }) => name)
-    );
-  });
+  return new Set(
+    module.staticExports.flatMap(({ entries }) =>
+      entries.map(({ exportName }) => exportName.name)
+    )
+  );
 };
 
 describe("package exports", () => {
@@ -51,13 +45,10 @@ describe("package exports", () => {
     );
   });
 
-  it("declares exactly the names the source entry exports", () => {
-    const [sourceNames, declaredNames] = declaredExportNames(
-      sourceEntry,
-      declarationEntry
+  it("declares exactly the names the source entry exports", async () => {
+    await expect(declaredExportNames(declarationEntry)).resolves.toStrictEqual(
+      await declaredExportNames(sourceEntry)
     );
-
-    expect(declaredNames).toStrictEqual(sourceNames);
   });
 
   it("bundles exactly the values the source entry exports", async () => {

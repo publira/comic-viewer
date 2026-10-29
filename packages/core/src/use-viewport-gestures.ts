@@ -9,6 +9,7 @@ import type {
 import type { SpreadPageList } from "./page-spread";
 import { getSwipeTargetIndex } from "./use-viewport-layout";
 import { useViewportZoom } from "./use-viewport-zoom";
+import type { UseViewportZoomResult } from "./use-viewport-zoom";
 import type { PageFitMode, ViewMode } from "./viewer-context";
 import { getFirstTouch } from "./viewport-touch";
 import type { TouchInput } from "./viewport-touch";
@@ -104,6 +105,14 @@ interface UseViewportGesturesOptions {
   viewMode: ViewMode;
 }
 
+interface UseViewportGesturesResult extends Pick<
+  UseViewportZoomResult,
+  "activePan" | "activeZoom" | "isPannable" | "isPanning"
+> {
+  isDragging: boolean;
+  viewportProps: DOMAttributes<HTMLDivElement>;
+}
+
 /**
  * Turns viewport input — keyboard, edge click, and swipe, plus the pan, pinch,
  * and double-tap gestures of useViewportZoom — into navigation, rail state,
@@ -129,7 +138,7 @@ export const useViewportGestures = ({
   toggleControls,
   usesPageRail,
   viewMode,
-}: UseViewportGesturesOptions) => {
+}: UseViewportGesturesOptions): UseViewportGesturesResult => {
   const isDoubleTapEnabled = gestures?.doubleTap?.enabled ?? true;
   const isEdgeClickEnabled = gestures?.edgeClick?.enabled ?? true;
   const edgeClickRatio = getEdgeClickRatio(gestures?.edgeClick?.ratio);

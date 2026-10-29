@@ -1,4 +1,4 @@
-import type { PropsWithChildren } from "react";
+import type { JSX, PropsWithChildren } from "react";
 
 import { composeClassName } from "./class-names";
 import {
@@ -21,7 +21,7 @@ export interface ToolbarProps extends PropsWithChildren {
  * turns pages. Compose PageProgressTrack in place of the slider for a
  * display-only progress bar.
  */
-export const Toolbar = ({ children, className }: ToolbarProps) => {
+export const Toolbar = ({ children, className }: ToolbarProps): JSX.Element => {
   const { areControlsVisible, readingDirection } = useViewerContext();
   const holdHandlers = useControlsHold();
 

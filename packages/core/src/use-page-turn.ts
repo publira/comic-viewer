@@ -6,13 +6,19 @@ import {
   useRef,
   useState,
 } from "react";
-import type { RefObject, TransitionEvent as ReactTransitionEvent } from "react";
+import type {
+  Dispatch,
+  RefObject,
+  SetStateAction,
+  TransitionEvent as ReactTransitionEvent,
+} from "react";
 
 import { getPageRequirement } from "./page-image-request";
 import type { PageLoadError } from "./page-load";
 import { runPageChangeHooks } from "./plugin";
 import type { ViewerPlugin } from "./plugin";
 import { getPageImageKey, useViewportImages } from "./use-viewport-images";
+import type { PageImage, PageLoadEntry } from "./use-viewport-images";
 import {
   getNextSpreadIndex,
   getPageTurnDirection,
@@ -69,6 +75,22 @@ interface UsePageTurnOptions<TPage extends ViewerPage> {
   viewMode: ViewMode;
 }
 
+interface UsePageTurnResult<TPage extends ViewerPage> {
+  displayedIndex: number;
+  dragOffset: number;
+  isTransitioning: boolean;
+  onTransitionEnd: (event: ReactTransitionEvent<HTMLDivElement>) => void;
+  orderedIndices: number[];
+  orderedIndicesFor: (index: number) => number[];
+  pageImages: ReadonlyMap<string, PageImage>;
+  pageLoadStates: ReadonlyMap<string, PageLoadEntry<TPage>>;
+  railSpreadIndices: (number | undefined)[];
+  retryPage: (index: number) => void;
+  setDragOffset: Dispatch<SetStateAction<number>>;
+  slideDirection: PageTurnDirection | undefined;
+  transitionState: "idle" | PageTurnTransition["phase"];
+}
+
 /**
  * Drives the spread that the rail displays: it runs the page-turn transition
  * state machine, keeps the decoded image cache aligned with the rail, and
@@ -91,7 +113,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
   usesManagedImageLoading,
   usesPageRail,
   viewMode,
-}: UsePageTurnOptions<TPage>) => {
+}: UsePageTurnOptions<TPage>): UsePageTurnResult<TPage> => {
   const transitionIdRef = useRef(0);
   // A scrub leaves the rail wherever it was released, part of the way to the
   // next spread, and what follows moves it on from there rather than from rest.
