@@ -1,20 +1,9 @@
-import {
-  Children,
-  createContext,
-  isValidElement,
-  useContext,
-  useMemo,
-} from "react";
-import type {
-  ComponentPropsWithoutRef,
-  JSX,
-  PropsWithChildren,
-  ReactNode,
-} from "react";
+import { createContext, useContext, useMemo } from "react";
+import type { ComponentPropsWithoutRef, JSX, PropsWithChildren } from "react";
 
 import { composeClassName } from "./class-names";
 import type { PageSide } from "./use-viewport-layout";
-import type { ViewerSlot, ViewerSlotPages } from "./viewer-context";
+import type { ViewerSlot } from "./viewer-context";
 
 interface ViewerSlotContextValue {
   /** How many pages the slot the page belongs to holds. */
@@ -120,42 +109,3 @@ export const StartPage = (props: ViewerSlotPageProps): JSX.Element => (
 export const EndPage = (props: ViewerSlotPageProps): JSX.Element => (
   <SlotPage {...props} componentName="EndPage" slot="end" />
 );
-
-export interface ViewerSlotChildren extends ViewerSlotPages {
-  /** The children left once the slot pages are taken out of the tree. */
-  children: ReactNode;
-}
-
-/**
- * Splits the children of the viewer root into its slot pages and the rest of
- * the tree, so that a StartPage or an EndPage written as a child reaches the
- * rail instead of being rendered where it stands.
- */
-export const extractViewerSlotPages = (
-  children: ReactNode
-): ViewerSlotChildren => {
-  const endPages: ReactNode[] = [];
-  const startPages: ReactNode[] = [];
-  // oxlint-disable-next-line react/no-react-children -- Only Children enumerates the root children without losing the keys they are rendered with.
-  const rest = Children.toArray(children).filter((child) => {
-    if (!isValidElement(child)) {
-      return true;
-    }
-
-    // A slot holds as many pages as it is given, each of them a page of its
-    // own, in the order they are written.
-    if (child.type === StartPage) {
-      startPages.push(child);
-      return false;
-    }
-
-    if (child.type === EndPage) {
-      endPages.push(child);
-      return false;
-    }
-
-    return true;
-  });
-
-  return { children: rest, endPages, startPages };
-};

@@ -6,7 +6,7 @@ import {
   useMemo,
   useRef,
 } from "react";
-import type { ComponentPropsWithoutRef, JSX, Provider, ReactNode } from "react";
+import type { ComponentPropsWithoutRef, JSX, ReactNode } from "react";
 
 import { composeClassName } from "./class-names";
 import type { PageLoadError, PageLoadState, PageLoadStatus } from "./page-load";
@@ -18,6 +18,12 @@ import type { PageLayout, ViewerPage } from "./viewer-context";
 export type ViewportChildren<TPage extends ViewerPage> =
   | ReactNode
   | ((page: TPage, index: number) => ReactNode);
+
+/** A page template that renders each page itself, rather than static markup. */
+const isPageRenderer = <TPage extends ViewerPage>(
+  children: ViewportChildren<TPage>
+): children is (page: TPage, index: number) => ReactNode =>
+  typeof children === "function";
 
 interface ViewportPageContextValue {
   error?: PageLoadError;
@@ -39,6 +45,7 @@ const useViewportPageContext = (
   consumerName: string
 ): ViewportPageContextValue => {
   const context = useContext(ViewportPageContext);
+
   if (context === null) {
     throw new Error(
       `${consumerName} must be used within a page managed by Viewport.`
@@ -76,6 +83,8 @@ export const usePageLoadState = <
     useViewportPageContext("usePageLoadState");
 
   return useMemo(
+    // SAFETY: the caller names the page type of the Root above it, which React
+    // context cannot carry.
     () => ({
       error: error as PageLoadError<TPage> | undefined,
       index,
@@ -108,30 +117,36 @@ export const PageCanvas = ({
     page,
     status,
   } = useViewportPageContext("PageCanvas");
+
   const image = pageImage?.bitmap;
   const placeholder = pageImage?.placeholder ?? false;
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
+
     if (canvas === null) {
       return;
     }
 
     if (image === undefined) {
       canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+
       return;
     }
 
     const context = canvas.getContext("2d");
+
     if (context === null) {
       return;
     }
 
     const imageHeight =
       "naturalHeight" in image ? image.naturalHeight : image.height;
+
     const imageWidth =
       "naturalWidth" in image ? image.naturalWidth : image.width;
+
     // A dimension the page leaves out follows the one it gives at the image's
     // aspect ratio, since a smaller rendition or a preview has fewer pixels.
     canvas.height =
@@ -179,9 +194,20 @@ const ViewportPendingPageContext = createContext<"pending" | "error">(
   "pending"
 );
 
+interface ViewportPendingPageProviderProps {
+  children: ReactNode;
+  value: "pending" | "error";
+}
+
 /** Tells the pending page rendered for an unresolved index how it stands. */
-export const ViewportPendingPageProvider: Provider<"pending" | "error"> =
-  ViewportPendingPageContext.Provider;
+export const ViewportPendingPageProvider = ({
+  children,
+  value,
+}: ViewportPendingPageProviderProps): JSX.Element => (
+  <ViewportPendingPageContext.Provider value={value}>
+    {children}
+  </ViewportPendingPageContext.Provider>
+);
 
 /**
  * Stands in for a page whose metadata is still being resolved, so the spread
@@ -260,17 +286,19 @@ export const ViewportPageInstance = <TPage extends ViewerPage>({
   const retry = useCallback(() => {
     retryPage(index);
   }, [index, retryPage]);
+
   const contextValue = useMemo(
     () => ({ error, image, index, layout, page, retry, side, status }),
     [error, image, index, layout, page, retry, side, status]
   );
+
   let content: ReactNode;
 
   if (children === undefined) {
     content =
       renderPage === undefined ? <ViewportPage /> : renderPage(page, index);
   } else {
-    content = typeof children === "function" ? children(page, index) : children;
+    content = isPageRenderer(children) ? children(page, index) : children;
   }
 
   return (

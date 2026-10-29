@@ -1,5 +1,4 @@
 export {
-  START_PAGE_INDEX,
   ViewerProvider,
   useViewerContext,
   type ImagePage,
@@ -14,20 +13,28 @@ export {
   type ViewerProviderProps,
   type ViewerSlot,
   type ViewMode,
-  type ZoomFocalPoint,
 } from "./viewer-context";
+
+export { START_PAGE_INDEX } from "./viewer-slot-pages";
+
+export type { ZoomFocalPoint } from "./viewer-zoom";
+
 export { EndPage, StartPage, type ViewerSlotPageProps } from "./viewer-slots";
+
 export {
   ComicViewer,
   ComicViewer as Root,
   type ComicViewerProps,
 } from "./comic-viewer";
+
 export {
   Viewport,
   type CustomPageViewportProps,
   type ViewportProps,
 } from "./viewport";
+
 export type { ViewportGestures } from "./use-viewport-gestures";
+
 export {
   PageCanvas,
   ViewportPage,
@@ -37,6 +44,7 @@ export {
   type ViewportPageProps,
   type ViewportPendingPageProps,
 } from "./viewport-page";
+
 export {
   usePageResolveState,
   type PageResolveContext,
@@ -45,12 +53,14 @@ export {
   type PageResolveStatus,
   type PageResolver,
 } from "./page-source";
+
 export type {
   PageLoadError,
   PageLoadStage,
   PageLoadState,
   PageLoadStatus,
 } from "./page-load";
+
 export {
   ViewportPageSet,
   ViewportPageSlot,
@@ -59,7 +69,9 @@ export {
   type ViewportPageSlotProps,
   type ViewportTrackProps,
 } from "./viewport-template";
+
 export { Toolbar, type ToolbarProps } from "./toolbar";
+
 export {
   NextPageButton,
   PageNavigation,
@@ -75,6 +87,7 @@ export {
   type PageStatusProps,
   type PageStatusValue,
 } from "./page-navigation";
+
 export {
   PageFitModeToggle,
   ReadingDirectionToggle,
@@ -83,7 +96,9 @@ export {
   type ReadingDirectionToggleProps,
   type ViewModeToggleProps,
 } from "./reader-settings";
+
 export { useViewMode } from "./use-view-mode";
+
 export {
   definePlugin,
   type DecodedPageContext,
@@ -92,4 +107,5 @@ export {
   type PageLoadContext,
   type ViewerPlugin,
 } from "./plugin";
+
 export type { DecodedPageImage } from "./page-image";

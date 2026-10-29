@@ -3,7 +3,7 @@ import type { JSX } from "react";
 import { composeClassName } from "./class-names";
 import { ViewerProvider } from "./viewer-context";
 import type { PageMetadata, ViewerProviderProps } from "./viewer-context";
-import { extractViewerSlotPages } from "./viewer-slots";
+import { extractViewerSlotPages } from "./viewer-slot-pages";
 
 export type ComicViewerProps<TPage extends PageMetadata> =
   ViewerProviderProps<TPage> & {

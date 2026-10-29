@@ -27,13 +27,9 @@ import {
 } from "./use-viewport-layout";
 import type { PageTurnDirection } from "./use-viewport-layout";
 import { useViewportSize } from "./use-viewport-size";
-import { getPreviousSpreadIndex } from "./viewer-context";
-import type {
-  PageFitMode,
-  ScrubSpread,
-  ViewerPage,
-  ViewMode,
-} from "./viewer-context";
+import type { PageFitMode, ViewerPage, ViewMode } from "./viewer-context";
+import { getPreviousSpreadIndex } from "./viewer-spreads";
+import type { ScrubSpread } from "./viewer-spreads";
 
 const PAGE_TURN_FALLBACK_DURATION_MS = 320;
 const PAGE_TURN_IMAGE_WAIT_TIMEOUT_MS = 1200;

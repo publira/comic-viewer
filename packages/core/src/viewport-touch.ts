@@ -1,3 +1,5 @@
+import type { ZoomFocalPoint } from "./viewer-zoom";
+
 interface TouchPoint {
   clientX: number;
   clientY: number;
@@ -17,6 +19,7 @@ export const getTouchPair = (
 ): [TouchPoint, TouchPoint] | null => {
   const first = getFirstTouch(touches);
   const second = touches.item?.(1) ?? touches[1] ?? null;
+
   return first === null || second === null ? null : [first, second];
 };
 
@@ -29,7 +32,7 @@ export const getTouchDistance = (
 export const getTouchCenter = (
   first: TouchPoint,
   second: TouchPoint
-): { x: number; y: number } => ({
+): ZoomFocalPoint => ({
   x: (first.clientX + second.clientX) / 2,
   y: (first.clientY + second.clientY) / 2,
 });

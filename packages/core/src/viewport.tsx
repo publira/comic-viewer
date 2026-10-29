@@ -7,11 +7,12 @@ import { usePageTurn } from "./use-page-turn";
 import { useViewMode } from "./use-view-mode";
 import { useViewportGestures } from "./use-viewport-gestures";
 import type { ViewportGestures } from "./use-viewport-gestures";
-import { getScrubSpread, useViewerContext } from "./viewer-context";
+import { useViewerContext } from "./viewer-context";
 import type { PageMetadata, ViewerPage } from "./viewer-context";
+import { getScrubSpread } from "./viewer-spreads";
+import { getViewportLayoutTemplate } from "./viewport-layout-template";
 import type { ViewportChildren } from "./viewport-page";
 import { ViewportRail } from "./viewport-rail";
-import { getViewportLayoutTemplate } from "./viewport-template";
 import type { ViewportTrackProps } from "./viewport-template";
 
 interface ViewportBaseProps {
@@ -84,6 +85,8 @@ interface ViewportComponent {
  * Given `renderPage`, alone or with a layout template, it draws each page itself
  * and accepts pages without `src`; otherwise it loads the image of each page.
  */
+// SAFETY: without image loading, which only reads `src`, the implementation
+// takes the pages of ViewportComponent's first signature too.
 export const Viewport = (<TPage extends ViewerPage>({
   "aria-label": ariaLabel = "Comic pages",
   children,
@@ -95,8 +98,10 @@ export const Viewport = (<TPage extends ViewerPage>({
   doublePageThreshold,
 }: ViewportProps<TPage>) => {
   const layoutTemplate = getViewportLayoutTemplate(children);
+
   const pageTemplate =
     layoutTemplate === undefined ? children : layoutTemplate.pageTemplate;
+
   if (renderPage !== undefined && pageTemplate !== undefined) {
     throw new Error(
       "Viewport takes either renderPage or a page template, not both."
@@ -104,6 +109,7 @@ export const Viewport = (<TPage extends ViewerPage>({
   }
 
   const containerRef = useRef<HTMLDivElement>(null);
+
   const {
     endPages,
     imagePreloadSpreads,
@@ -123,9 +129,11 @@ export const Viewport = (<TPage extends ViewerPage>({
     setPageFitMode,
     toggleControls,
   } = useViewerContext<TPage>();
+
   const viewMode = useViewMode(containerRef, doublePageThreshold);
   const usesManagedImageLoading = renderPage === undefined;
   const usesPageRail = children === undefined || layoutTemplate !== undefined;
+
   const scrubSpread = useMemo(
     () =>
       scrubPosition === null
@@ -140,6 +148,7 @@ export const Viewport = (<TPage extends ViewerPage>({
           ),
     [maxIndex, minIndex, pages, scrubPosition, spreadStartIndex, viewMode]
   );
+
   const {
     displayedIndex,
     dragOffset,
@@ -172,6 +181,7 @@ export const Viewport = (<TPage extends ViewerPage>({
     usesPageRail,
     viewMode,
   });
+
   const {
     activePan,
     activeZoom,

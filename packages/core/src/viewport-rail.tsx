@@ -1,11 +1,11 @@
 import { cloneElement, Fragment } from "react";
 import type {
-  CSSProperties,
   ReactElement,
   ReactNode,
   TransitionEvent as ReactTransitionEvent,
 } from "react";
 
+import type { CustomPropertyStyle } from "./custom-property-style";
 import { getPageResolveStatus, usePageResolveStore } from "./page-source";
 import type { PageResolveStatus } from "./page-source";
 import { isSpreadPage } from "./page-spread";
@@ -13,9 +13,10 @@ import { getPageImageKey } from "./use-viewport-images";
 import type { PageImage, PageLoadEntry } from "./use-viewport-images";
 import { getPageSide } from "./use-viewport-layout";
 import type { PageSide, PageTurnDirection } from "./use-viewport-layout";
-import { getSlotPage } from "./viewer-context";
 import type { ViewerPage } from "./viewer-context";
+import { getSlotPage } from "./viewer-slot-pages";
 import { ViewerSlotProvider } from "./viewer-slots";
+import type { ViewportLayoutTemplate } from "./viewport-layout-template";
 import {
   ViewportPageInstance,
   ViewportPendingPage,
@@ -24,7 +25,7 @@ import {
 import type { ViewportChildren } from "./viewport-page";
 import { ViewportPageSet, ViewportTrack } from "./viewport-template";
 import type {
-  ViewportLayoutTemplate,
+  PageTurnTransitionState,
   ViewportTrackProps,
 } from "./viewport-template";
 
@@ -63,7 +64,7 @@ interface ViewportRailProps<TPage extends ViewerPage> {
   slideDirection: PageTurnDirection | undefined;
   spreadStartIndex: number;
   startPages: readonly ReactNode[];
-  transitionState: "idle" | "waiting" | "prepared" | "active";
+  transitionState: PageTurnTransitionState;
   viewMode: "single" | "double";
 }
 
@@ -97,28 +98,33 @@ export const ViewportRail = <TPage extends ViewerPage>({
   const trackTemplate = layoutTemplate?.track;
   const pageSetTemplate = layoutTemplate?.pageSet;
   const pageSlotTemplate = layoutTemplate?.pageSlot;
+
   // Only a spread has two halves, so a page takes a side in double-page mode
   // alone.
   const getSide = (index: number): PageSide | undefined =>
     viewMode === "double"
       ? getPageSide(index, spreadStartIndex, readingDirection, pages)
       : undefined;
+
   // A spread page reports its layout in both view modes, because it is the
   // width of two pages whether or not the other one is on screen.
   const getLayout = (index: number): "spread" | undefined =>
     isSpreadPage(index, pages) ? "spread" : undefined;
+
   const pageSets = railSpreadIndices.map((spreadIndex, slot) => {
+    const currentPageSetStyle: CustomPropertyStyle = {
+      ...pageSetTemplate?.props.style,
+      "--pcv-pan-x": `${activePan.x}px`,
+      "--pcv-pan-y": `${activePan.y}px`,
+      "--pcv-zoom-scale": activeZoom.scale,
+    };
+
     const pageSetStyle =
-      slot === 1
-        ? ({
-            ...pageSetTemplate?.props.style,
-            "--pcv-pan-x": `${activePan.x}px`,
-            "--pcv-pan-y": `${activePan.y}px`,
-            "--pcv-zoom-scale": activeZoom.scale,
-          } as CSSProperties)
-        : pageSetTemplate?.props.style;
+      slot === 1 ? currentPageSetStyle : pageSetTemplate?.props.style;
+
     const pageIndices =
       spreadIndex === undefined ? [] : getPageIndices(spreadIndex);
+
     const pageSetProps = {
       "aria-hidden": slot !== 1 || undefined,
       "data-page-count": pageIndices.length,
@@ -131,6 +137,7 @@ export const ViewportRail = <TPage extends ViewerPage>({
       "data-view-mode": viewMode,
       style: pageSetStyle,
     };
+
     const pageInstances =
       spreadIndex === undefined
         ? null
@@ -138,16 +145,19 @@ export const ViewportRail = <TPage extends ViewerPage>({
             const page = pages[index];
             const layout = getLayout(index);
             const side = getSide(index);
+
             const slotPage = getSlotPage(index, pageCount, {
               endPages,
               startPages,
             });
+
             const pendingStatus =
               slotPage === undefined && page === undefined
                 ? getPendingPageStatus(
                     getPageResolveStatus(resolveStore, index)
                   )
                 : undefined;
+
             let pageInstance: ReactNode;
 
             if (slotPage !== undefined) {
@@ -231,10 +241,12 @@ export const ViewportRail = <TPage extends ViewerPage>({
       pageInstances
     );
   });
-  const trackStyle = {
+
+  const trackStyle: CustomPropertyStyle = {
     ...trackTemplate?.props.style,
     "--pcv-drag-offset": `${dragOffset}px`,
-  } as CSSProperties;
+  };
+
   const trackProps: Partial<ViewportTrackProps> = {
     "data-dragging": isDragging || undefined,
     "data-slide-direction": slideDirection,

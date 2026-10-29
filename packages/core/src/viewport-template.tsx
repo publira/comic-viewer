@@ -1,15 +1,20 @@
-import { isValidElement } from "react";
-import type { ComponentPropsWithoutRef, JSX, ReactElement } from "react";
+import type { ComponentPropsWithoutRef, JSX } from "react";
 
 import { composeClassName } from "./class-names";
 import type { PageSide, PageTurnDirection } from "./use-viewport-layout";
-import type { PageLayout, ViewerPage, ViewerSlot } from "./viewer-context";
-import type { ViewportChildren } from "./viewport-page";
+import type { PageLayout, ViewerSlot } from "./viewer-context";
+
+/** The phase of the page turn in progress, `"idle"` between turns. */
+export type PageTurnTransitionState =
+  | "idle"
+  | "waiting"
+  | "prepared"
+  | "active";
 
 export interface ViewportTrackProps extends ComponentPropsWithoutRef<"div"> {
   "data-dragging"?: boolean;
   "data-slide-direction"?: PageTurnDirection;
-  "data-transition-state"?: "idle" | "waiting" | "prepared" | "active";
+  "data-transition-state"?: PageTurnTransitionState;
 }
 
 /** Provides the page-turn rail for a custom Viewport layout. */
@@ -77,51 +82,3 @@ export const ViewportPageSlot = ({
     {children}
   </div>
 );
-
-export interface ViewportLayoutTemplate<TPage extends ViewerPage> {
-  pageSet: ReactElement<ViewportPageSetProps>;
-  pageSlot: ReactElement<ViewportPageSlotProps>;
-  pageTemplate: ViewportChildren<TPage> | undefined;
-  track: ReactElement<ViewportTrackProps>;
-}
-
-/** Reads the optional track, page-set, and page-slot templates from Viewport children. */
-export const getViewportLayoutTemplate = <TPage extends ViewerPage>(
-  children: ViewportChildren<TPage> | undefined
-): ViewportLayoutTemplate<TPage> | undefined => {
-  if (
-    !isValidElement<ViewportTrackProps>(children) ||
-    children.type !== ViewportTrack
-  ) {
-    return undefined;
-  }
-
-  const pageSet = children.props.children;
-  if (
-    !isValidElement<ViewportPageSetProps>(pageSet) ||
-    pageSet.type !== ViewportPageSet
-  ) {
-    throw new Error(
-      "ViewportTrack must contain exactly one ViewportPageSet template."
-    );
-  }
-
-  const pageSlot = pageSet.props.children;
-  if (
-    !isValidElement<ViewportPageSlotProps>(pageSlot) ||
-    pageSlot.type !== ViewportPageSlot
-  ) {
-    throw new Error(
-      "ViewportPageSet must contain exactly one ViewportPageSlot template."
-    );
-  }
-
-  return {
-    pageSet,
-    pageSlot,
-    pageTemplate: pageSlot.props.children as
-      | ViewportChildren<TPage>
-      | undefined,
-    track: children,
-  };
-};
