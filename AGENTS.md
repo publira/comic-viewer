@@ -50,3 +50,7 @@ The root `package.json` pins the toolchain: Node.js through `devEngines.runtime`
 
 - `packages/core` builds its declarations with Oxc through tsdown, because TypeScript 7 has no compiler API for `tsc`'s declaration emit. Oxc reads each file on its own, so `isolatedDeclarations` requires every export to carry the types its declaration needs, such as a component's `JSX.Element` return type, and `pnpm typecheck` reports a missing one.
 - The code stays within erasable syntax (`erasableSyntaxOnly`).
+
+## Skill packages
+
+Entries in `.agents/skills/*` listed in `skills-lock.json` are vendored: `npx skills` overwrites them, and the maintenance bot in `publira/agents` runs `npx skills update -p -y` weekly and opens a pull request when there is a diff. Do not edit them; a patch is lost at the next update. Reading them for reference is fine. When this repository's policy and a skill disagree, this file wins. `.claude/skills/*` reaches the same skills through relative symlinks.
