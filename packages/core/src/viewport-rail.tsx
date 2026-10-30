@@ -38,9 +38,8 @@ const getRailSlotName = (slot: number): "previous" | "current" | "next" => {
 };
 
 /** A page without metadata reads as failed once its resolver rejected. */
-const getPendingPageStatus = (
-  status: PageResolveStatus
-): "pending" | "error" => (status === "error" ? "error" : "pending");
+const getPendingPageStatus = (status: PageResolveStatus): "pending" | "error" =>
+  status === "error" ? "error" : "pending";
 
 interface ViewportRailProps<TPage extends ViewerPage> {
   activePan: { x: number; y: number };
