@@ -22,10 +22,7 @@ export const useViewportSize = (
       return;
     }
 
-    let width = el.clientWidth;
-    let height = el.clientHeight;
-
-    const update = (): void => {
+    const update = (width: number, height: number): void => {
       const density = getDensity();
       setSize((current) =>
         current?.width === width &&
@@ -36,12 +33,12 @@ export const useViewportSize = (
       );
     };
 
-    update();
+    update(el.clientWidth, el.clientHeight);
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        ({ height, width } = entry.contentRect);
-        update();
+        const { height, width } = entry.contentRect;
+        update(width, height);
       }
     });
 
@@ -49,21 +46,24 @@ export const useViewportSize = (
 
     // Moving to a display of another density leaves the CSS size as it was,
     // so the density is watched on its own, one resolution at a time.
-    let densityQuery: MediaQueryList | undefined;
+    const densityQuery = {
+      current: window.matchMedia?.(`(resolution: ${getDensity()}dppx)`),
+    };
 
     const onDensityChange = (): void => {
       update();
-      densityQuery?.removeEventListener?.("change", onDensityChange);
-      densityQuery = window.matchMedia?.(`(resolution: ${getDensity()}dppx)`);
-      densityQuery?.addEventListener?.("change", onDensityChange);
+      densityQuery.current?.removeEventListener?.("change", onDensityChange);
+      densityQuery.current = window.matchMedia?.(
+        `(resolution: ${getDensity()}dppx)`
+      );
+      densityQuery.current?.addEventListener?.("change", onDensityChange);
     };
 
-    densityQuery = window.matchMedia?.(`(resolution: ${getDensity()}dppx)`);
-    densityQuery?.addEventListener?.("change", onDensityChange);
+    densityQuery.current?.addEventListener?.("change", onDensityChange);
 
     return () => {
       observer.disconnect();
-      densityQuery?.removeEventListener?.("change", onDensityChange);
+      densityQuery.current?.removeEventListener?.("change", onDensityChange);
     };
   }, [containerRef]);
 
