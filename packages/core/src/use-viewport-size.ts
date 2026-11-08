@@ -22,7 +22,10 @@ export const useViewportSize = (
       return;
     }
 
-    const update = (width: number, height: number): void => {
+    const measured = { height: el.clientHeight, width: el.clientWidth };
+
+    const update = (): void => {
+      const { height, width } = measured;
       const density = getDensity();
       setSize((current) =>
         current?.width === width &&
@@ -33,12 +36,13 @@ export const useViewportSize = (
       );
     };
 
-    update(el.clientWidth, el.clientHeight);
+    update();
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const { height, width } = entry.contentRect;
-        update(width, height);
+        measured.height = entry.contentRect.height;
+        measured.width = entry.contentRect.width;
+        update();
       }
     });
 
@@ -46,24 +50,22 @@ export const useViewportSize = (
 
     // Moving to a display of another density leaves the CSS size as it was,
     // so the density is watched on its own, one resolution at a time.
-    const densityQuery = {
-      current: window.matchMedia?.(`(resolution: ${getDensity()}dppx)`),
+    const watched = {
+      query: window.matchMedia?.(`(resolution: ${getDensity()}dppx)`),
     };
 
     const onDensityChange = (): void => {
       update();
-      densityQuery.current?.removeEventListener?.("change", onDensityChange);
-      densityQuery.current = window.matchMedia?.(
-        `(resolution: ${getDensity()}dppx)`
-      );
-      densityQuery.current?.addEventListener?.("change", onDensityChange);
+      watched.query?.removeEventListener?.("change", onDensityChange);
+      watched.query = window.matchMedia?.(`(resolution: ${getDensity()}dppx)`);
+      watched.query?.addEventListener?.("change", onDensityChange);
     };
 
-    densityQuery.current?.addEventListener?.("change", onDensityChange);
+    watched.query?.addEventListener?.("change", onDensityChange);
 
     return () => {
       observer.disconnect();
-      densityQuery.current?.removeEventListener?.("change", onDensityChange);
+      watched.query?.removeEventListener?.("change", onDensityChange);
     };
   }, [containerRef]);
 
