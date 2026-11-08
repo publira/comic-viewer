@@ -22,10 +22,10 @@ export const useViewportSize = (
       return;
     }
 
-    let width = el.clientWidth;
-    let height = el.clientHeight;
+    const measured = { height: el.clientHeight, width: el.clientWidth };
 
     const update = (): void => {
+      const { height, width } = measured;
       const density = getDensity();
       setSize((current) =>
         current?.width === width &&
@@ -40,7 +40,8 @@ export const useViewportSize = (
 
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        ({ height, width } = entry.contentRect);
+        measured.height = entry.contentRect.height;
+        measured.width = entry.contentRect.width;
         update();
       }
     });
@@ -49,21 +50,22 @@ export const useViewportSize = (
 
     // Moving to a display of another density leaves the CSS size as it was,
     // so the density is watched on its own, one resolution at a time.
-    let densityQuery: MediaQueryList | undefined;
+    const watched = {
+      query: window.matchMedia?.(`(resolution: ${getDensity()}dppx)`),
+    };
 
     const onDensityChange = (): void => {
       update();
-      densityQuery?.removeEventListener?.("change", onDensityChange);
-      densityQuery = window.matchMedia?.(`(resolution: ${getDensity()}dppx)`);
-      densityQuery?.addEventListener?.("change", onDensityChange);
+      watched.query?.removeEventListener?.("change", onDensityChange);
+      watched.query = window.matchMedia?.(`(resolution: ${getDensity()}dppx)`);
+      watched.query?.addEventListener?.("change", onDensityChange);
     };
 
-    densityQuery = window.matchMedia?.(`(resolution: ${getDensity()}dppx)`);
-    densityQuery?.addEventListener?.("change", onDensityChange);
+    watched.query?.addEventListener?.("change", onDensityChange);
 
     return () => {
       observer.disconnect();
-      densityQuery?.removeEventListener?.("change", onDensityChange);
+      watched.query?.removeEventListener?.("change", onDensityChange);
     };
   }, [containerRef]);
 
