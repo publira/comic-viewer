@@ -224,8 +224,8 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
       sugar-high:
-        specifier: 2.6.4
-        version: 2.6.4
+        specifier: 2.7.0
+        version: 2.7.0
     devDependencies:
       '@types/node':
         specifier: 26.6.6
@@ -261,8 +261,8 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
       sugar-high:
-        specifier: 2.6.4
-        version: 2.6.4
+        specifier: 2.7.0
+        version: 2.7.0
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 4.3.5
@@ -298,8 +298,8 @@ importers:
         specifier: 19.3.1
         version: 19.3.1(react@19.3.1)
       sugar-high:
-        specifier: 2.6.4
-        version: 2.6.4
+        specifier: 2.7.0
+        version: 2.7.0
     devDependencies:
       '@publira/design-tokens':
         specifier: 1.1.0
@@ -3594,8 +3594,8 @@ packages:
       babel-plugin-macros:
         optional: true
 
-  sugar-high@2.6.4:
-    resolution: {integrity: sha512-GJkKsIyzqPMCJabhM8c4IKBg3aKUtI62DMPGdgFuXDo0Z5LY+q3SIT3PsSjGkOT9IglhCR6dZBDVQYmdIfumsw==}
+  sugar-high@2.7.0:
+    resolution: {integrity: sha512-N9Ed+lQ3lvmWVKf+TBXgp5p2Lfwqx8VIInD8K1BvWvkyLuEZ7mjPB2KFa5vuAs71T4P16hAcI4343Y3pD0zddw==}
 
   supports-color@7.2.0:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
@@ -4600,7 +4600,7 @@ snapshots:
   '@sugar-high/react@2.5.1(react@19.3.1)':
     dependencies:
       react: 19.3.1
-      sugar-high: 2.6.4
+      sugar-high: 2.7.0
 
   '@swc/helpers@0.5.23':
     dependencies:
@@ -6809,7 +6809,7 @@ snapshots:
       client-only: 0.0.1
       react: 19.3.1
 
-  sugar-high@2.6.4: {}
+  sugar-high@2.7.0: {}
 
   supports-color@7.2.0:
     dependencies:
