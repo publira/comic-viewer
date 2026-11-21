@@ -21,7 +21,7 @@
     "oxfmt": "0.79.0",
     "oxlint": "1.94.0",
     "oxlint-plugin-react-doctor": "0.9.23",
-    "turbo": "2.11.11",
+    "turbo": "2.11.12",
     "typescript": "7.0.2",
     "ultracite": "8.2.1"
   },
