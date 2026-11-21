@@ -25,8 +25,8 @@ interface FakeBitmap extends ImageBitmap {
 const createDecodedImage = (name: string): FakeBitmap => ({
   close: vi.fn<() => void>(),
   height: 2,
-  name,
   width: 1,
+  name,
 });
 
 describe("plugin pipeline", () => {

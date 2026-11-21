@@ -230,14 +230,14 @@ export const usePageTurn = <TPage extends ViewerPage>({
     preloadIndices,
     railSpreadIndices,
   } = useViewportLayout({
-    displayedIndex,
-    imagePreloadSpreads,
+    transitionToIndex: pageTurnTransition?.toIndex,
     maxIndex,
     minIndex,
-    pages,
     readingDirection,
     spreadStartIndex,
-    transitionToIndex: pageTurnTransition?.toIndex,
+    displayedIndex,
+    imagePreloadSpreads,
+    pages,
     usesPageRail,
     viewMode,
   });
@@ -266,14 +266,14 @@ export const usePageTurn = <TPage extends ViewerPage>({
     loadStates: pageLoadStates,
     retryPage,
   } = useViewportImages({
-    cachedIndices,
     getPageRequirement: getRequirement,
     keepImages: pageTurnTransition !== null,
-    onPageLoadError,
-    pages,
-    plugins,
-    preloadIndices,
     shouldLoadImages: usesManagedImageLoading,
+    onPageLoadError,
+    plugins,
+    cachedIndices,
+    pages,
+    preloadIndices,
   });
 
   const isIncomingPageSetReady =
@@ -311,7 +311,7 @@ export const usePageTurn = <TPage extends ViewerPage>({
 
     endsScrubRef.current = true;
     // A scrub takes the rail over from a running transition before the next paint.
-    dispatchRail({ index: scrubIndex, offset, type: "place" });
+    dispatchRail({ type: "place", index: scrubIndex, offset });
   }, [containerRef, isScrubbing, readingDirection, scrubFraction, scrubIndex]);
 
   useLayoutEffect(() => {
@@ -489,10 +489,12 @@ export const usePageTurn = <TPage extends ViewerPage>({
   );
 
   return {
+    isTransitioning: pageTurnTransition !== null,
+    slideDirection: pageTurnTransition?.direction,
+    transitionState: pageTurnTransition?.phase ?? ("idle" as const),
+    onTransitionEnd,
     displayedIndex,
     dragOffset,
-    isTransitioning: pageTurnTransition !== null,
-    onTransitionEnd,
     orderedIndices,
     orderedIndicesFor,
     pageImages,
@@ -500,7 +502,5 @@ export const usePageTurn = <TPage extends ViewerPage>({
     railSpreadIndices,
     retryPage,
     setDragOffset,
-    slideDirection: pageTurnTransition?.direction,
-    transitionState: pageTurnTransition?.phase ?? ("idle" as const),
   };
 };

@@ -18,8 +18,8 @@ const nextConfig: NextConfig = {
   // The flat paths were shared before the move, so they keep working.
   redirects: () =>
     Object.entries(groupedRoutes).map(([source, destination]) => ({
-      destination,
       permanent: true,
+      destination,
       source,
     })),
 };

@@ -37,17 +37,17 @@ export default defineConfig({
   webServer: [
     {
       command: `pnpm --filter @publira/comic-viewer-demo exec next start --hostname 127.0.0.1 --port ${port}`,
-      cwd: workspaceRoot,
-      gracefulShutdown,
       reuseExistingServer: process.env.CI === undefined,
       url: baseURL,
+      cwd: workspaceRoot,
+      gracefulShutdown,
     },
     {
       command: `pnpm --filter @publira/comic-viewer-tailwind-demo exec next start --hostname 127.0.0.1 --port ${tailwindPort}`,
-      cwd: workspaceRoot,
-      gracefulShutdown,
       reuseExistingServer: process.env.CI === undefined,
       url: tailwindBaseURL,
+      cwd: workspaceRoot,
+      gracefulShutdown,
     },
   ],
 });

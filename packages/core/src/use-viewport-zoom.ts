@@ -324,10 +324,10 @@ export const useViewportZoom = ({
       pinchStateRef.current = {
         startCenterX: center.x,
         startCenterY: center.y,
-        startDistance,
         startPanX: activePan.x,
         startPanY: activePan.y,
         startScale: activeZoom.scale,
+        startDistance,
       };
       panStateRef.current.pointerId = null;
       setPanningKey(panKey);
@@ -394,6 +394,7 @@ export const useViewportZoom = ({
   );
 
   return {
+    isPanning: panningKey === panKey,
     activePan,
     activeZoom,
     beginPan,
@@ -402,7 +403,6 @@ export const useViewportZoom = ({
     endPan,
     endPinch,
     isPannable,
-    isPanning: panningKey === panKey,
     isPinching,
     isTouchPanning,
     movePan,

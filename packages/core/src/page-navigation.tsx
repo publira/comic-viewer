@@ -287,14 +287,14 @@ const getPageStatusValue = ({
   const hasVisiblePages = pageCount > 0 && firstVisiblePage <= lastVisiblePage;
 
   return {
-    currentIndex,
     firstPage: hasVisiblePages ? firstVisiblePage : 0,
     firstSlotPage: slotPage?.position,
     lastPage: hasVisiblePages ? lastVisiblePage : 0,
     lastSlotPage: lastSlotPage?.position,
-    pageCount,
     slot: slotPage?.slot,
     slotPageCount: slotPage?.count,
+    currentIndex,
+    pageCount,
     viewMode,
   };
 };

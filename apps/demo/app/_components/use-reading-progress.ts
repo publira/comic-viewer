@@ -153,8 +153,8 @@ export const useReadingProgress = (
     // the index is held inside the document rather than trusted as it comes.
     currentIndex: Math.min(restoredIndex ?? 0, Math.max(0, pageCount - 1)),
     isRestored: storedIndex !== unrestored,
+    storedIndex: restoredIndex,
     resetProgress,
     saveIndex,
-    storedIndex: restoredIndex,
   };
 };

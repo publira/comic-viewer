@@ -49,16 +49,16 @@ const renderLayout = ({
 } = {}) =>
   renderHook(() =>
     useViewportLayout({
-      displayedIndex,
-      imagePreloadSpreads,
       maxIndex: 9,
-      minIndex,
-      pages,
       readingDirection: "rtl",
       spreadStartIndex: 0,
-      transitionToIndex,
       usesPageRail: true,
       viewMode: "double",
+      displayedIndex,
+      imagePreloadSpreads,
+      minIndex,
+      pages,
+      transitionToIndex,
     })
   );
 

@@ -190,8 +190,9 @@ export const Viewport = (<TPage extends ViewerPage>({
     isPanning,
     viewportProps,
   } = useViewportGestures({
-    containerRef,
     currentIndex: scrubSpread?.nearestIndex ?? currentIndex,
+    pageFitMode,
+    containerRef,
     displayedIndex,
     gestures,
     goToNext,
@@ -199,7 +200,6 @@ export const Viewport = (<TPage extends ViewerPage>({
     isTransitioning,
     maxIndex,
     minIndex,
-    pageFitMode,
     pages,
     readingDirection,
     setDragOffset,

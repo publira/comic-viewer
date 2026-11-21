@@ -49,8 +49,8 @@ export const getSlotPage = (
       : {
           count: startPages.length,
           page: startPages[position - 1],
-          position,
           slot: "start",
+          position,
         };
   }
 
@@ -65,8 +65,8 @@ export const getSlotPage = (
     : {
         count: endPages.length,
         page: endPages[position - 1],
-        position,
         slot: "end",
+        position,
       };
 };
 

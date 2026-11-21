@@ -295,8 +295,8 @@ describe("page load state", () => {
               ok: true,
             })
           : Promise.reject(new Error("offline")),
-      onPageLoadError,
       page: { ...singlePage, placeholder: "preview.png" },
+      onPageLoadError,
     });
 
     await waitFor(() => {

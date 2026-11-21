@@ -555,8 +555,8 @@ describe("viewer slot pages", () => {
       renderSlotViewer({
         endPageCount: 2,
         initialIndex: 3,
-        initialReadingDirection,
         startPageCount: 0,
+        initialReadingDirection,
       });
 
       const forwardKey =
