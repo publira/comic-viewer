@@ -131,7 +131,7 @@ export const getScrubSpread = (
     getVisiblePageCount(viewMode, index, maxIndex, spreadStartIndex, pages);
 
   if (nextIndex > maxIndex) {
-    return { fraction: 0, index, nearestIndex: index };
+    return { fraction: 0, nearestIndex: index, index };
   }
 
   const fraction = Math.min(

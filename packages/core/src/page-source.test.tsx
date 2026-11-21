@@ -194,9 +194,9 @@ describe("lazy page metadata", () => {
     const onPageResolveError = vi.fn<(error: PageResolveError) => void>();
 
     const { result } = renderViewerContext({
-      onPageResolveError,
       pageCount: 1,
       resolvePage,
+      onPageResolveError,
     });
 
     await waitFor(() => {
@@ -253,9 +253,9 @@ describe("lazy page metadata", () => {
     const onPageResolveError = vi.fn<(error: PageResolveError) => void>();
 
     const { result } = renderResolveState(0, {
-      onPageResolveError,
       pageCount: 1,
       resolvePage,
+      onPageResolveError,
     });
 
     await waitFor(() => {

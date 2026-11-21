@@ -87,11 +87,11 @@ export const usePageLoadState = <
     // context cannot carry.
     () => ({
       error: error as PageLoadError<TPage> | undefined,
-      index,
       page: page as TPage,
       placeholder: image?.placeholder ?? false,
-      retry,
       status,
+      index,
+      retry,
     }),
     [error, image, index, page, retry, status]
   );

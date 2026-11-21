@@ -836,13 +836,13 @@ describe(Viewport, () => {
 
     const getContext = stubCanvasContext({
       clearRect: vi.fn<() => void>(),
-      drawImage,
       get filter() {
         return filters.at(-1) ?? "none";
       },
       set filter(filter: string) {
         filters.push(filter);
       },
+      drawImage,
     });
 
     const fetchMock = vi.fn<MockFetch>().mockResolvedValue({

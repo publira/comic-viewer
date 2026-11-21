@@ -98,13 +98,13 @@ export const useLazyChapters = (pages: readonly ViewerPage[]): LazyChapters => {
 
   return {
     chapterCount: Math.ceil(pages.length / CHAPTER_LENGTH),
+    loadedChapterCount: Math.ceil(pageCount / CHAPTER_LENGTH),
+    setFailsRequests,
     failsRequests,
     isLoadingChapter,
     loadNextChapter,
-    loadedChapterCount: Math.ceil(pageCount / CHAPTER_LENGTH),
     pageCount,
     requestCount,
     resolvePage,
-    setFailsRequests,
   };
 };

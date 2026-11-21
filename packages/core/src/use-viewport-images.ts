@@ -471,7 +471,7 @@ export const useViewportImages = <TPage extends ViewerPage>({
         try {
           return {
             buffer: await runDataPipeline(
-              { page, signal: abortController.signal, url },
+              { signal: abortController.signal, page, url },
               plugins
             ),
           };
@@ -550,9 +550,9 @@ export const useViewportImages = <TPage extends ViewerPage>({
         bitmap = await runDecodePipeline(
           {
             image: bitmap,
-            page,
             signal: abortController.signal,
             url,
+            page,
           },
           plugins
         );

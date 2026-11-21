@@ -34,11 +34,11 @@ const createPages = (
     return {
       height: 1000,
       id: `page-${pageNumber}`,
-      mimeType,
-      placeholder,
       src: srcForPage(pageNumber),
       title: `Page ${pageNumber}`,
       width: 800,
+      mimeType,
+      placeholder,
     };
   });
 

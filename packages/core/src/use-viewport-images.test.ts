@@ -81,13 +81,13 @@ describe(useViewportImages, () => {
 
     const { result } = renderHook(() =>
       useViewportImages({
-        cachedIndices: [2, 3],
-        getPageRequirement,
         keepImages: false,
-        pages: testPages,
         plugins: [],
         preloadIndices: [4, 5],
         shouldLoadImages: true,
+        cachedIndices: [2, 3],
+        pages: testPages,
+        getPageRequirement,
       })
     );
 
@@ -113,13 +113,13 @@ describe(useViewportImages, () => {
         useViewportImages(props),
       {
         initialProps: {
-          cachedIndices: [2, 3],
-          getPageRequirement,
           keepImages: false,
-          pages: testPages,
           plugins: [],
           preloadIndices: [4, 5],
           shouldLoadImages: true,
+          cachedIndices: [2, 3],
+          pages: testPages,
+          getPageRequirement,
         },
       }
     );
@@ -129,13 +129,13 @@ describe(useViewportImages, () => {
     });
 
     rerender({
-      cachedIndices: [4, 5],
-      getPageRequirement,
       keepImages: false,
-      pages: testPages,
       plugins: [],
       preloadIndices: [6, 7],
       shouldLoadImages: true,
+      cachedIndices: [4, 5],
+      pages: testPages,
+      getPageRequirement,
     });
 
     await waitFor(() => {
@@ -183,13 +183,13 @@ describe(useViewportImages, () => {
     const { result } = renderHook(
       () =>
         useViewportImages({
-          cachedIndices: [0],
-          getPageRequirement,
           keepImages: false,
-          pages: testPages,
           plugins: [],
           preloadIndices: [],
           shouldLoadImages: true,
+          cachedIndices: [0],
+          pages: testPages,
+          getPageRequirement,
         }),
       { wrapper: StrictMode }
     );

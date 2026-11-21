@@ -409,11 +409,11 @@ export const ViewerProvider = <TPage extends PageMetadata>({
 
   const { pages: sourcePages, resolveStore } = usePageSource({
     currentIndex: viewIndex,
-    onPageResolveError,
     overscan: clampInteger(pageResolveOverscan, 0, Number.MAX_SAFE_INTEGER),
     pageCount: totalPageCount,
     pages,
     resolvePage,
+    onPageResolveError,
   });
 
   const clampedImagePreloadSpreads = clampInteger(
@@ -458,8 +458,8 @@ export const ViewerProvider = <TPage extends PageMetadata>({
     );
 
   const { resetZoom, setZoomScale, zoomScale, zoomStore } = useViewerZoom({
-    currentIndex,
     isScrubbing: scrubPosition !== null,
+    currentIndex,
     pageFitMode,
   });
 
@@ -467,12 +467,12 @@ export const ViewerProvider = <TPage extends PageMetadata>({
     useReaderControls();
 
   const { goToNext, goToPrev } = useSpreadNavigation({
+    pages: sourcePages,
+    spreadStartIndex: clampedSpreadStartIndex,
     currentIndex,
     goTo,
     maxIndex,
     minIndex,
-    pages: sourcePages,
-    spreadStartIndex: clampedSpreadStartIndex,
     viewMode,
   });
 
@@ -485,6 +485,13 @@ export const ViewerProvider = <TPage extends PageMetadata>({
 
   const value = useMemo<ViewerContextValue<TPage>>(
     () => ({
+      imagePreloadSpreads: clampedImagePreloadSpreads,
+      maxZoomScale: MAX_ZOOM_SCALE,
+      minZoomScale: MIN_ZOOM_SCALE,
+      pageCount: totalPageCount,
+      pages: sourcePages,
+      setDoublePageAvailable: setIsDoublePageAvailable,
+      spreadStartIndex: clampedSpreadStartIndex,
       areControlsVisible,
       currentIndex,
       endPages,
@@ -492,26 +499,19 @@ export const ViewerProvider = <TPage extends PageMetadata>({
       goToNext,
       goToPrev,
       holdControls,
-      imagePreloadSpreads: clampedImagePreloadSpreads,
       isDoublePageAvailable,
       maxIndex,
-      maxZoomScale: MAX_ZOOM_SCALE,
       minIndex,
-      minZoomScale: MIN_ZOOM_SCALE,
-      pageCount: totalPageCount,
       pageFitMode,
-      pages: sourcePages,
       plugins,
       readingDirection,
       resetZoom,
       scrubPosition,
-      setDoublePageAvailable: setIsDoublePageAvailable,
       setPageFitMode,
       setReadingDirection,
       setScrubPosition,
       setViewMode,
       setZoomScale,
-      spreadStartIndex: clampedSpreadStartIndex,
       startPages,
       toggleControls,
       viewMode,
